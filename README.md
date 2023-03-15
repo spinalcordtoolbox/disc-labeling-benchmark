@@ -2,7 +2,7 @@
 
 ## Description
 
-This is the continuation of the work made by [Reza Azad](https://scholar.google.com/citations?hl=en&user=Qb5ildMAAAAJ&view_op=list_works&sortby=pubdate), [Lucas Rouhier](https://www.linkedin.com/in/lucas-rouhier-1aa36a131/?originalSubdomain=ca), and [Julien Cohen-Adad](https://scholar.google.ca/citations?user=6cAZ028AAAAJ&hl=en) on a deeplearning based architecture called `Stacked Hourglass Network` to detect and classify vertebral discs automatically on MR images.
+This is the continuation of the work made by [Reza Azad](https://www.linkedin.com/in/reza-azad-37a652109/), [Lucas Rouhier](https://www.linkedin.com/in/lucas-rouhier-1aa36a131/?originalSubdomain=ca), and [Julien Cohen-Adad](https://scholar.google.ca/citations?user=6cAZ028AAAAJ&hl=en) on a deeplearning based architecture called `Stacked Hourglass Network` to detect and classify vertebral discs automatically on MR images.
 
 Their work was [published](https://dl.acm.org/doi/abs/10.1007/978-3-030-87589-3_42) in a paper called "Stacked Hourglass Network with a Multi-level Attention Mechanism: Where to Look for Intervertebral Disc Labeling" for a MICCAI Workshop in 2021
 
