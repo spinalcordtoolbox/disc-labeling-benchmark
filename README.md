@@ -20,4 +20,4 @@ In this section are referenced repositories and issues related to this work.
 
 * [Original](https://github.com/rezazad68/Deep-Intervertebral-Disc-Labeling) hourglass work done by @rezazad68.
 * [Method comparison](https://github.com/NathanMolinier/intervertebral-disc-labeling/blob/master/README.md) between hourglass and the current non deepllearning based method `sct_label_vertebrae` implemented in the `spinalcordtoolbox`.
-* [Preprocess_data](https://github.com/ivadomed/model_label_intervertebral-disc_t1-t2_hourglass-net)
+* [Retrained model](https://github.com/ivadomed/model_label_intervertebral-disc_t1-t2_hourglass-net) by @joshuacwnewton to fix [straight vs. curved input data](https://github.com/ivadomed/ivadomed/pull/852#discussion_r710455668) issues. 
