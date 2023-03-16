@@ -1,0 +1,8 @@
+visualize/
+pose_code/__pycache__/
+.idea/
+output.avi
+src/__pycache__/
+weights/
+images/
+.vscode/
