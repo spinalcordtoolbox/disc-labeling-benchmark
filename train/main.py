@@ -32,6 +32,7 @@ from models.atthourglass import atthg
 from models import JointsMSELoss
 from models.utils import AverageMeter, adjust_learning_rate, accuracy, dice_loss
 from utils.train_utils import image_Dataset, SaveOutput, save_epoch_res_as_image2, save_attention
+from utils.skeleton import create_skeleton
 
 
 ## Set seed
@@ -368,4 +369,6 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(parent_dir, 'visualize')):
         os.mkdir(os.path.join(parent_dir, 'visualize'))
         
-    main(parser.parse_args())
+    main(parser.parse_args())  # Train the hourglass network
+    create_skeleton(parser.parse_args())  # Create skeleton file to improve hourglass accuracy during testing
+    
