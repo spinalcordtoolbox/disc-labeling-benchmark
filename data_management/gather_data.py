@@ -56,7 +56,7 @@ if __name__ == '__main__':
     ## Parameters
     parser.add_argument('--datapath', type=str, required=True,
                         help='Path to BIDS data')
-    parser.add_argument('--output-folder', type=str, required=True,
+    parser.add_argument('-o', '--output-folder', type=str, required=True,
                         help='Path out to output folder')
     parser.add_argument('--suffix-label', type=str, default='_labels-disc-manual',
                         help='Specify label suffix (default= "_labels-disc-manual")') 
