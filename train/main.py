@@ -84,9 +84,9 @@ def main(args):
     # create model
     print("==> creating model '{}', stacks={}, blocks={}".format('stacked hourglass', args.stacks, args.blocks))
     if args.att:
-        model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.njoints)
+        model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.ndiscs)
     else:
-        model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.njoints)
+        model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.ndiscs)
     model = torch.nn.DataParallel(model).to(device)
 
     # define loss function (criterion) and optimizer
@@ -319,10 +319,10 @@ if __name__ == '__main__':
     parser.add_argument('--datapath', type=str, required=True,
                         help='Path to trainset')
     parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
-                        help='MRI contrast')
-                         
-    parser.add_argument('--njoints', default=11, type=int,
-                        help='Number of joints')
+                        help='MRI contrast')               
+    parser.add_argument('--ndiscs', type=int, required=True,
+                        help='Number of discs to detect')
+    
     parser.add_argument('--resume', default= False, type=bool,
                         help=' Resume the training from the last checkpoint')  
     parser.add_argument('--attshow', default= False, type=bool,
