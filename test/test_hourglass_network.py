@@ -23,6 +23,7 @@ def test_hourglass(args):
     contrast = CONTRAST[args.contrast]
     txt_file = args.out_txt_file
     
+    
     print('load images')               
     with open(args.hg_datapath, 'rb') as file_pi:
         full = pickle.load(file_pi)            
@@ -30,7 +31,7 @@ def test_hourglass(args):
     full[0] = full[0][:, :, :, :, 0]
     
     print('retrieving ground truth coordinates')
-    norm_mean_skeleton = np.load(os.path.join(os.path.dirname(args.hg_datapath), f'{contrast}_Skelet.npy'))
+    norm_mean_skeleton = np.load(os.path.join(os.path.dirname(args.hg_datapath), f'{contrast}_Skelet_{args.ndiscs}.npy'))
     
     # Initialize metrics
     metrics = dict()

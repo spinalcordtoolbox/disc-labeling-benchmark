@@ -24,16 +24,17 @@ def create_skeleton(args):
     ## Load the training dataset
     trainset_path = args.datapath
     contrast = CONTRAST[args.contrast]
+    ndiscs = args.ndiscs
     with open(trainset_path, 'rb') as file_pi:
         full = pickle.load(file_pi)
     full[0] = full[0][:, :, :, :, 0]    
 
     ## Create a dataset loader
-    full_dataset_train = image_Dataset(image_paths=full[0], target_paths=full[1], num_channel=args.ndiscs, use_flip = False)
+    full_dataset_train = image_Dataset(image_paths=full[0], target_paths=full[1], num_channel=ndiscs, use_flip = False)
     MRI_train_loader = DataLoader(full_dataset_train, batch_size= 1, shuffle=False, num_workers=0)
 
-    All_skeletons = np.zeros((len(MRI_train_loader), 11, 2))
-    Joint_counter = np.zeros((11, 1))
+    All_skeletons = np.zeros((len(MRI_train_loader), ndiscs, 2))
+    Joint_counter = np.zeros((ndiscs, 1))
     for i, (input, target, vis) in enumerate(MRI_train_loader):
         target = target.numpy()
         mask = np.zeros((target.shape[2], target.shape[3]))
@@ -43,7 +44,7 @@ def create_skeleton(args):
         mask = np.rot90(mask)
         num_labels, labels_im, states, centers = cv2.connectedComponentsWithStats(mask)
         centers = [t[::-1] for t in centers]
-        skelet = np.zeros((11, 2))
+        skelet = np.zeros((ndiscs, 2))
         skelet[0:len(centers)-1] = centers[1:]
         Normjoint = np.linalg.norm(skelet[0]-skelet[4])
         for idx in range(1, len(centers)-1):
@@ -55,9 +56,10 @@ def create_skeleton(args):
         Joint_counter[0:len(centers)-1] += 1
         
     Skelet = np.sum(All_skeletons, axis= 0)   
+    Joint_counter[Joint_counter==0]=1  # To avoid dividing by zero
     Skelet /= Joint_counter
 
-    np.save(os.path.join(os.path.dirname(trainset_path), f'{contrast}_Skelet.npy'), Skelet)
+    np.save(os.path.join(os.path.dirname(trainset_path), f'{contrast}_Skelet_ndiscs_{ndiscs}.npy'), Skelet)
     
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Training hourglass network')
