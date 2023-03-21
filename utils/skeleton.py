@@ -29,7 +29,7 @@ def create_skeleton(args):
     full[0] = full[0][:, :, :, :, 0]    
 
     ## Create a dataset loader
-    full_dataset_train = image_Dataset(image_paths=full[0], target_paths=full[1], use_flip = False)
+    full_dataset_train = image_Dataset(image_paths=full[0], target_paths=full[1], num_channel=args.ndiscs, use_flip = False)
     MRI_train_loader = DataLoader(full_dataset_train, batch_size= 1, shuffle=False, num_workers=0)
 
     All_skeletons = np.zeros((len(MRI_train_loader), 11, 2))
