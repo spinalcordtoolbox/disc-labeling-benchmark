@@ -44,11 +44,11 @@ def test_hourglass(args):
     if args.att:
         model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.ndiscs)
         model = torch.nn.DataParallel(model).to(device)
-        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}', map_location='cpu')['model_weights'])
+        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
     else:
         model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.ndiscs)
         model = torch.nn.DataParallel(model).to(device)
-        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}', map_location='cpu')['model_weights'])
+        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
     # Create Dataloader
     full_dataset_test = image_Dataset(image_paths=full[0],target_paths=full[1], gt_coords=full[2], subject_names=full[3], use_flip = False) 

@@ -111,18 +111,18 @@ def main(args):
     if args.resume:
        print("=> loading checkpoint to continue learing process")
        if args.att:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
        else:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
     # evaluation only
     if args.evaluate:
         print('\nEvaluation only')
         print('loading the pretrained weight')
         if args.att:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
         else:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
         if args.attshow:
             loss, acc = show_attention(MRI_val_loader, model)
@@ -151,9 +151,9 @@ def main(args):
         if valid_acc > best_acc:
            state = copy.deepcopy({'model_weights': model.state_dict()})
            if args.att:
-                torch.save(state, f'weights/model_{args.contrast}_att_stacks_{args.stacks}')
+                torch.save(state, f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            else:
-                torch.save(state, f'weights/model_{args.contrast}_stacks_{args.stacks}')
+                torch.save(state, f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            best_acc = valid_acc
                 
 
