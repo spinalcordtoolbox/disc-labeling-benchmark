@@ -22,7 +22,7 @@ def test_hourglass(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     contrast = CONTRAST[args.contrast]
     txt_file = args.out_txt_file
-    
+    ndiscs = args.ndiscs
     
     print('load images')               
     with open(args.hg_datapath, 'rb') as file_pi:
@@ -31,7 +31,7 @@ def test_hourglass(args):
     full[0] = full[0][:, :, :, :, 0]
     
     print('retrieving ground truth coordinates')
-    norm_mean_skeleton = np.load(os.path.join(os.path.dirname(args.hg_datapath), f'{contrast}_Skelet_{args.ndiscs}.npy'))
+    norm_mean_skeleton = np.load(os.path.join(os.path.dirname(args.hg_datapath), f'{contrast}_Skelet_ndiscs_{ndiscs}.npy'))
     
     # Initialize metrics
     metrics = dict()
@@ -43,18 +43,18 @@ def test_hourglass(args):
     
     # Load network weights
     if args.att:
-        model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.ndiscs)
+        model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=ndiscs)
         model = torch.nn.DataParallel(model).to(device)
-        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
     else:
-        model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.ndiscs)
+        model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=ndiscs)
         model = torch.nn.DataParallel(model).to(device)
-        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
 
     # Create Dataloader
     full_dataset_test = image_Dataset(image_paths=full[0],
                                       target_paths=full[1],
-                                      num_channel=args.ndiscs, 
+                                      num_channel=ndiscs, 
                                       gt_coords=full[2], 
                                       subject_names=full[3], 
                                       use_flip = False
@@ -74,8 +74,7 @@ def test_hourglass(args):
         output = output[-1]
         x      = full[0][i]
         
-        print(subject_name)
-        prediction = extract_skeleton(input, output, target, norm_mean_skeleton, Flag_save = True)
+        prediction = extract_skeleton(input, output, target, norm_mean_skeleton, ndiscs, Flag_save = True)
         prediction = np.sum(prediction[0], axis = 0)
         prediction = np.rot90(prediction,3)
         prediction = cv2.resize(prediction, (x.shape[0], x.shape[1]), interpolation=cv2.INTER_NEAREST)

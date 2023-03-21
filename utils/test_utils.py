@@ -21,7 +21,7 @@ CONTRAST = {'t1': 'T1w',
             't2s':'T2star'}
 
 ## Functions    
-def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, Flag_save = False, target_th=0.5):
+def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_save = False, target_th=0.5):
     idtest = 1
     outputs  = outputs.data.cpu().numpy()
     target  = target.data.cpu().numpy()
@@ -31,8 +31,10 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, Flag_save = Fa
         count_list = []
         Nch = 0
         center_list = {}
-        while np.sum(np.sum(target[idx, Nch]))>0:
+        while np.sum(np.sum(target[idx, Nch]))>0 and Nch<target.shape[1]:
             Nch += 1
+        if Nch>=target.shape[1]:
+            print(f'The method is able to detect {ndiscs} discs, more discs may be present in the image')
         Final  = np.zeros((outputs.shape[0], Nch, outputs.shape[2], outputs.shape[3]))      
         for idy in range(Nch): 
             ych = outputs[idx, idy]
