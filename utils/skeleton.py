@@ -67,5 +67,7 @@ if __name__=='__main__':
                         help='Path to trainset')
     parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
                         help='MRI contrast')
+    parser.add_argument('--ndiscs', type=int, required=True,
+                        help='Number of discs to detect')
     
     create_skeleton(parser.parse_args())  # Create skeleton file to improve hourglass accuracy during testing
