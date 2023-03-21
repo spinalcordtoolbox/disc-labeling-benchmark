@@ -147,10 +147,11 @@ def extract_groundtruth_heatmap_with_subjects_and_GT_coords(DataSet):
     return [tmp_train_img, tmp_train_labels, train_ds_label, subjects_list]
 
 class image_Dataset(Dataset):
-    def __init__(self, image_paths, target_paths, gt_coords = None, subject_names = None, use_flip = True):  # initial logic happens like transform
+    def __init__(self, image_paths, target_paths, num_channel, gt_coords = None, subject_names = None, use_flip = True):  # initial logic happens like transform
 
         self.image_paths = image_paths
         self.target_paths = target_paths
+        self.num_channel = num_channel
         self.gt_coords = gt_coords
         self.subject_names = subject_names
         self.num_vis_joints = []
@@ -250,7 +251,7 @@ class image_Dataset(Dataset):
         image = image.astype(np.float32)
         image = np.expand_dims(image, axis= -1)
         
-        image, mask, vis  = self.get_posedata(image, mask, num_ch=11)
+        image, mask, vis  = self.get_posedata(image, mask, num_ch=self.num_channel)
         t_image, t_mask = self.transform(image, mask)
         
         vis = torch.FloatTensor(vis)

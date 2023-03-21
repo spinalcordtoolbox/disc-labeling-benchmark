@@ -67,9 +67,15 @@ def main(args):
     full[0] = full[0][:, :, :, :, 0]
     
     ## Create a dataset loader
-    full_dataset_train = image_Dataset(image_paths=full[0][0:train_idx], target_paths=full[1][:train_idx])
-    full_dataset_val = image_Dataset(image_paths=full[0][train_idx:validation_idx],
-                                        target_paths=full[1][train_idx:validation_idx], use_flip = False)
+    full_dataset_train = image_Dataset(image_paths=full[0][0:train_idx], 
+                                       target_paths=full[1][:train_idx], 
+                                       num_channel=args.ndiscs
+                                       )
+    full_dataset_val = image_Dataset(image_paths=full[0][train_idx:validation_idx], 
+                                     target_paths=full[1][train_idx:validation_idx],
+                                     num_channel=args.ndiscs, 
+                                     use_flip = False
+                                     )
 
     MRI_train_loader = DataLoader(full_dataset_train, batch_size= args.train_batch,
                                 shuffle=True,
@@ -79,7 +85,8 @@ def main(args):
                             num_workers=0)
     
     # idx is the index of joints used to compute accuracy (we detect 11 joints starting from C1 to ...) 
-    idx = [1,2,3,4,5,6,7,8,9,10,11]
+    #idx = [1,2,3,4,5,6,7,8,9,10,11]
+    idx = [(i+1) for i in range(args.ndiscs)]
 
     # create model
     print("==> creating model '{}', stacks={}, blocks={}".format('stacked hourglass', args.stacks, args.blocks))

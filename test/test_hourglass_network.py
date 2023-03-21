@@ -51,7 +51,13 @@ def test_hourglass(args):
         model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
     # Create Dataloader
-    full_dataset_test = image_Dataset(image_paths=full[0],target_paths=full[1], gt_coords=full[2], subject_names=full[3], use_flip = False) 
+    full_dataset_test = image_Dataset(image_paths=full[0],
+                                      target_paths=full[1],
+                                      num_channel=args.ndiscs, 
+                                      gt_coords=full[2], 
+                                      subject_names=full[3], 
+                                      use_flip = False
+                                      ) 
     MRI_test_loader   = DataLoader(full_dataset_test, batch_size= 1, shuffle=False, num_workers=0)
     model.eval()
     
