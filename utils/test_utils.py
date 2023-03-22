@@ -20,13 +20,27 @@ CONTRAST = {'t1': 'T1w',
             't2': 'T2w',
             't2s':'T2star'}
 
-## Functions    
+## Functions
+def visualize_discs(input_img, coords_list, out_path):
+    coords_list = swap_y_origin(coords=coords_list, img_shape=input_img.shape, y_pos=0).tolist() # The y origin is at the top of the image
+    discs_images = []
+    for coord in coords_list:
+        coord = [int(c) for c in coord]
+        disc_img = np.zeros_like(input_img[:,:,0])
+        disc_img[coord[0]-1:coord[0]+2, coord[1]-1:coord[1]+2] = [255, 255, 255]
+        disc_img[:, :] = cv2.GaussianBlur(disc_img[:, :],(5,5),cv2.BORDER_DEFAULT)
+        disc_img[:, :] = disc_img[:, :]/disc_img[:, :].max()*255
+        discs_images.append(disc_img)
+    discs_images = np.array(discs_images)
+    save_discs_image(input_img, discs_images, out_path)
+
+##    
 def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_save = False, target_th=0.5):
     idtest = 1
     outputs  = outputs.data.cpu().numpy()
     target  = target.data.cpu().numpy()
     inputs = inputs.data.cpu().numpy()
-    skeleton_images = []
+    skeleton_images = []  # This variable stores an image to visualize discs 
     for idx in range(outputs.shape[0]):    
         count_list = []
         Nch = 0
@@ -35,10 +49,10 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
             Nch += 1
         if Nch>=target.shape[1]:
             print(f'The method is able to detect {ndiscs} discs, more discs may be present in the image')
-        Final  = np.zeros((outputs.shape[0], Nch, outputs.shape[2], outputs.shape[3]))      
+        Final  = np.zeros((outputs.shape[0], Nch, outputs.shape[2], outputs.shape[3])) # Final array composed of the prediction (outputs) normalized and after applying a threshold       
         for idy in range(Nch): 
             ych = outputs[idx, idy]
-            ych = np.rot90(ych)
+            ych = np.rot90(ych)  # Rotate prediction to normal position
             ych = ych/np.max(np.max(ych))
             ych[np.where(ych<target_th)] = 0
             Final[idx, idy] = ych
@@ -63,7 +77,7 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
             if best_loss > loss:
                 best_loss = loss
                 best_skeleton = cnd_skeleton
-        Final2  = np.uint8(np.where(Final>0, 1, 0))
+        Final2  = np.uint8(np.where(Final>0, 1, 0))  # Extract only non-zero values in the Final variable
         cordimg = np.zeros(Final2.shape)
         hits = np.zeros_like(outputs[0])
         for i, jp, in enumerate(best_skeleton):
@@ -86,8 +100,8 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
         skeleton_images.append(hits)
         
     skeleton_images = np.array(skeleton_images)
-    inputs = np.rot90(inputs, axes=(-2, -1))
-    target = np.rot90(target, axes=(-2, -1))
+    inputs = np.rot90(inputs, axes=(-2, -1))  # Rotate input to normal position
+    target = np.rot90(target, axes=(-2, -1))  # Rotate target to normal position
     if Flag_save:
       save_test_results(inputs, skeleton_images, targets=target, name=idtest, target_th=0.5)
     idtest+=1
@@ -151,6 +165,46 @@ def save_test_results(inputs, outputs, targets, name='', target_th=0.5):
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(txt, res)
 
+##
+def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
+    clr_vis_Y = []
+    hues = np.linspace(0, 179, discs_images.shape[0], dtype=np.uint8)
+    blank_ch = 255*np.ones_like(discs_images[0], dtype=np.uint8)
+
+    y_colored = np.zeros([discs_images.shape[1], discs_images.shape[2], 3], dtype=np.uint8)
+    y_all = np.zeros([discs_images.shape[1], discs_images.shape[2]], dtype=np.uint8)
+    
+    for ych, hue_i in zip(discs_images, hues):
+        ych = ych/np.max(np.max(ych))
+
+        ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
+        ych = np.uint8(255*ych/np.max(ych))
+
+        colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
+        colored_ych[:, :, 0] = ych_hue
+        colored_ych[:, :, 1] = blank_ch
+        colored_ych[:, :, 2] = ych
+        colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
+
+        y_colored += colored_y
+        y_all += ych
+
+    # Normalised image between [0,255] as integer
+    x = (255*(input_img - np.min(input_img))/np.ptp(input_img)).astype(int)
+
+    x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
+    for i in range(3):
+        x_3ch[:, :, i] = x[:, :, 0]
+
+    img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
+    clr_vis_Y.append(img_mix)
+            
+    t = np.array(clr_vis_Y)
+    t = np.transpose(t, [0, 3, 1, 2])
+    trgts = make_grid(torch.Tensor(t), nrow=4)
+
+    res = np.transpose(trgts.numpy(), (1,2,0))
+    cv2.imwrite(out_path, res)
 ##
 def prediction_coordinates(final, coord_gt, metrics):
     num_labels, labels_im, states, centers = cv2.connectedComponentsWithStats(np.uint8(np.where(final>0, 255, 0)))
@@ -266,3 +320,18 @@ def best_disc_association(pred, gt):
         pred_out[disc_num-1]=pred[closer_to_node_n].tolist()
             
     return pred_out, gt_out
+
+def swap_y_origin(coords, img_shape, y_pos=1):
+    '''
+    This function returns a list of coords where the y origin coords was swapped between top and bottom
+    '''
+    y_shape = img_shape[1]
+    coords[:,y_pos] = y_shape - coords[:,y_pos]
+    return coords
+
+def coord2list(coords):
+    '''
+    This function swaps between coordinate referencial and list referencial
+    [x, y] <--> [lines columns]
+    '''
+    return np.flip(coords,axis=1)
