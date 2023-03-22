@@ -15,7 +15,7 @@ sys.path.append(parent_dir)
 from models.hourglass import hg
 from models.atthourglass import atthg
 from utils.train_utils import image_Dataset
-from utils.test_utils import CONTRAST, extract_skeleton, best_disc_association 
+from utils.test_utils import CONTRAST, extract_skeleton, best_disc_association, visualize_discs, swap_y_origin, coord2list 
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
@@ -72,18 +72,18 @@ def test_hourglass(args):
         input, target = input.to(device), target.to(device, non_blocking=True)
         output = model(input) 
         output = output[-1]
-        x      = full[0][i]
+        original_img = np.rot90(full[0][i])  # rotate original input image to normal position 
         
         prediction = extract_skeleton(input, output, target, norm_mean_skeleton, ndiscs, Flag_save = True)
         prediction = np.sum(prediction[0], axis = 0)
-        prediction = np.rot90(prediction,3)
-        prediction = cv2.resize(prediction, (x.shape[0], x.shape[1]), interpolation=cv2.INTER_NEAREST)
+        prediction = cv2.resize(prediction, (original_img.shape[0], original_img.shape[1]), interpolation=cv2.INTER_NEAREST)
         num_labels, labels_im, states, centers = cv2.connectedComponentsWithStats(np.uint8(np.where(prediction>0, 255, 0)))
         
         
         # Write the predicted and ground truth coordinates inside the discs_coords txt file
         pred = centers[1:] #0 for background
-        pred = np.flip(pred[pred[:, 0].argsort()], axis=0)  # Sorting predictions according to first coordinate
+        pred = swap_y_origin(coords=pred, img_shape=original_img.shape)  # Move y origin to the bottom of the image
+        pred = coord2list(pred[~pred[:, 1].argsort()])  # Sorting predictions according to first coordinate and swap to coords convention [x, y] --> [lines(y), columns(x)]
         gt_coord = np.array(torch.tensor(gt_coord).tolist())
         gt_coord = np.transpose(np.array([gt_coord[:,2],gt_coord[:,1],gt_coord[:,-1]])) # Using same format as prediction + discs label
         subject_index = np.where((np.array(split_lines)[:,0] == subject_name[0]) & (np.array(split_lines)[:,1] == contrast))  
