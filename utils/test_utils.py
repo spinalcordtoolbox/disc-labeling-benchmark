@@ -1,19 +1,18 @@
+#===================================================
+## Authors: 
+# - Lucas Rouhier ()
+# - Reza Azad (rezazad68@gmail.com)
+# - Nathan Molinier (nathan.molinier@gmail.com)
+# Copyright (c) 2020 Polytechnique Montreal <www.neuro.polymtl.ca>
+#===================================================
+
 import os
 import sys
 import cv2
 import numpy as np
 import torch
-from torchvision.utils import save_image
 from sklearn.utils.extmath import cartesian
 from torchvision.utils import make_grid
-
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(parent_dir)
-
-from utils.metrics import mesure_err_disc, mesure_err_z, Faux_neg, Faux_pos
 
 ## Variables
 CONTRAST = {'t1': 'T1w',
@@ -26,7 +25,7 @@ def visualize_discs(input_img, coords_list, out_path):
     discs_images = []
     for coord in coords_list:
         coord = [int(c) for c in coord]
-        disc_img = np.zeros_like(input_img[:,:,0])
+        disc_img = np.zeros_like(input_img[:,:])
         disc_img[coord[0]-1:coord[0]+2, coord[1]-1:coord[1]+2] = [255, 255, 255]
         disc_img[:, :] = cv2.GaussianBlur(disc_img[:, :],(5,5),cv2.BORDER_DEFAULT)
         disc_img[:, :] = disc_img[:, :]/disc_img[:, :].max()*255
@@ -194,7 +193,7 @@ def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
 
     x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
     for i in range(3):
-        x_3ch[:, :, i] = x[:, :, 0]
+        x_3ch[:, :, i] = x[:, :]
 
     img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
     clr_vis_Y.append(img_mix)
@@ -205,26 +204,6 @@ def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
 
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(out_path, res)
-##
-def prediction_coordinates(final, coord_gt, metrics):
-    num_labels, labels_im, states, centers = cv2.connectedComponentsWithStats(np.uint8(np.where(final>0, 255, 0)))
-    #centers = peak_local_max(final, min_distance=5, threshold_rel=0.3)
-
-    centers = centers[1:] #0 for background
-    coordinates = []
-    for x in centers:
-        coordinates.append([x[0], x[1]])
-    #print('calculating metrics on image')
-    l2_dist = mesure_err_disc(coord_gt, coordinates)
-    zdis = mesure_err_z(coord_gt, coordinates)
-    fp, tot = Faux_pos(coord_gt, coordinates)
-    fn = Faux_neg(coord_gt, coordinates)
-    
-    metrics['distance_l2'] += l2_dist  # Concatenation des listes
-    metrics['zdis'] += zdis  # Concatenation des listes
-    metrics['tot'].append(tot)
-    metrics['faux_pos'].append(fp)
-    metrics['faux_neg'].append(fn)
     
 # looks for the closest points between real and predicted
 def closest_node(node, nodes):
@@ -321,6 +300,7 @@ def best_disc_association(pred, gt):
             
     return pred_out, gt_out
 
+##
 def swap_y_origin(coords, img_shape, y_pos=1):
     '''
     This function returns a list of coords where the y origin coords was swapped between top and bottom
@@ -329,9 +309,44 @@ def swap_y_origin(coords, img_shape, y_pos=1):
     coords[:,y_pos] = y_shape - coords[:,y_pos]
     return coords
 
+##
 def coord2list(coords):
     '''
     This function swaps between coordinate referencial and list referencial
     [x, y] <--> [lines columns]
     '''
     return np.flip(coords,axis=1)
+
+##
+def str2array(coords):
+    '''
+    coords: numpy array of str coords
+    
+    returns numpy array of specified coordinates and None for not specified coordinates
+    '''
+    output_coords = []
+    for coord in coords:
+        if coord not in ['Fail', 'None', 'None\n']:
+            coord_split = coord.split(',')
+            output_coords.append([float(coord_split[0].split('[')[1]),float(coord_split[1].split(']')[0])])
+        else:
+            output_coords.append(None)
+    return np.array(output_coords)
+
+## 
+def check_missing_discs(coords):
+    '''
+    coords: numpy array of coords
+    return:
+        output_coords: list of coords without missing discs
+        missing_discs: list of missing discs detection
+    '''
+    output_coords = []
+    missing_discs = []
+    for num, coord in enumerate(coords):
+        if coord is not None:
+            output_coords.append(coord)
+        else:
+            missing_discs.append(num+1)
+    return np.array(output_coords), np.array(missing_discs)
+            
