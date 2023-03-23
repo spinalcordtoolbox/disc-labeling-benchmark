@@ -18,76 +18,69 @@ def closest_node(node, nodes):
 
 
 # compute prediction L2-error with between predicted and closest real point.
-def mesure_err_disc(gt, pred):
-    loss = []
-    dis = []
-    for i in range(len(gt[0])):
-        node = np.array([gt[0][i], gt[1][i]])
-        h = closest_node(node, pred)
-        dis.append(np.linalg.norm(node - pred[h]))
-    return dis
-
 def compute_L2_error(gt, pred):
     '''
+    Compute L2 error:
+    
     gt: numpy array with the ground truth coords of the discs
     pred: numpy array with the prediction coords of the discs
     
-    out: L2_error for each coordinate or:
-        -1 if not coordinate for gt
-        -2 if prediction fails
+    out: L2_error for each coordinates
     '''
-    L2_list = []
-    for i in range(gt.shape[0]):
-        if gt[i,0] != -1:
-            if pred[i,0] != -1:
-                L2_list.append(np.linalg.norm(gt[i] - pred[i]))
-            else:
-                L2_list.append(-2)
-        else:
-            L2_list.append(-1)
-    return np.array(L2_list)
+    return np.array([np.linalg.norm(gt[i] - pred[i]) for i in range(gt.shape[0])])
 
 
 # compute error along the z axis between real and prediction with the closest node.
-def mesure_err_z(gt, pred):
-    z = []
-    for i in range(len(gt[0])):
-        node = np.array([gt[0][i], gt[1][i]])
-        h = closest_node(node, pred)
-        z.append(abs(node[0] - pred[h][0]))
-    return z
-
-
-# compute False positive by looking at points further than 10 mm from any points or groups of points attributed to same GT points
-def Faux_pos(gt, pred):
-    c = 0
+def compute_z_error(gt, pred):
+    '''
+    Compute vertical error:
     
-    gt = np.transpose(gt)
-    tot =len(gt)
-    already_used = []
-    for i in range(len(pred)):
-        node = np.array([pred[i][0], pred[i][1]])
-        h = closest_node(node, gt)
-        #print(gt)
-        if (abs(node[0] - gt[h][0])) > 10:
-            c = c + 1
-
-        elif h in already_used:
-
-            #print(gt[h])
-            #print('already_used')
-            c = c + 1
-    return c, tot
+    gt: numpy array with the ground truth coords of the discs
+    pred: numpy array with the prediction coords of the discs
+    
+    out: Z_error for each coordinates
+    '''
+    return np.array([abs(gt[i,0] - pred[i,0]) for i in range(gt.shape[0])])
 
 
-# compute false negative by looking at ground truth point further than 5mm than any predicted point
-def Faux_neg(gt, pred):
+# compute False positive 
+def false_pos(missing_gt, discs_pred):
+    '''
+    Compute false positive:
+    
+    missing_gt: numpy array of non present discs
+    discs_pred: numpy array of the predicted discs
+    
+    return:
+        c: number of false positive detection
+        false_pos_list: numpy array of false positive discs detections
+    '''
+    false_pos_list = []
     c = 0
-    gt = np.transpose(gt)
-    for i in range(len(gt)):
-        node = np.array([gt[i][0], gt[i][1]])
-        h = closest_node(node, pred)
-        if (abs(node[0] - pred[h][0])) > 7:
-            print(abs(node[0] - pred[h][0]))
-            c = c + 1
-    return c
+    for disc in discs_pred:
+        if disc in missing_gt:
+            c += 1
+            false_pos_list.append(disc)
+    return c, np.array(false_pos_list)
+
+# compute False negative 
+def false_neg(missing_gt, missing_pred):
+    '''
+    Compute false negative:
+    
+    missing_gt: numpy array with non present discs
+    missing_pred: numpy array of the missed predictions
+    
+    return:
+        c: number of false negative detection
+        false_neg_list: numpy array of false negative discs detections
+    '''
+    false_neg_list = []
+    c = 0
+    for disc in missing_pred:
+        if disc not in missing_gt:
+            c += 1
+            false_neg_list.append(disc)
+    return c, np.array(false_neg_list)
+
+
