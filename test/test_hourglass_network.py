@@ -21,9 +21,14 @@ from utils.test_utils import CONTRAST, extract_skeleton, best_disc_association, 
 def test_hourglass(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     contrast = CONTRAST[args.contrast]
-    txt_file = args.out_txt_file
     ndiscs = args.ndiscs
     origin_data = args.sct_datapath
+    
+    # Get output file for discs extraction
+    if args.out_txt_file is not None:
+        txt_file = args.out_txt_file
+    else:
+        txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
     
     print('load images')               
     with open(args.hg_datapath, 'rb') as file_pi:

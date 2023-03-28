@@ -18,14 +18,19 @@ def test_sct_label_vertebrae(args):
     Use sct_deepseg_sc and sct_label_vertebrae to find the vertebrae discs coordinates and append them
     to a txt file
     '''
-    txt_file = args.out_txt_file
+    datapath = os.path.abspath(args.sct_datapath)
+    contrast = CONTRAST[args.contrast]
+    
+    # Get output file for discs extraction
+    if args.out_txt_file is not None:
+        txt_file = args.out_txt_file
+    else:
+        txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
+        
     with open(txt_file,"r") as f:  # Checking already processed subjects from coords.txt
         file_lines = f.readlines()
         processed_subjects_with_contrast = [line.split(' ')[0] + '_' + line.split(' ')[1] for line in file_lines[1:]]  # Remove first line
         
-    #sct_coords = dict()
-    datapath = os.path.abspath(args.sct_datapath)
-    contrast = CONTRAST[args.contrast]
     for dir_name in os.listdir(datapath):
         if dir_name.startswith('sub'):
             file_name = dir_name + '_' + contrast + '.nii.gz'
