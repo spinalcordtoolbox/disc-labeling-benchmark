@@ -2,7 +2,7 @@ visualize/
 .idea/
 output.avi
 weights/
-images/
+files/
 .vscode/
 __pycache__/
  *.pyc
