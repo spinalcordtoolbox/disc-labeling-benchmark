@@ -8,13 +8,13 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Extract discs coords from sct and hourglass')
 
     ## Parameters
-    parser.add_argument('--hg_datapath', type=str,
+    parser.add_argument('--hg-datapath', type=str,
                         help='Hourglass dataset path')                               
-    parser.add_argument('--sct_datapath', type=str,
+    parser.add_argument('--sct-datapath', type=str,
                         help='SCT dataset path')                               
     parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
                         help='MRI contrast')
-    parser.add_argument('-txt', '--out_txt_file', default='visualize/discs_coords.txt', type=str, metavar='N',
+    parser.add_argument('-txt', '--out-txt-file', type=str, metavar='N',
                         help='Generated txt file')
     parser.add_argument('--ndiscs', type=int, required=True,
                         help='Number of discs to detect')

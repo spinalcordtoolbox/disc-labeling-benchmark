@@ -338,7 +338,7 @@ if __name__ == '__main__':
                         help='number of total epochs to run')
     parser.add_argument('--train_batch', default=3, type=int, metavar='N', 
                         help='train batchsize')
-    parser.add_argument('--val_batch', default=4, type=int, metavar='N',
+    parser.add_argument('--val-batch', default=4, type=int, metavar='N',
                         help='validation batchsize')
     parser.add_argument('--solver', metavar='SOLVER', default='rms',
                         choices=['rms', 'adam'],
