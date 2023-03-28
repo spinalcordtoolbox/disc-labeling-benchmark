@@ -13,6 +13,9 @@ import numpy as np
 import torch
 from sklearn.utils.extmath import cartesian
 from torchvision.utils import make_grid
+from spinalcordtoolbox.image import Image, zeros_like
+from spinalcordtoolbox.utils.fs import tmp_create, rmtree
+from spinalcordtoolbox.utils.sys import run_proc
 
 ## Variables
 CONTRAST = {'t1': 'T1w',
@@ -350,3 +353,72 @@ def check_missing_discs(coords):
             missing_discs.append(num+1)
     return np.array(output_coords), np.array(missing_discs)
             
+##
+def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
+    '''
+    This function projects discs coordinates onto the centerline using sct_label_utils
+    
+    coords: numpy array of coords
+    return: numpy array of coords projected on the spinal cord
+    '''
+    # Get segmentation
+    fname_seg = os.path.abspath(seg_path)
+    seg = Image(fname_seg)
+    
+    # Create temp folder
+    path_tmp = tmp_create(basename="label-vertebrae-project")
+    
+    if proj_2d:
+        # Get middle slice of the image because last coordinate is missing to create a 3d object
+        middle_slice = np.array([seg.data.shape[0]//2]*coords.shape[0])
+
+    # Get transpose
+    coords_t = np.rint(np.transpose(coords)).astype(int)
+    
+    # Create Image object of the referenced coordinates
+    fname_coords = zeros_like(seg)
+    
+    if proj_2d:
+        if disc_num:
+            fname_coords.data[middle_slice, coords_t[0], coords_t[1]] = coords_t[2]
+        else:
+            fname_coords.data[middle_slice, coords_t[0], coords_t[1]] = 1
+    else:
+        if disc_num:
+            fname_coords.data[coords_t[0], coords_t[1], coords_t[2]] = coords_t[3]
+        else:
+            fname_coords.data[coords_t[0], coords_t[1], coords_t[2]] = 1
+    
+    # Save referenced coords into temp folder
+    discs_path = os.path.join(path_tmp, 'labels.nii.gz')
+    fname_coords.save(path=discs_path, dtype='float32')
+    
+    # Compute projection
+    out_path = os.path.join(path_tmp, 'proj_labels.nii.gz')
+    status, _ = run_proc(['sct_label_utils',
+                            '-i', fname_seg,
+                            '-project-discs', discs_path,
+                            '-o', out_path], raise_exception=False)
+    if status == 0:
+        if disc_num:
+            discs_coords = Image(out_path).getNonZeroCoordinates(sorting='value')
+        else:
+            discs_coords = Image(out_path).getNonZeroCoordinates(sorting='z', reverse_coord=True)
+    else:
+        print('Fail projection')
+        
+    if proj_2d:    
+        if disc_num:
+            output_coords = np.array([list(coord)[1:] for coord in discs_coords])
+        else:
+            output_coords = np.array([list(coord)[1:3] for coord in discs_coords])
+    else:
+        if disc_num:
+            output_coords = np.array([list(coord) for coord in discs_coords])
+        else:
+            output_coords = np.array([list(coord)[:3] for coord in discs_coords])
+    
+    # Remove temporary folder
+    rmtree(path_tmp)
+
+    return output_coords
