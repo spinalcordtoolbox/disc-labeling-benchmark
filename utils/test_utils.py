@@ -306,7 +306,7 @@ def best_disc_association(pred, gt):
 ##
 def swap_y_origin(coords, img_shape, y_pos=1):
     '''
-    This function returns a list of coords where the y origin coords was swapped between top and bottom
+    This function returns a list of coords where the y origin coords was moved from top and bottom
     '''
     y_shape = img_shape[1]
     coords[:,y_pos] = y_shape - coords[:,y_pos]
