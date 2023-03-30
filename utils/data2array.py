@@ -61,27 +61,12 @@ def add_zero_padding(img_list, x_val=512, y_val=512):
 
 def mask2label(path_label, aim='full'):
     """
-    Convert nifti image to an array of coordinates
+    Convert nifti image to a list of coordinates
     :param path_label: path of nifti image
     :return:
     """
     a = Image(path_label)
-    a.change_orientation('RPI')
-    arr = np.array(a.data)
-    print(path_label)
-    list_label_image = []
-    for i in range(len(arr.nonzero()[0])):
-        x = arr.nonzero()[0][i]
-        y = arr.nonzero()[1][i]
-        z = arr.nonzero()[2][i]
-        if aim == 'full':
-            if arr[x, y, z] < 30 and arr[x, y, z] != 1:
-                list_label_image.append([x, y, z, arr[x, y, z]])
-        elif aim == 'c2':
-            if arr[x, y, z] == 3:
-                list_label_image.append([x, y, z, arr[x, y, z]])
-    list_label_image.sort(key=lambda x: x[3])
-    return (list_label_image)
+    return [list(coord) for coord in a.change_orientation('RPI').getNonZeroCoordinates(sorting='value')]
 
 
 def get_midNifti(path_im, ind):
