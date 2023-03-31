@@ -24,23 +24,18 @@ from utils.train_utils import extract_groundtruth_heatmap, extract_groundtruth_h
 def main(args):
     '''
     Prepare and split hourglass data into a trainset and a testset
-    '''                       
-    print('Loading dataset: ', os.path.abspath(args.datapath))
+    '''  
+    contrast = args.contrast
     split_factor = args.split_factor
-    ds_train = load_Data_Bids2Array(args.datapath, mode= args.contrast, factor=split_factor, split='train', aim='full')
-    ds_test = load_Data_Bids2Array_with_subjects(args.datapath, mode= args.contrast, factor=split_factor, split='test', aim='full')  # we want to keep track of the subjects name
+                   
+    print('Loading dataset: ', os.path.abspath(args.datapath))
+    ds_train = load_Data_Bids2Array(args.datapath, mode= contrast, factor=split_factor, split='train', aim='full')
+    ds_test = load_Data_Bids2Array_with_subjects(args.datapath, mode= contrast, factor=split_factor, split='test', aim='full')  # we want to keep track of the subjects name
     
     print('Creating heatmap')
     full_train = extract_groundtruth_heatmap(ds_train)
     full_test = extract_groundtruth_heatmap_with_subjects_and_GT_coords(ds_test)  # we want to keep track of the subjects name and the ground truth position of the vertebral discs
     
-    if args.contrast == 0:
-        contrast = 't1_t2'
-    if args.contrast == 1:
-        contrast = 't1'
-    if args.contrast == 2:
-        contrast = 't2'
-
     print('Saving the prepared datasets')
     prefix = args.prefix_name
     output_trainset = os.path.join(args.output_folder, prefix + '_train_' + contrast)
@@ -61,8 +56,8 @@ if __name__ == '__main__':
                             help='Path to vertebral data')                     
     parser.add_argument('-o','--output-folder', type=str,
                             help='Path out to store the prepared datasets')  
-    parser.add_argument('-c', '--contrast', type=int,
-                            help='#0 for both t1 and t2 , 1 for t1 only , 2 for t2 only')
+    parser.add_argument('-c', '--contrast', type=str,
+                            help='#t1_t2 for both t1 and t2 , t1 for t1 only , t2 for t2 only')
     parser.add_argument('--prefix-name', default='dataset', type=str,
                             help='Prefix particle in the dataset name (default="dataset")')
     parser.add_argument('--split-factor', default=0.9, type=float,

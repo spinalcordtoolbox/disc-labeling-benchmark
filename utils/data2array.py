@@ -98,12 +98,12 @@ def images_normalization(img_list, std=True):
     return img_norm_list
 
 
-def load_Data_Bids2Array(DataSet_path, mode=0, factor=0.9, split='train', aim='full'):
+def load_Data_Bids2Array(DataSet_path, mode='t2', factor=0.9, split='train', aim='full'):
     """
     Load image into an array. array[0] will represent 2D images
     array[1] will be list of corresponding ground truth coordinates
     :param DataSet_path: Path to images
-    :param mode: Mode 1 only load T1 , Mode 2 only load T2 , Different number load both
+    :param mode: Mode t1 only load T1w , Mode t2 only load T2w , Different number load both
     :param split: Train or test. Decide which part of the dataset will be used.
     :return:
     """
@@ -124,12 +124,12 @@ def load_Data_Bids2Array(DataSet_path, mode=0, factor=0.9, split='train', aim='f
     for i in range(begin, end):
         path_tmp = os.path.join(DataSet_path,list_dir[i]) + '/'
 
-        if mode != 2:
+        if mode != 't2':
             if os.path.exists(path_tmp + list_dir[i]+'_T1w_labels-disc-manual.nii.gz'):
                 tmp_label = mask2label(path_tmp + list_dir[i]+'_T1w_labels-disc-manual.nii.gz',aim)
             else:
                 continue
-        if mode != 1:
+        if mode != 't1':
             print(path_tmp + list_dir[i])
             if os.path.exists(path_tmp + list_dir[i] +'_T2w_labels-disc-manual_r.nii.gz'):
                 tmp_label_t2 = mask2label(path_tmp + list_dir[i]+'_T2w_labels-disc-manual_r.nii.gz',aim)
@@ -138,13 +138,13 @@ def load_Data_Bids2Array(DataSet_path, mode=0, factor=0.9, split='train', aim='f
             else:
                 continue
 
-        if mode != 1:
+        if mode != 't1':
             index_mid = tmp_label_t2[0][0]
         else:
             index_mid = tmp_label[0][0]
-        if mode != 2:
+        if mode != 't2':
             mid_slice = get_midNifti(path_tmp +list_dir[i]+ '_T1w.nii.gz', index_mid)
-        if mode != 1:
+        if mode != 't1':
             if os.path.exists(path_tmp+list_dir[i]+'_acq-sag_T2w_r.nii.gz'):
                 mid_slice_t2 = get_midNifti(path_tmp+list_dir[i]+'_acq-sag_T2w_r.nii.gz', index_mid)
             elif os.path.exists(path_tmp+list_dir[i]+'_T2w_r.nii.gz'):
@@ -152,7 +152,7 @@ def load_Data_Bids2Array(DataSet_path, mode=0, factor=0.9, split='train', aim='f
             elif os.path.exists(path_tmp+list_dir[i]+'_T2w.nii.gz'):
                 mid_slice_t2 = get_midNifti(path_tmp+list_dir[i]+'_T2w.nii.gz', index_mid)
 
-        if mode == 2:
+        if mode == 't2':
             mid_slice = mid_slice_t2
         if split == 'train':
             if mid_slice.shape[0] > 450:
@@ -162,17 +162,17 @@ def load_Data_Bids2Array(DataSet_path, mode=0, factor=0.9, split='train', aim='f
                 print('removed')
                 pass
             else:
-                if mode != 2:
+                if mode != 't2':
                     ds_image.append(mid_slice)
                     ds_label.append(tmp_label)
-                if mode != 1:
+                if mode != 't1':
                     ds_image.append(mid_slice_t2)
                     ds_label.append(tmp_label_t2)
         else:
-            if mode != 2:
+            if mode != 't2':
                 ds_image.append(mid_slice)
                 ds_label.append(tmp_label)
-            if mode != 1:
+            if mode != 't1':
                 ds_image.append(mid_slice_t2)
                 ds_label.append(tmp_label_t2)
     ds_image = images_normalization(ds_image)
@@ -198,12 +198,12 @@ def load_Data_Bids2Array(DataSet_path, mode=0, factor=0.9, split='train', aim='f
 
     return [ds_image, ds_label]
 
-def load_Data_Bids2Array_with_subjects(DataSet_path, mode=0, factor=0.9, split='train', aim='full'):
+def load_Data_Bids2Array_with_subjects(DataSet_path, mode='t2', factor=0.9, split='train', aim='full'):
     """
     Load image into an array. array[0] will represent 2D images
     array[1] will be list of corresponding ground truth coordinates
     :param DataSet_path: Path to images
-    :param mode: Mode 1 only load T1 , Mode 2 only load T2 , Different number load both
+    :param mode: Mode t1 only load T1w , Mode t2 only load T2w , Different number load both
     :param split: Train or test. Decide which part of the dataset will be used.
     :return:
     """
@@ -226,12 +226,12 @@ def load_Data_Bids2Array_with_subjects(DataSet_path, mode=0, factor=0.9, split='
         path_tmp = os.path.join(DataSet_path,list_dir[i]) + '/'
         subjects_list.append(list_dir[i])
 
-        if mode != 2:
+        if mode != 't2':
             if os.path.exists(path_tmp + list_dir[i]+'_T1w_labels-disc-manual.nii.gz'):
                 tmp_label = mask2label(path_tmp + list_dir[i]+'_T1w_labels-disc-manual.nii.gz',aim)
             else:
                 continue
-        if mode != 1:
+        if mode != 't1':
             print(path_tmp + list_dir[i])
             if os.path.exists(path_tmp + list_dir[i] +'_T2w_labels-disc-manual_r.nii.gz'):
                 tmp_label_t2 = mask2label(path_tmp + list_dir[i]+'_T2w_labels-disc-manual_r.nii.gz',aim)
@@ -240,13 +240,13 @@ def load_Data_Bids2Array_with_subjects(DataSet_path, mode=0, factor=0.9, split='
             else:
                 continue
 
-        if mode != 1:
+        if mode != 't1':
             index_mid = tmp_label_t2[0][0]
         else:
             index_mid = tmp_label[0][0]
-        if mode != 2:
+        if mode != 't2':
             mid_slice = get_midNifti(path_tmp +list_dir[i]+ '_T1w.nii.gz', index_mid)
-        if mode != 1:
+        if mode != 't1':
             if os.path.exists(path_tmp+list_dir[i]+'_acq-sag_T2w_r.nii.gz'):
                 mid_slice_t2 = get_midNifti(path_tmp+list_dir[i]+'_acq-sag_T2w_r.nii.gz', index_mid)
             elif os.path.exists(path_tmp+list_dir[i]+'_T2w_r.nii.gz'):
@@ -254,7 +254,7 @@ def load_Data_Bids2Array_with_subjects(DataSet_path, mode=0, factor=0.9, split='
             elif os.path.exists(path_tmp+list_dir[i]+'_T2w.nii.gz'):
                 mid_slice_t2 = get_midNifti(path_tmp+list_dir[i]+'_T2w.nii.gz', index_mid)
 
-        if mode == 2:
+        if mode == 't2':
             mid_slice = mid_slice_t2
         if split == 'train':
             if mid_slice.shape[0] > 450:
@@ -264,17 +264,17 @@ def load_Data_Bids2Array_with_subjects(DataSet_path, mode=0, factor=0.9, split='
                 print('removed')
                 pass
             else:
-                if mode != 2:
+                if mode != 't2':
                     ds_image.append(mid_slice)
                     ds_label.append(tmp_label)
-                if mode != 1:
+                if mode != 't1':
                     ds_image.append(mid_slice_t2)
                     ds_label.append(tmp_label_t2)
         else:
-            if mode != 2:
+            if mode != 't2':
                 ds_image.append(mid_slice)
                 ds_label.append(tmp_label)
-            if mode != 1:
+            if mode != 't1':
                 ds_image.append(mid_slice_t2)
                 ds_label.append(tmp_label_t2)
     ds_image = images_normalization(ds_image)
