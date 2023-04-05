@@ -25,7 +25,7 @@ def compare_methods(args):
     output_folder = os.path.join(args.output_folder, f'out_{contrast}')
     
     # Create output folder
-    if ~os.path.exists(output_folder):
+    if not os.path.exists(output_folder):
         os.mkdir(output_folder)
     
     # Load disc_coords txt file
@@ -222,8 +222,8 @@ def compare_methods(args):
     methods_results['total']['FPR_sct'] = sum(FPR_sct_total)/len(FPR_sct_total)
     
     # Add false negative rate
-    methods_results['total']['FPR_hg'] = sum(FPR_hg_total)/len(FPR_hg_total)
-    methods_results['total']['FPR_sct'] = sum(FPR_sct_total)/len(FPR_sct_total)
+    methods_results['total']['FNR_hg'] = sum(FNR_hg_total)/len(FNR_hg_total)
+    methods_results['total']['FNR_sct'] = sum(FNR_sct_total)/len(FNR_sct_total)
     
     if args.create_csv:
         # Get fields for csv conversion    
