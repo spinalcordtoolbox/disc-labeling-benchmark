@@ -397,7 +397,7 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     out_path = os.path.join(path_tmp, 'proj_labels.nii.gz')
     status, _ = run_proc(['sct_label_utils',
                             '-i', fname_seg,
-                            '-project-discs', discs_path,
+                            '-project-centerline', discs_path,
                             '-o', out_path], raise_exception=False)
     if status == 0:
         if disc_num:
