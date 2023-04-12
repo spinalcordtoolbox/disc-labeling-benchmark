@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from spinalcordtoolbox.image import Image
 import csv
 import pandas as pd
-import dataframe_image as dfi
 
 parent_dir = os.path.abspath(os.path.join(
                   os.path.dirname(__file__), 
@@ -235,9 +234,7 @@ def compare_methods(args):
             w.writeheader()
             for k,d in sorted(methods_results.items()):
                 w.writerow(mergedict({'subject': k},d))
-    
-    #dfi.export(pd.DataFrame(data=dict['total'], index=[0]), os.path.join(output_folder,'total_metrics.png'))
-    
+        
     save_graphs(output_folder, processed_subjects, l2_mean_hg, l2_std_hg, l2_mean_sct, l2_std_sct, z_mean_hg, z_std_hg, z_mean_sct, z_std_sct, FP_list_hg_total, FP_list_sct_total, FPR_hg_total, FPR_sct_total, FN_list_hg_total, FN_list_sct_total, FNR_hg_total, FNR_sct_total, tot_discs, tot_pred_hg, tot_pred_sct)
     return
 
