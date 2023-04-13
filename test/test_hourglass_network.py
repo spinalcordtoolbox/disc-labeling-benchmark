@@ -69,7 +69,7 @@ def test_hourglass(args):
     model.eval()
     
     # Load disc_coords txt file
-    with open(txt_file,"r") as f:  # Checking already processed subjects from coords.txt
+    with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
     
@@ -106,21 +106,22 @@ def test_hourglass(args):
         pred, gt = best_disc_association(pred=pred, gt=gt_coord)
         
         # Write coordinates in txt file
+        # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord
         subject_index = np.where((np.array(split_lines)[:,0] == subject_name) & (np.array(split_lines)[:,1] == contrast))  
         start_index = subject_index[0][0]  # Getting the first line in the txt file
         for i in range(len(pred)):
             pred_coord = pred[i] if pred[i]!=0 else 'Fail'
             gt_coord = gt[i] if gt[i]!=0 else 'None'
             if pred_coord != 'Fail':
-                split_lines[start_index + i][4] = '[' + str("{:.1f}".format(pred_coord[0])) + ',' + str("{:.1f}".format(pred_coord[1])) + ']'
+                split_lines[start_index + i][5] = '[' + str("{:.1f}".format(pred_coord[0])) + ',' + str("{:.1f}".format(pred_coord[1])) + ']'
             elif gt_coord == 'None':
-                split_lines[start_index + i][4] = 'None'
+                split_lines[start_index + i][5] = 'None'
             else:
-                split_lines[start_index + i][4] = 'Fail'
+                split_lines[start_index + i][5] = 'Fail'
             if gt_coord != 'None':
-                split_lines[start_index + i][5] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']' + '\n'
+                split_lines[start_index + i][3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']' + '\n'
             else:
-                split_lines[start_index + i][5] = 'None' + '\n'
+                split_lines[start_index + i][3] = 'None' + '\n'
                 
         for num in range(len(split_lines)):
             file_lines[num] = ' '.join(split_lines[num])

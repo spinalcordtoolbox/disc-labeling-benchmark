@@ -27,7 +27,7 @@ def test_sct_label_vertebrae(args):
     else:
         txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
         
-    with open(txt_file,"r") as f:  # Checking already processed subjects from coords.txt
+    with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
         processed_subjects_with_contrast = [line.split(' ')[0] + '_' + line.split(' ')[1] for line in file_lines[1:]]  # Remove first line
         
@@ -65,29 +65,30 @@ def test_sct_label_vertebrae(args):
                     discs_coords = 'Fail'
 
             subject_name = dir_name
+            # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord
             if (subject_name + '_' + contrast) not in processed_subjects_with_contrast:
                 if discs_coords == 'Fail':  # SCT method error
-                    lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' ' + 'Fail' + ' ' + 'None' + ' ' + 'None' + '\n' for disc_num in range(11)] # To reorder the discs
+                    lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' ' + 'None' + ' ' + 'Fail' + ' ' + 'None' + '\n' for disc_num in range(11)] # To reorder the discs
                 else:
                     lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' ' + 'None' + ' ' + 'None' + ' ' + 'None' + '\n' for disc_num in range(11)] # To reorder the discs
                     last_referred_disc = 0
                     for coord in discs_coords:
-                        coord_list = str(coord).split(',')
-                        disc_num = int(float(coord_list[-1]))
+                        coord_list = list(coord)
+                        disc_num = int(coord_list[-1])
                         coord_2d = '[' + str(coord_list[2]) + ',' + str(coord_list[1]) + ']'#  2D comparison of the models
                         if disc_num > 11:
                             print('More than 11 discs are visible')
                             print('Disc number', disc_num)
                             if disc_num == last_referred_disc + 1:  # Check if all the previous discs were also implemented
-                                lines.append(subject_name + ' ' + contrast + ' ' + str(disc_num) + ' ' + coord_2d + ' ' + 'None' + ' ' + 'None' + '\n')
+                                lines.append(subject_name + ' ' + contrast + ' ' + str(disc_num) + ' ' + 'None' + ' ' + coord_2d + ' ' + 'None' + '\n')
                                 last_referred_disc = disc_num
                             else:
                                 for i in range(disc_num - last_referred_disc - 1):
                                     lines.append(subject_name + ' ' + contrast + ' ' + str(last_referred_disc + 1 + i) + ' ' + 'None' + ' ' + 'None' + ' ' + 'None' + '\n')
-                                lines.append(subject_name + ' ' + contrast + ' ' + str(disc_num) + ' ' + coord_2d + ' ' + 'None' + ' ' + 'None' + '\n')
+                                lines.append(subject_name + ' ' + contrast + ' ' + str(disc_num) + ' ' + 'None' + ' ' + coord_2d + ' ' + 'None' + '\n')
                                 last_referred_disc = disc_num
                         else:
-                            lines[disc_num-1] = subject_name + ' ' + contrast + ' ' + str(disc_num) + ' ' + coord_2d + ' ' + 'None' + ' ' + 'None' + '\n'
+                            lines[disc_num-1] = subject_name + ' ' + contrast + ' ' + str(disc_num) + ' ' + 'None' + ' ' + coord_2d + ' ' + 'None' + '\n'
                             last_referred_disc = disc_num
                 with open(txt_file,"a") as f:
                     f.writelines(lines)

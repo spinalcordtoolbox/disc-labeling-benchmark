@@ -46,7 +46,7 @@ if __name__=='__main__':
     if not os.path.exists(txt_file):
         print("Creating txt file:", txt_file)
         with open(txt_file,"w") as f:
-            f.write("subject_name contrast num_disc sct_discs_coords hourglass_coords gt_coords\n")
+            f.write("subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords\n")
 
     test_sct_label_vertebrae(parser.parse_args())
     test_hourglass(parser.parse_args())

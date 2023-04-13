@@ -32,10 +32,11 @@ def compare_methods(args):
         file_lines = f.readlines()
         split_lines = np.array([line.split(' ') for line in file_lines])
     
-    # Extract subjects processed by sct and hourglass method
+    # Extract processed subjects --> subjects with a ground truth
+    # line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord
     processed_subjects = []
     for line in split_lines[1:]:
-        if (line[0] not in processed_subjects) and (line[1]==contrast) and (line[5]!='None\n'):
+        if (line[0] not in processed_subjects) and (line[1]==contrast) and (line[3]!='None'):
             processed_subjects.append(line[0])
     
     # Initialize metrics
@@ -61,10 +62,11 @@ def compare_methods(args):
     tot_pred_sct =[]
     for subject in processed_subjects:
         # Extract str coords and convert to numpy array, None stands for fail detections
+        # line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord
         discs_list = np.extract(split_lines[:,0] == subject,split_lines[:,2]).astype(int)
-        sct_coords_list = str2array(np.extract(split_lines[:,0] == subject,split_lines[:,3]))
-        hg_coords_list = str2array(np.extract(split_lines[:,0] == subject,split_lines[:,4]))
-        gt_coords_list = str2array(np.extract(split_lines[:,0] == subject,split_lines[:,5])) 
+        sct_coords_list = str2array(np.extract(split_lines[:,0] == subject,split_lines[:,4]))
+        hg_coords_list = str2array(np.extract(split_lines[:,0] == subject,split_lines[:,5]))
+        gt_coords_list = str2array(np.extract(split_lines[:,0] == subject,split_lines[:,3])) 
         
         # Check for missing ground truth (only ground truth detections are considered as real discs)
         _, gt_missing_discs = check_missing_discs(gt_coords_list) # Numpy array of coordinates without missing detections + list of missing discs
