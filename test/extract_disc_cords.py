@@ -12,6 +12,33 @@ sys.path.append(parent_dir)
 
 from utils.test_utils import CONTRAST
 
+def init_txt_file(args):
+    datapath = os.path.abspath(args.sct_datapath)
+    contrast = CONTRAST[args.contrast]
+    nb_discs_init = 11
+    
+    if args.out_txt_file is not None:
+        txt_file = args.out_txt_file
+    else:
+        txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
+        
+    if not os.path.exists(txt_file):
+        print("Creating txt file:", txt_file)
+        with open(txt_file,"w") as f:
+            f.write("subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords\n")
+        
+        # Initialize txt_file with subject_names and nb_discs_init
+        print(f"Initializing txt file with subjects and {nb_discs_init} discs")
+        for subject_name in os.listdir(datapath):
+            if subject_name.startswith('sub'):
+                # Line = subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords
+                subject_lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' ' + 'None' + ' ' + 'None' + ' ' + 'None' + '\n' for disc_num in range(nb_discs_init)]
+            with open(txt_file,"a") as f:
+                f.writelines(subject_lines)
+        
+    
+    
+    
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Extract discs coords from sct and hourglass')
@@ -35,18 +62,6 @@ if __name__=='__main__':
     parser.add_argument('-b', '--blocks', default=1, type=int, metavar='N',
                         help='Number of residual modules at each location in the hourglass')                                                                                               
     
-    args = parser.parse_args()
-    
-    contrast = CONTRAST[args.contrast]
-    if args.out_txt_file is not None:
-        txt_file = args.out_txt_file
-    else:
-        txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
-        
-    if not os.path.exists(txt_file):
-        print("Creating txt file:", txt_file)
-        with open(txt_file,"w") as f:
-            f.write("subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords\n")
-
+    init_txt_file(parser.parse_args())
     test_sct_label_vertebrae(parser.parse_args())
     test_hourglass(parser.parse_args())

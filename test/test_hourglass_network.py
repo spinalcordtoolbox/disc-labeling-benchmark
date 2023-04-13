@@ -109,23 +109,44 @@ def test_hourglass(args):
         # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord
         subject_index = np.where((np.array(split_lines)[:,0] == subject_name) & (np.array(split_lines)[:,1] == contrast))  
         start_index = subject_index[0][0]  # Getting the first line in the txt file
+        last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
+        max_ref_disc = int(split_lines[last_index][2])  # Getting the last refferenced disc num
         for i in range(len(pred)):
-            pred_coord = pred[i] if pred[i]!=0 else 'Fail'
+            pred_coord = pred[i] if pred[i]!=0 else 'None'
             gt_coord = gt[i] if gt[i]!=0 else 'None'
-            if pred_coord != 'Fail':
-                split_lines[start_index + i][5] = '[' + str("{:.1f}".format(pred_coord[0])) + ',' + str("{:.1f}".format(pred_coord[1])) + ']'
-            elif gt_coord == 'None':
-                split_lines[start_index + i][5] = 'None'
+            disc_num = i + 1
+            if disc_num > max_ref_disc:
+                print('More discs found')
+                print('Disc number', disc_num)
+                new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None\n']
+                if pred_coord != 'None':
+                    new_line[5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']\n'
+                elif gt_coord == 'None':
+                    new_line[5] = 'None\n'
+                else:
+                    new_line[5] = 'Fail\n'
+                if gt_coord != 'None':
+                    new_line[3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']'
+                else:
+                    new_line[3] = 'None'
+                last_index += 1
+                split_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
+                max_ref_disc = disc_num
             else:
-                split_lines[start_index + i][5] = 'Fail'
-            if gt_coord != 'None':
-                split_lines[start_index + i][3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']' + '\n'
-            else:
-                split_lines[start_index + i][3] = 'None' + '\n'
+                if pred_coord != 'None':
+                    split_lines[start_index + i][5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']\n'
+                elif gt_coord == 'None':
+                    split_lines[start_index + i][5] = 'None\n'
+                else:
+                    split_lines[start_index + i][5] = 'Fail\n'
+                if gt_coord != 'None':
+                    split_lines[start_index + i][3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']'
+                else:
+                    split_lines[start_index + i][3] = 'None'
                 
-        for num in range(len(split_lines)):
-            file_lines[num] = ' '.join(split_lines[num])
-            
-        with open(txt_file,"w") as f:
-            f.writelines(file_lines)  
+    for num in range(len(split_lines)):
+        split_lines[num] = ' '.join(split_lines[num])
+        
+    with open(txt_file,"w") as f:
+        f.writelines(split_lines)
         
