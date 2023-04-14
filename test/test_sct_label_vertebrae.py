@@ -22,8 +22,9 @@ def test_sct_label_vertebrae(args):
     datapath = os.path.abspath(args.sct_datapath)
     contrast = CONTRAST[args.contrast]
     txt_file = args.out_txt_file
-        
-    with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
+    
+    # Extract txt file lines
+    with open(txt_file,"r") as f:
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
         
