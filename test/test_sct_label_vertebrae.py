@@ -21,12 +21,7 @@ def test_sct_label_vertebrae(args):
     '''
     datapath = os.path.abspath(args.sct_datapath)
     contrast = CONTRAST[args.contrast]
-    
-    # Get output file for discs extraction
-    if args.out_txt_file is not None:
-        txt_file = args.out_txt_file
-    else:
-        txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
+    txt_file = args.out_txt_file
         
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()

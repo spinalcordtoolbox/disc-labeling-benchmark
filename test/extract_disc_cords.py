@@ -34,8 +34,7 @@ def init_txt_file(args):
                 # Line = subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords
                 subject_lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' ' + 'None' + ' ' + 'None' + ' ' + 'None' + '\n' for disc_num in range(nb_discs_init)]
             with open(txt_file,"a") as f:
-                f.writelines(subject_lines)
-        
+                f.writelines(subject_lines)        
     
     
     
@@ -50,10 +49,11 @@ if __name__=='__main__':
                         help='SCT dataset path')                               
     parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
                         help='MRI contrast')
-    parser.add_argument('-txt', '--out-txt-file', type=str, metavar='N',
-                        help='Generated txt file')
     parser.add_argument('--ndiscs', type=int, required=True,
                         help='Number of discs to detect')
+    parser.add_argument('-txt', '--out-txt-file', default=os.path.join('files', f'{CONTRAST[parser.parse_args().contrast]}_hg{parser.parse_args().ndiscs}_discs_coords.txt'),
+                        type=str, metavar='N',help='Generated txt file')
+    
     
     parser.add_argument('--att', default= True, type=bool,
                         help=' Use attention mechanism') 

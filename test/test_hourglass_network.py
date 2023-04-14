@@ -23,12 +23,7 @@ def test_hourglass(args):
     contrast = CONTRAST[args.contrast]
     ndiscs = args.ndiscs
     origin_data = args.sct_datapath
-    
-    # Get output file for discs extraction
-    if args.out_txt_file is not None:
-        txt_file = args.out_txt_file
-    else:
-        txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
+    txt_file = args.out_txt_file
     
     print('load images')               
     with open(args.hg_datapath, 'rb') as file_pi:
