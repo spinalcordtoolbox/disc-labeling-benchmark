@@ -22,6 +22,35 @@ CONTRAST = {'t1': 'T1w',
             't2': 'T2w',
             't2s':'T2star'}
 
+# Association between a vertebrae and the disc right above
+VERT_DISC = {
+    'C1':1,
+    'C2':2,
+    'C3':3,
+    'C4':4,
+    'C5':5,
+    'C6':6,
+    'C7':7,
+    'T1':8,
+    'T2':9,
+    'T3':10,
+    'T4':11,
+    'T5':12,
+    'T6':13,
+    'T7':14,
+    'T8':15,
+    'T9':16,
+    'T10':17,
+    'T11':18,
+    'T12':19,
+    'L1':20,
+    'L2':21,
+    'L3':22,
+    'L4':23,
+    'L5':24,
+    'S1':25
+}
+
 ## Functions
 def visualize_discs(input_img, coords_list, out_path):
     coords_list = swap_y_origin(coords=coords_list, img_shape=input_img.shape, y_pos=0).tolist() # The y origin is at the top of the image
@@ -363,7 +392,7 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     '''
     # Get segmentation
     fname_seg = os.path.abspath(seg_path)
-    seg = Image(fname_seg)
+    seg = Image(fname_seg).change_orientation('RPI')
     
     # Create temp folder
     path_tmp = tmp_create(basename="label-vertebrae-project")
