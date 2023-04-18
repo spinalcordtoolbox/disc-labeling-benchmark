@@ -28,10 +28,7 @@ def test_hourglass(args):
     print('load images')               
     with open(args.hg_datapath, 'rb') as file_pi:
         full = pickle.load(file_pi)            
-    
     full[0] = full[0][:, :, :, :, 0]
-    
-    print('retrieving ground truth coordinates')
     norm_mean_skeleton = np.load(os.path.join(os.path.dirname(args.hg_datapath), f'{contrast}_Skelet_ndiscs_{ndiscs}.npy'))
     
     # Initialize metrics
@@ -69,6 +66,7 @@ def test_hourglass(args):
         split_lines = [line.split(' ') for line in file_lines]
     
     # Extract discs coordinates from the test set
+    print('Processing with hourglass')
     for i, (input, target, vis, gt_coord, subject_name) in enumerate(MRI_test_loader): # subject_name
         input, target = input.to(device), target.to(device, non_blocking=True)
         output = model(input) 
@@ -84,7 +82,7 @@ def test_hourglass(args):
         
         # Extract prediction and ground truth
         pred = centers[1:] #0 for background
-        pred = swap_y_origin(coords=pred, img_shape=original_img.shape)  # Move y origin to the bottom of the image
+        pred = swap_y_origin(coords=pred, img_shape=original_img.shape)  # Move y origin to the bottom of the image like Niftii convention
         gt_coord = np.array(torch.tensor(gt_coord).tolist())
         
         # Project coordinate onto the spinal cord centerline 
@@ -101,7 +99,7 @@ def test_hourglass(args):
         pred, gt = best_disc_association(pred=pred, gt=gt_coord)
         
         # Write coordinates in txt file
-        # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord
+        # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord spinenet_coord
         subject_index = np.where((np.array(split_lines)[:,0] == subject_name) & (np.array(split_lines)[:,1] == contrast))  
         start_index = subject_index[0][0]  # Getting the first line in the txt file
         last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
@@ -113,13 +111,22 @@ def test_hourglass(args):
             if disc_num > max_ref_disc:
                 print('More discs found')
                 print('Disc number', disc_num)
-                new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None\n']
+                new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
+                disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
+                if disc_shift != 1:
+                    print(f'Adding intermediate {disc_shift-1} discs to txt file')
+                    for shift in range(disc_shift-1):
+                        last_index += 1
+                        intermediate_line = new_line[:]
+                        max_ref_disc += 1
+                        intermediate_line[2] = str(max_ref_disc)
+                        split_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
                 if pred_coord != 'None':
-                    new_line[5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']\n'
+                    new_line[5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']'
                 elif gt_coord == 'None':
-                    new_line[5] = 'None\n'
+                    new_line[5] = 'None'
                 else:
-                    new_line[5] = 'Fail\n'
+                    new_line[5] = 'Fail'
                 if gt_coord != 'None':
                     new_line[3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']'
                 else:
@@ -129,11 +136,11 @@ def test_hourglass(args):
                 max_ref_disc = disc_num
             else:
                 if pred_coord != 'None':
-                    split_lines[start_index + i][5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']\n'
+                    split_lines[start_index + i][5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']'
                 elif gt_coord == 'None':
-                    split_lines[start_index + i][5] = 'None\n'
+                    split_lines[start_index + i][5] = 'None'
                 else:
-                    split_lines[start_index + i][5] = 'Fail\n'
+                    split_lines[start_index + i][5] = 'Fail'
                 if gt_coord != 'None':
                     split_lines[start_index + i][3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']'
                 else:

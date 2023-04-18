@@ -27,7 +27,8 @@ def test_sct_label_vertebrae(args):
     with open(txt_file,"r") as f:
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
-        
+    
+    print('Processing with sct_label_vertebrae')
     for dir_name in os.listdir(datapath):
         if dir_name.startswith('sub'):
             file_name = dir_name + '_' + contrast + '.nii.gz'
@@ -66,9 +67,9 @@ def test_sct_label_vertebrae(args):
             start_index = subject_index[0][0]  # Getting the first line for the subject in the txt file
             last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
             max_ref_disc = int(split_lines[last_index][2])  # Getting the last refferenced disc num
-            # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord    
+            # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord spinenet_coord    
             if discs_coords == 'Fail':  # SCT method error
-                for i in range(len(subject_index[0])):
+                for i in range(last_index - start_index):
                     split_lines[start_index + i][4] = 'Fail'
             else:
                 for coord in discs_coords:
@@ -78,9 +79,19 @@ def test_sct_label_vertebrae(args):
                     if disc_num > max_ref_disc:
                         print('More discs found')
                         print('Disc number', disc_num)
-                        new_line = [subject_name, contrast, str(disc_num), 'None', coord_2d, 'None\n']
-                        split_lines.insert(last_index+1, new_line) # Add new disc detection to txt_file lines
+                        new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
+                        disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
+                        if disc_shift != 1:
+                            print(f'Adding intermediate {disc_shift-1} discs to txt file')
+                            for shift in range(disc_shift-1):
+                                last_index += 1
+                                intermediate_line = new_line[:]
+                                max_ref_disc += 1
+                                intermediate_line[2] = str(max_ref_disc)
+                                split_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
+                        new_line[4] = coord_2d
                         last_index += 1
+                        split_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
                         max_ref_disc = disc_num
                     else:
                         split_lines[start_index + (disc_num-1)][4] = coord_2d

@@ -3,6 +3,7 @@ import os
 import sys
 from test_sct_label_vertebrae import test_sct_label_vertebrae
 from test_hourglass_network import test_hourglass
+from test_spinenet_network import test_spinenet
 
 parent_dir = os.path.abspath(os.path.join(
                   os.path.dirname(__file__), 
@@ -25,14 +26,14 @@ def init_txt_file(args):
     if not os.path.exists(txt_file):
         print("Creating txt file:", txt_file)
         with open(txt_file,"w") as f:
-            f.write("subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords\n")
+            f.write("subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords spinenet_coord\n")
         
         # Initialize txt_file with subject_names and nb_discs_init
         print(f"Initializing txt file with subjects and {nb_discs_init} discs")
         for subject_name in os.listdir(datapath):
             if subject_name.startswith('sub'):
-                # Line = subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords
-                subject_lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' ' + 'None' + ' ' + 'None' + ' ' + 'None' + '\n' for disc_num in range(nb_discs_init)]
+                # line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord spinenet_coord
+                subject_lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' ' + 'None' + ' ' + 'None' + ' ' + 'None' + ' ' + 'None' + '\n' for disc_num in range(nb_discs_init)]
             with open(txt_file,"a") as f:
                 f.writelines(subject_lines)        
     
@@ -65,3 +66,4 @@ if __name__=='__main__':
     init_txt_file(parser.parse_args())
     test_sct_label_vertebrae(parser.parse_args())
     test_hourglass(parser.parse_args())
+    test_spinenet(parser.parse_args())
