@@ -1,21 +1,14 @@
 import os
-import sys
 import cv2
 import torch
 import pickle
 import numpy as np
 from torch.utils.data import DataLoader 
 
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(parent_dir)
-
-from models.hourglass import hg
-from models.atthourglass import atthg
-from utils.train_utils import image_Dataset
-from utils.test_utils import CONTRAST, extract_skeleton, best_disc_association, swap_y_origin, coord2list, project_on_spinal_cord 
+from src.dlh.models.hourglass import hg
+from src.dlh.models.atthourglass import atthg
+from src.dlh.utils.train_utils import image_Dataset
+from src.dlh.utils.test_utils import CONTRAST, extract_skeleton, best_disc_association, swap_y_origin, coord2list, project_on_spinal_cord 
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
@@ -43,11 +36,11 @@ def test_hourglass(args):
     if args.att:
         model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=ndiscs)
         model = torch.nn.DataParallel(model).to(device)
-        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
+        model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
     else:
         model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=ndiscs)
         model = torch.nn.DataParallel(model).to(device)
-        model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
+        model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
 
     # Create Dataloader
     full_dataset_test = image_Dataset(image_paths=full[0],

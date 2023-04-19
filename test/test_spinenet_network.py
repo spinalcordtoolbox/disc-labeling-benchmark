@@ -1,4 +1,3 @@
-import sys
 import os
 import matplotlib.pyplot as plt
 import argparse
@@ -7,16 +6,7 @@ import numpy as np
 from spinalcordtoolbox.image import Image, get_dimension
 from spinenet import SpineNet
 
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.insert(0, parent_dir)
-
-from utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord 
-
-# sys.path.insert(0, '/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/code/disc-labeling-hourglass/utils')
-# from test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord 
+from src.dlh.utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord 
 
 #---------------------------Test spinenet--------------------------
 def test_spinenet(args, test_mode=False):
@@ -30,7 +20,7 @@ def test_spinenet(args, test_mode=False):
     txt_file = args.out_txt_file
     
     # load in spinenet
-    spnt = SpineNet(device='cuda:0', verbose=True)
+    spnt = SpineNet(device='cuda:0', verbose=True, scan_type='whole')
     
     # Extract txt file lines
     if not test_mode:
@@ -57,7 +47,8 @@ def test_spinenet(args, test_mode=False):
             # detect and identify vertebrae in scan. Note that pixel spacing information is required 
             # so SpineNet knows what size to split patches into.
             try:
-                vert_dicts_niftii = spnt.detect_vb(img, px)
+                vert_dicts_niftii = spnt.detect_vb(img, 1/px)
+                print('1/px =', 1/px)
             except RuntimeError:
                 print(f'Spinenet Fail detection on subject {subject_name}')
                 vert_dicts_niftii = 'Fail'
@@ -128,7 +119,7 @@ def test_spinenet(args, test_mode=False):
                             split_lines[start_index + (disc_num-1)][6] = coord_2D
                 else:
                     for i in range(last_index - start_index):
-                        split_lines[start_index + i][6] = 'Fail'
+                        split_lines[start_index + i][6] = 'Fail\n'
 
     if not test_mode:
         for num in range(len(split_lines)):
@@ -149,8 +140,8 @@ if __name__ == '__main__':
                         help='MRI contrast')
     parser.add_argument('-txt', '--out-txt-file', default= None,
                         type=str, metavar='N',help='Generated txt file')
-    parser.add_argument('-sub', default= 'sub-juntendo750w06',
-                        type=str, metavar='N',help='Generated txt file')
+    parser.add_argument('-sub', default= 'sub-perform04',
+                        type=str, metavar='N',help='Generated txt file') # 'sub-juntendo750w06'
     
     nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
     fig = plt.figure(figsize=(40,40))
@@ -170,4 +161,4 @@ if __name__ == '__main__':
                 ax.text(np.mean(poly[:,0]), np.mean(poly[:,1]), vert_dict['predicted_label'],c='y', ha='center',va='center', fontsize=15)
 
     fig.suptitle('Detected Vertebrae (all slices)', fontsize=100)
-    fig.savefig('visualize/test_spinenet.png')
+    fig.savefig('test/visualize/test_spinenet.png')

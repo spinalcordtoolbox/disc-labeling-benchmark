@@ -1,16 +1,9 @@
 import os
-import sys
 import numpy as np
 from spinalcordtoolbox.image import Image
 from spinalcordtoolbox.utils.sys import run_proc
 
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(parent_dir)
-
-from utils.test_utils import CONTRAST
+from src.dlh.utils.test_utils import CONTRAST
 
 
 #---------------------------Test Sct Label Vertebrae--------------------------

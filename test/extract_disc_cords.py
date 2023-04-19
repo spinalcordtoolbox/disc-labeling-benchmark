@@ -1,27 +1,16 @@
 import argparse
 import os
-import sys
+
 from test_sct_label_vertebrae import test_sct_label_vertebrae
 from test_hourglass_network import test_hourglass
 from test_spinenet_network import test_spinenet
-
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(parent_dir)
-
-from utils.test_utils import CONTRAST
+from src.dlh.utils.test_utils import CONTRAST
 
 def init_txt_file(args):
     datapath = os.path.abspath(args.sct_datapath)
     contrast = CONTRAST[args.contrast]
     nb_discs_init = 11
-    
-    if args.out_txt_file is not None:
-        txt_file = args.out_txt_file
-    else:
-        txt_file = os.path.join('files', f'{contrast}_hg{args.ndiscs}_discs_coords.txt')
+    txt_file = args.out_txt_file
         
     if not os.path.exists(txt_file):
         print("Creating txt file:", txt_file)
@@ -52,7 +41,7 @@ if __name__=='__main__':
                         help='MRI contrast')
     parser.add_argument('--ndiscs', type=int, required=True,
                         help='Number of discs to detect')
-    parser.add_argument('-txt', '--out-txt-file', default=os.path.join('files', f'{CONTRAST[parser.parse_args().contrast]}_hg{parser.parse_args().ndiscs}_discs_coords.txt'),
+    parser.add_argument('-txt', '--out-txt-file', default=os.path.join('test/files', f'{CONTRAST[parser.parse_args().contrast]}_hg{parser.parse_args().ndiscs}_discs_coords.txt'),
                         type=str, metavar='N',help='Generated txt file')
     
     
