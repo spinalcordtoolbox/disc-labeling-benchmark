@@ -8,11 +8,11 @@
 
 import numpy as np
 from torch.utils.data import Dataset
-from utils.transform_spe import RandomHorizontalFlip, ToTensor
 import cv2
 from scipy import signal
-import torch 
+import torch
 
+from dlh.utils.transform_spe import RandomHorizontalFlip, ToTensor 
 
 # normalize Image
 def normalize(arr):
@@ -322,9 +322,9 @@ def save_epoch_res_as_image(inputs, targets, epoch_num, flag_gt):
         
         txt = ''
         if flag_gt:
-            txt = f'../visualize/epo_{epoch_num:3d}_gt.png'
+            txt = f'test/visualize/epo_{epoch_num:3d}_gt.png'
         else:
-            txt = f'../visualize/epo_{epoch_num:3d}_pr.png'
+            txt = f'test/visualize/epo_{epoch_num:3d}_pr.png'
 
         cv2.imwrite(txt, img_mix)
         break
@@ -381,9 +381,9 @@ def save_epoch_res_as_image2(inputs, outputs, targets, epoch_num, target_th=0.4,
     trgts = make_grid(torch.Tensor(t), nrow=4)
 
     if pretext:
-        txt = f'../visualize/{epoch_num:0=4d}_test_result.png'
+        txt = f'test/visualize/{epoch_num:0=4d}_test_result.png'
     else: 
-        txt = f'../visualize/epoch_{epoch_num:0=4d}_res2.png'
+        txt = f'test/visualize/epoch_{epoch_num:0=4d}_res2.png'
     res = np.transpose(trgts.numpy(), (1,2,0))
     print(res.shape)
     cv2.imwrite(txt, res)
@@ -501,7 +501,7 @@ def save_attention(inputs, outputs, targets, att, target_th=0.5):
     t = np.array(clr_vis_Y)
     t = np.transpose(t, [0, 3, 1, 2])
     trgts = make_grid(torch.Tensor(t), nrow=4)
-    txt = '../visualize/attention_visualization.png'
+    txt = 'test/visualize/attention_visualization.png'
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(txt, res)
 

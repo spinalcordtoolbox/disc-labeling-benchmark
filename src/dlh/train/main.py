@@ -20,19 +20,13 @@ import pickle
 from torch.utils.data import DataLoader 
 import copy
 import random
- 
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(parent_dir)
 
-from models.hourglass import hg
-from models.atthourglass import atthg
-from models import JointsMSELoss
-from models.utils import AverageMeter, adjust_learning_rate, accuracy, dice_loss
-from utils.train_utils import image_Dataset, SaveOutput, save_epoch_res_as_image2, save_attention
-from utils.skeleton import create_skeleton
+from dlh.models.hourglass import hg
+from dlh.models.atthourglass import atthg
+from dlh.models import JointsMSELoss
+from dlh.models.utils import AverageMeter, adjust_learning_rate, accuracy, dice_loss
+from dlh.utils.train_utils import image_Dataset, SaveOutput, save_epoch_res_as_image2, save_attention
+from dlh.utils.skeleton import create_skeleton
 
 
 ## Set seed
@@ -118,18 +112,18 @@ def main(args):
     if args.resume:
        print("=> loading checkpoint to continue learing process")
        if args.att:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
        else:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
     # evaluation only
     if args.evaluate:
         print('\nEvaluation only')
         print('loading the pretrained weight')
         if args.att:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
         else:
-            model.load_state_dict(torch.load(f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
         if args.attshow:
             loss, acc = show_attention(MRI_val_loader, model)
@@ -158,9 +152,9 @@ def main(args):
         if valid_acc > best_acc:
            state = copy.deepcopy({'model_weights': model.state_dict()})
            if args.att:
-                torch.save(state, f'weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
+                torch.save(state, f'src/dlh/weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            else:
-                torch.save(state, f'weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
+                torch.save(state, f'src/dlh/weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            best_acc = valid_acc
                 
 
@@ -369,12 +363,12 @@ if __name__ == '__main__':
                         help='Sigma decay rate for each epoch.')
 
     # Create weights folder to store training weights
-    if not os.path.exists(os.path.join(parent_dir, 'weights')):
-        os.mkdir(os.path.join(parent_dir, 'weights'))
+    if not os.path.exists('src/dlh/weights'):
+        os.mkdir('src/dlh/weights')
         
     # Create visualize folder to images created during training
-    if not os.path.exists(os.path.join(parent_dir, 'visualize')):
-        os.mkdir(os.path.join(parent_dir, 'visualize'))
+    if not os.path.exists('test/visualize'):
+        os.mkdir('test/visualize')
         
     main(parser.parse_args())  # Train the hourglass network
     create_skeleton(parser.parse_args())  # Create skeleton file to improve hourglass accuracy during testing

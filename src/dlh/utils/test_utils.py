@@ -7,7 +7,6 @@
 #===================================================
 
 import os
-import sys
 import cv2
 import numpy as np
 import torch
@@ -192,7 +191,7 @@ def save_test_results(inputs, outputs, targets, name='', target_th=0.5):
     t = np.transpose(t, [0, 3, 1, 2])
     trgts = make_grid(torch.Tensor(t), nrow=4)
 
-    txt = f'./visualize/{name}_test_result.png'
+    txt = f'test/visualize/{name}_test_result.png'
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(txt, res)
 

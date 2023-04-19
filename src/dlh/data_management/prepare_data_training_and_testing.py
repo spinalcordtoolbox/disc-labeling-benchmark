@@ -9,16 +9,9 @@
 import pickle
 import argparse
 import os
-import sys
 
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(parent_dir)
-
-from utils.data2array import load_Data_Bids2Array, load_Data_Bids2Array_with_subjects
-from utils.train_utils import extract_groundtruth_heatmap, extract_groundtruth_heatmap_with_subjects_and_GT_coords
+from dlh.utils.data2array import load_Data_Bids2Array, load_Data_Bids2Array_with_subjects
+from dlh.utils.train_utils import extract_groundtruth_heatmap, extract_groundtruth_heatmap_with_subjects_and_GT_coords
 
 
 def main(args):

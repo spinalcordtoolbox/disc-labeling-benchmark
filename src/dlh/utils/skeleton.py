@@ -8,14 +8,8 @@ import pickle
 from torch.utils.data import DataLoader 
 import cv2
 
-parent_dir = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(parent_dir)
-
-from utils.train_utils import image_Dataset
-from utils.test_utils import CONTRAST
+from dlh.utils.train_utils import image_Dataset
+from dlh.utils.test_utils import CONTRAST
 
 def create_skeleton(args):
     '''
