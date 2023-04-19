@@ -5,4 +5,4 @@ weights/
 files/
 .vscode/
 __pycache__/
- *.pyc
+*.pyc
