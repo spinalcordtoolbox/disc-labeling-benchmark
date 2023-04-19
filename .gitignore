@@ -6,3 +6,4 @@ files/
 .vscode/
 __pycache__/
 *.pyc
+dlh.egg-info/
