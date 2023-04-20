@@ -4,7 +4,7 @@ import os
 from test_sct_label_vertebrae import test_sct_label_vertebrae
 from test_hourglass_network import test_hourglass
 from test_spinenet_network import test_spinenet
-from src.dlh.utils.test_utils import CONTRAST
+from dlh.utils.test_utils import CONTRAST
 
 def init_txt_file(args):
     datapath = os.path.abspath(args.sct_datapath)

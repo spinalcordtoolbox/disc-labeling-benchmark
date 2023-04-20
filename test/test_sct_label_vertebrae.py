@@ -3,7 +3,7 @@ import numpy as np
 from spinalcordtoolbox.image import Image
 from spinalcordtoolbox.utils.sys import run_proc
 
-from src.dlh.utils.test_utils import CONTRAST
+from dlh.utils.test_utils import CONTRAST
 
 
 #---------------------------Test Sct Label Vertebrae--------------------------

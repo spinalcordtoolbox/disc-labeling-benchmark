@@ -5,10 +5,10 @@ import pickle
 import numpy as np
 from torch.utils.data import DataLoader 
 
-from src.dlh.models.hourglass import hg
-from src.dlh.models.atthourglass import atthg
-from src.dlh.utils.train_utils import image_Dataset
-from src.dlh.utils.test_utils import CONTRAST, extract_skeleton, best_disc_association, swap_y_origin, coord2list, project_on_spinal_cord 
+from dlh.models.hourglass import hg
+from dlh.models.atthourglass import atthg
+from dlh.utils.train_utils import image_Dataset
+from dlh.utils.test_utils import CONTRAST, extract_skeleton, best_disc_association, swap_y_origin, coord2list, project_on_spinal_cord 
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):

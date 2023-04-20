@@ -6,7 +6,7 @@ import numpy as np
 from spinalcordtoolbox.image import Image, get_dimension
 from spinenet import SpineNet
 
-from src.dlh.utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord 
+from dlh.utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord 
 
 #---------------------------Test spinenet--------------------------
 def test_spinenet(args, test_mode=False):

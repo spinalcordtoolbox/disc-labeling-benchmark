@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from spinalcordtoolbox.image import Image
 import csv
 
-from src.dlh.utils.metrics import compute_L2_error, compute_z_error, false_pos, false_neg
-from src.dlh.utils.test_utils import CONTRAST, visualize_discs, str2array, check_missing_discs
+from dlh.utils.metrics import compute_L2_error, compute_z_error, false_pos, false_neg
+from dlh.utils.test_utils import CONTRAST, visualize_discs, str2array, check_missing_discs
 
 def compare_methods(args):
     if args.datapath != None:
