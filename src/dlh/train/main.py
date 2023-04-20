@@ -36,9 +36,14 @@ def main(args):
     Training hourglass network
     '''
     best_acc = 0
+    weight_folder = args.weight_folder
+    vis_folder = args.visual_folder
+    
     ## Load the prepared dataset
     with open(args.datapath, 'rb') as file_pi:
-            full = pickle.load(file_pi)
+        full = pickle.load(file_pi)
+    
+    # Split training dataset into training and validation
     train_idx = int(np.round(len(full[0]) *0.9))
     validation_idx = int(np.round(len(full[0])))
     full[0] = full[0][:, :, :, :, 0]
@@ -58,14 +63,14 @@ def main(args):
                                 shuffle=True,
                                 num_workers=0)
     MRI_val_loader = DataLoader(full_dataset_val, batch_size=args.val_batch,
-                            shuffle=False,
-                            num_workers=0)
+                                shuffle=False,
+                                num_workers=0)
     
     # idx is the index of joints used to compute accuracy (we detect N discs starting from C1 to args.ndiscs) 
     idx = [(i+1) for i in range(args.ndiscs)]
 
     # create model
-    print("==> creating model '{}', stacks={}, blocks={}".format('stacked hourglass', args.stacks, args.blocks))
+    print("==> creating model stacked hourglass, stacks={}, blocks={}".format(args.stacks, args.blocks))
     if args.att:
         model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=args.ndiscs)
     else:
@@ -76,41 +81,42 @@ def main(args):
     criterion = JointsMSELoss().to(device)
 
     if args.solver == 'rms':
-        optimizer = torch.optim.RMSprop(model.parameters(),
+        optimizer = torch.optim.RMSprop(
+                                        model.parameters(),
                                         lr=args.lr,
                                         momentum=args.momentum,
-                                        weight_decay=args.weight_decay)
+                                        weight_decay=args.weight_decay
+                                        )
     elif args.solver == 'adam':
         optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=args.lr,
+                                    model.parameters(),
+                                    lr=args.lr,
         )
     else:
         print('Unknown solver: {}'.format(args.solver))
         assert False
     
     # optionally resume from a checkpoint
-    
     if args.resume:
        print("=> loading checkpoint to continue learing process")
        if args.att:
-            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
        else:
-            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
     # evaluation only
     if args.evaluate:
         print('\nEvaluation only')
         print('loading the pretrained weight')
         if args.att:
-            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
         else:
-            model.load_state_dict(torch.load(f'src/dlh/weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
         if args.attshow:
             loss, acc = show_attention(MRI_val_loader, model)
         else:
-            loss, acc = validate(MRI_val_loader, model, criterion, idx)
+            loss, acc = validate(MRI_val_loader, model, criterion, epoch, idx, vis_folder)
         return
     
     # train and eval
@@ -128,15 +134,15 @@ def main(args):
         train_loss, train_acc = train(MRI_train_loader, model, criterion, optimizer, idx)
 
         # evaluate on validation set
-        valid_loss, valid_acc  = validate(MRI_val_loader, model, criterion, idx)
+        valid_loss, valid_acc  = validate(MRI_val_loader, model, criterion, epoch, idx, vis_folder)
 
         # remember best acc and save checkpoint
         if valid_acc > best_acc:
            state = copy.deepcopy({'model_weights': model.state_dict()})
            if args.att:
-                torch.save(state, f'src/dlh/weights/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
+                torch.save(state, f'{weight_folder}/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            else:
-                torch.save(state, f'src/dlh/weights/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
+                torch.save(state, f'{weight_folder}/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            best_acc = valid_acc
                 
 
@@ -198,11 +204,8 @@ def train(train_loader, model, criterion, optimizer, idx):
     return losses.avg, acces.avg
 
 
-ep = 0
-def validate(val_loader, model, criterion, idx):
-    global ep
+def validate(val_loader, model, criterion, ep, idx, out_folder):
     Flag_visualize = True
-    ep += 1
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -239,7 +242,7 @@ def validate(val_loader, model, criterion, idx):
 
             if Flag_visualize:
                 # save the visualization only for the first batch of the validation
-                save_epoch_res_as_image2(input, output, target, epoch_num=ep, target_th=0.5)
+                save_epoch_res_as_image2(input, output, target, out_folder, epoch_num=ep, target_th=0.5)
                 Flag_visualize = False
 
             # measure accuracy and record loss
@@ -307,7 +310,7 @@ if __name__ == '__main__':
                         help='Number of discs to detect')
     
     parser.add_argument('--resume', default= False, type=bool,
-                        help=' Resume the training from the last checkpoint')  
+                        help='Resume the training from the last checkpoint')  
     parser.add_argument('--attshow', default= False, type=bool,
                         help=' Show the attention map') 
     parser.add_argument('--epochs', default=120, type=int, metavar='N',
@@ -343,14 +346,18 @@ if __name__ == '__main__':
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('--sigma-decay', type=float, default=0,
                         help='Sigma decay rate for each epoch.')
+    parser.add_argument('--weight-folder', type=str, default='src/dlh/weights',
+                        help='Folder where hourglass weights are stored and loaded')
+    parser.add_argument('--visual-folder', type=str, default='test/visualize',
+                        help='Folder where visuals are stored')
 
     # Create weights folder to store training weights
-    if not os.path.exists('src/dlh/weights'):
-        os.mkdir('src/dlh/weights')
+    if not os.path.exists(parser.parse_args().weight_folder):
+        os.mkdir(parser.parse_args().weight_folder)
         
     # Create visualize folder to images created during training
-    if not os.path.exists('test/visualize'):
-        os.mkdir('test/visualize')
+    if not os.path.exists(parser.parse_args().visual_folder):
+        os.mkdir(parser.parse_args().visual_folder)
         
     main(parser.parse_args())  # Train the hourglass network
     create_skeleton(parser.parse_args())  # Create skeleton file to improve hourglass accuracy during testing

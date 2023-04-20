@@ -6,6 +6,7 @@
 # Copyright (c) 2020 Polytechnique Montreal <www.neuro.polymtl.ca>
 #===================================================
 
+import os
 import numpy as np
 from torch.utils.data import Dataset
 import cv2
@@ -168,7 +169,7 @@ class image_Dataset(Dataset):
     def get_posedata(self, img, msk, num_ch=11):
         msk = msk[:, :, 0]
         msk = self.rotate_img(msk)
-        #img = self.rotate_img(img)
+
         ys = msk.shape
         ys_ch = np.zeros([ys[0], ys[1], num_ch])
         msk_uint = np.uint8(np.where(msk >0.2, 1, 0))
@@ -182,12 +183,6 @@ class image_Dataset(Dataset):
                 ys_ch[:,:, i-1] = y_i
         except:
             print(num_labels)
-            # plt.imshow(img, cmap='gray')
-            # plt.savefig('spine/img.png')
-            # plt.imshow(msk, cmap='gray')
-            # plt.savefig('spine/mks.png')
-            # plt.imshow(msk_uint, cmap='gray')
-            # plt.savefig('spine/msk_uint.png')
             
         ys_ch = np.rot90(ys_ch)
         ys_ch = np.flip(ys_ch, axis=1)
@@ -206,9 +201,7 @@ class image_Dataset(Dataset):
 
 
     def transform(self, image, mask):
-        #print(image.shape)
         image = normalize(image[:, :, 0])
-        #image = skimage.exposure.equalize_adapthist(image, kernel_size=10, clip_limit=0.02)
         image = np.expand_dims(image, -1)
 
         ## extract joints for pose model
@@ -225,22 +218,14 @@ class image_Dataset(Dataset):
         temp_img[:,:,1:2]= image
         temp_img[:,:,2:3]= image
         image = temp_img
-        # image,mask = RandomangleFlip()(image,mask)
 
         # Transform to tensor
-        
         image, mask = ToTensor()(image, mask)
         
         return image, mask
 
     def __getitem__(self, index):
         mask = self.target_paths[index]
-        # maxval = np.max(np.max(mask))
-        # mask = np.where(mask==maxval, 1, 0)
-        # mask = self.bluring2D(mask[:,:,0], kernel_halfsize=15, sigma=3)
-        # mask /= np.max(np.max(mask))
-        # plt.imshow(mask, cmap='gray')
-        # plt.savefig('spine/mask.png')
         
         mask = cv2.resize(mask, (256, 256))
         mask = mask.astype(np.float32)
@@ -281,57 +266,57 @@ class HeatmapLoss(torch.nn.Module):
         return l ## l of dim bsize
 
 
-def save_epoch_res_as_image(inputs, targets, epoch_num, flag_gt):
+# def save_epoch_res_as_image(inputs, targets, epoch_num, flag_gt):
 
-    targets = targets.data.cpu().numpy()
-    inputs = inputs.data.cpu().numpy()
+#     targets = targets.data.cpu().numpy()
+#     inputs = inputs.data.cpu().numpy()
 
-    if not(flag_gt):
-       targets[np.where(targets<0.5)] = 0 
+#     if not(flag_gt):
+#        targets[np.where(targets<0.5)] = 0 
 
-    hues = np.linspace(0, 179, targets.shape[1], dtype=np.uint8)
-    blank_ch = 255*np.ones_like(targets[0, 0], dtype=np.uint8)
-    for y, x in zip(targets, inputs):
-        y_colored = np.zeros([y.shape[1], y.shape[2], 3], dtype=np.uint8)
-        y_all = np.zeros([y.shape[1], y.shape[2]], dtype=np.uint8)
-        for ych, hue_i in zip(y, hues):
-            ych = ych/np.max(np.max(ych))
-            ych[np.where(ych<0.5)] = 0
-            # ych = cv2.GaussianBlur(ych,(15,15),cv2.BORDER_DEFAULT)
+#     hues = np.linspace(0, 179, targets.shape[1], dtype=np.uint8)
+#     blank_ch = 255*np.ones_like(targets[0, 0], dtype=np.uint8)
+#     for y, x in zip(targets, inputs):
+#         y_colored = np.zeros([y.shape[1], y.shape[2], 3], dtype=np.uint8)
+#         y_all = np.zeros([y.shape[1], y.shape[2]], dtype=np.uint8)
+#         for ych, hue_i in zip(y, hues):
+#             ych = ych/np.max(np.max(ych))
+#             ych[np.where(ych<0.5)] = 0
+#             # ych = cv2.GaussianBlur(ych,(15,15),cv2.BORDER_DEFAULT)
 
-            ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
-            ych = np.uint8(255*ych/np.max(ych))
+#             ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
+#             ych = np.uint8(255*ych/np.max(ych))
             
-            colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
-            colored_ych[:, :, 0] = ych_hue
-            colored_ych[:, :, 1] = blank_ch
-            colored_ych[:, :, 2] = ych
-            colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
+#             colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
+#             colored_ych[:, :, 0] = ych_hue
+#             colored_ych[:, :, 1] = blank_ch
+#             colored_ych[:, :, 2] = ych
+#             colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
 
-            y_colored += colored_y
-            y_all += ych
+#             y_colored += colored_y
+#             y_all += ych
 
-        x = np.moveaxis(x, 0, -1)
-        x = x/np.max(x)*255
+#         x = np.moveaxis(x, 0, -1)
+#         x = x/np.max(x)*255
 
-        x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
-        for i in range(3):
-            x_3ch[:, :, i] = x[:, :, 0]
+#         x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
+#         for i in range(3):
+#             x_3ch[:, :, i] = x[:, :, 0]
         
-        img_mix = np.uint8(x_3ch*0.5 + y_colored*0.5)
+#         img_mix = np.uint8(x_3ch*0.5 + y_colored*0.5)
         
-        txt = ''
-        if flag_gt:
-            txt = f'test/visualize/epo_{epoch_num:3d}_gt.png'
-        else:
-            txt = f'test/visualize/epo_{epoch_num:3d}_pr.png'
+#         txt = ''
+#         if flag_gt:
+#             txt = f'test/visualize/epo_{epoch_num:3d}_gt.png'
+#         else:
+#             txt = f'test/visualize/epo_{epoch_num:3d}_pr.png'
 
-        cv2.imwrite(txt, img_mix)
-        break
+#         cv2.imwrite(txt, img_mix)
+#         break
 
 
 from torchvision.utils import make_grid
-def save_epoch_res_as_image2(inputs, outputs, targets, epoch_num, target_th=0.4, pretext=False):
+def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, target_th=0.4, pretext=False):
     max_epoch = 500
     target_th = target_th + (epoch_num/max_epoch*0.2)
     targets = targets.data.cpu().numpy()
@@ -350,7 +335,6 @@ def save_epoch_res_as_image2(inputs, outputs, targets, epoch_num, target_th=0.4,
             for ych, hue_i in zip(y, hues):
                 ych = ych/np.max(np.max(ych))
                 ych[np.where(ych<target_th)] = 0
-                # ych = cv2.GaussianBlur(ych,(15,15),cv2.BORDER_DEFAULT)
 
                 ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
                 ych = np.uint8(255*ych/np.max(ych))
@@ -372,7 +356,6 @@ def save_epoch_res_as_image2(inputs, outputs, targets, epoch_num, target_th=0.4,
                 x_3ch[:, :, i] = x[:, :, 0]
             
             img_mix = np.uint8(x_3ch*0.5 + y_colored*0.5)
-            # img_mix = cv2.cvtColor(img_mix, cv2.COLOR_BGR2RGB)
             clr_vis_Y.append(img_mix)
             
     
@@ -381,16 +364,12 @@ def save_epoch_res_as_image2(inputs, outputs, targets, epoch_num, target_th=0.4,
     trgts = make_grid(torch.Tensor(t), nrow=4)
 
     if pretext:
-        txt = f'test/visualize/{epoch_num:0=4d}_test_result.png'
+        txt = os.path.join(out_folder,f'/{epoch_num:0=4d}_test_result.png')
     else: 
-        txt = f'test/visualize/epoch_{epoch_num:0=4d}_res2.png'
+        txt = os.path.join(out_folder,f'/epoch_{epoch_num:0=4d}_res2.png')
     res = np.transpose(trgts.numpy(), (1,2,0))
     print(res.shape)
     cv2.imwrite(txt, res)
-
-    # plt.imshow()
-    # plt.savefig(txt)
-    # cv2.imwrite(txt, )
 
 
 
@@ -447,18 +426,13 @@ def save_attention(inputs, outputs, targets, att, target_th=0.5):
     att = torch.sigmoid(att).numpy()
     att = np.uint8(att*255)
     att[att<128+80] = 0
-    # att     = sigmoid(att)
+
     att     = cv2.resize(att, (256, 256))
     att     = cv2.applyColorMap(att, cv2.COLORMAP_JET)
     rgbatt  = copy.copy(inputs[0])
     rgbatt  = np.moveaxis(rgbatt, 0, -1)
     rgbatt = rgbatt*255*0.5+ att*0.5
-    # at2[:, :, 0] = att 
-    # at2[:, :, 1] = att 
-    # at2[:, :, 2] = att 
-    # at2     = cv2.applyColorMap(np.uint8(at2*255), cv2.COLORMAP_JET)
-    # rgbatt = at2
-    # rgbatt  = cv2.addWeighted(rgbatt, 0.7, att, 0.3, 0)
+
 
     clr_vis_Y = []
 
@@ -472,7 +446,6 @@ def save_attention(inputs, outputs, targets, att, target_th=0.5):
             for ych, hue_i in zip(y, hues):
                 ych = ych/np.max(np.max(ych))
                 ych[np.where(ych<target_th)] = 0
-                # ych = cv2.GaussianBlur(ych,(15,15),cv2.BORDER_DEFAULT)
 
                 ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
                 ych = np.uint8(255*ych/np.max(ych))
@@ -504,8 +477,3 @@ def save_attention(inputs, outputs, targets, att, target_th=0.5):
     txt = 'test/visualize/attention_visualization.png'
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(txt, res)
-
-    # plt.imshow()
-    # plt.savefig(txt)
-    # cv2.imwrite(txt, )
-
