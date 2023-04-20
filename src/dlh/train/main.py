@@ -6,7 +6,6 @@
 
 from __future__ import print_function, absolute_import
 import os
-import sys
 import argparse
 import time
 os.environ["CUDA_VISIBLE_DEVICES"] = "9"
@@ -19,7 +18,7 @@ from progress.bar import Bar
 import pickle
 from torch.utils.data import DataLoader 
 import copy
-import random
+import wandb
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
@@ -27,21 +26,6 @@ from dlh.models import JointsMSELoss
 from dlh.models.utils import AverageMeter, adjust_learning_rate, accuracy, dice_loss
 from dlh.utils.train_utils import image_Dataset, SaveOutput, save_epoch_res_as_image2, save_attention
 from dlh.utils.skeleton import create_skeleton
-
-
-## Set seed
-seed = 42
-os.environ['PYTHONHASHSEED'] = str(seed)
-# Torch RNG
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
-# Python RNG
-np.random.seed(seed)
-random.seed(seed)
-
-# init global variables
-idx = []
 
 # select proper device to run
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -51,7 +35,6 @@ def main(args):
     '''
     Training hourglass network
     '''
-    global idx
     best_acc = 0
     ## Load the prepared dataset
     with open(args.datapath, 'rb') as file_pi:
@@ -78,8 +61,7 @@ def main(args):
                             shuffle=False,
                             num_workers=0)
     
-    # idx is the index of joints used to compute accuracy (we detect 11 joints starting from C1 to ...) 
-    #idx = [1,2,3,4,5,6,7,8,9,10,11]
+    # idx is the index of joints used to compute accuracy (we detect N discs starting from C1 to args.ndiscs) 
     idx = [(i+1) for i in range(args.ndiscs)]
 
     # create model
@@ -128,7 +110,7 @@ def main(args):
         if args.attshow:
             loss, acc = show_attention(MRI_val_loader, model)
         else:
-            loss, acc = validate(MRI_val_loader, model, criterion)
+            loss, acc = validate(MRI_val_loader, model, criterion, idx)
         return
     
     # train and eval
@@ -143,10 +125,10 @@ def main(args):
             MRI_val_loader.dataset.sigma *=  args.sigma_decay
 
         # train for one epoch
-        train_loss, train_acc = train(MRI_train_loader, model, criterion, optimizer)
+        train_loss, train_acc = train(MRI_train_loader, model, criterion, optimizer, idx)
 
         # evaluate on validation set
-        valid_loss, valid_acc  = validate(MRI_val_loader, model, criterion)
+        valid_loss, valid_acc  = validate(MRI_val_loader, model, criterion, idx)
 
         # remember best acc and save checkpoint
         if valid_acc > best_acc:
@@ -158,7 +140,7 @@ def main(args):
            best_acc = valid_acc
                 
 
-def train(train_loader, model, criterion, optimizer):
+def train(train_loader, model, criterion, optimizer, idx):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -217,7 +199,7 @@ def train(train_loader, model, criterion, optimizer):
 
 
 ep = 0
-def validate(val_loader, model, criterion):
+def validate(val_loader, model, criterion, idx):
     global ep
     Flag_visualize = True
     ep += 1
