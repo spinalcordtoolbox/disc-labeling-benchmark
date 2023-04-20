@@ -31,9 +31,10 @@ from dlh.utils.skeleton import create_skeleton
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True  
 
+
 def main(args):
     '''
-    Training hourglass network
+    Train hourglass network
     '''
     best_acc = 0
     weight_folder = args.weight_folder
@@ -59,7 +60,7 @@ def main(args):
                                      use_flip = False
                                      )
 
-    MRI_train_loader = DataLoader(full_dataset_train, batch_size= args.train_batch,
+    MRI_train_loader = DataLoader(full_dataset_train, batch_size=args.train_batch,
                                 shuffle=True,
                                 num_workers=0)
     MRI_val_loader = DataLoader(full_dataset_val, batch_size=args.val_batch,
@@ -147,11 +148,21 @@ def main(args):
                 
 
 def train(train_loader, model, criterion, optimizer, idx):
+    '''
+    Train hourglass for one epoch
+    
+    :param train_loader: loaded training dataset
+    :param model: loaded model
+    :param criterion: loaded loss function
+    :param optimizer: loaded solver
+    :param idx: list of detected class
+    '''
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
     acces = AverageMeter()
     loss_dices = AverageMeter()
+    
     # switch to train mode
     model.train()
 
@@ -205,6 +216,16 @@ def train(train_loader, model, criterion, optimizer, idx):
 
 
 def validate(val_loader, model, criterion, ep, idx, out_folder):
+    '''
+    Compute validation dataset with hourglass for one epoch
+    
+    :param val_loader: loaded validation dataset
+    :param model: loaded model
+    :param criterion: loaded loss function
+    :param ep: current epoch number
+    :param idx: list of detected class
+    :param out_folder: path out for generated visuals
+    '''
     Flag_visualize = True
     batch_time = AverageMeter()
     data_time = AverageMeter()
