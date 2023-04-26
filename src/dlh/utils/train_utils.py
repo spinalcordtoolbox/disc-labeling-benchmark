@@ -8,10 +8,11 @@
 
 import os
 import numpy as np
-from torch.utils.data import Dataset
 import cv2
 from scipy import signal
 import torch
+from torch.utils.data import Dataset
+from torchvision.utils import make_grid
 
 from dlh.utils.transform_spe import RandomHorizontalFlip, ToTensor 
 
@@ -161,7 +162,6 @@ class image_Dataset(Dataset):
     @staticmethod
     def rotate_img(img):
         img = np.rot90(img)
-        #img = np.flip(img, axis=0)
         img = np.flip(img, axis=1)
         return img
 
@@ -240,12 +240,12 @@ class image_Dataset(Dataset):
         t_image, t_mask = self.transform(image, mask)
         
         vis = torch.FloatTensor(vis)
-        if self.subject_names == None or self.gt_coords == None:
-            return t_image, t_mask, vis
-        else:
-            subject_name = self.subject_names[index]
-            gt_coord = self.gt_coords[index]
-            return t_image, t_mask, vis, gt_coord, subject_name
+        out = (t_image, t_mask, vis)
+        if self.gt_coords != None:
+            out += (torch.Tensor(self.gt_coords[index]),)
+        if self.subject_names != None:
+            out += (self.subject_names[index],)
+        return out
 
     def __len__(self):  # return count of sample we have
         
@@ -315,8 +315,7 @@ class HeatmapLoss(torch.nn.Module):
 #         break
 
 
-from torchvision.utils import make_grid
-def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, target_th=0.4, pretext=False):
+def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, target_th=0.4, pretext=False, wandb_mode=False):
     max_epoch = 500
     target_th = target_th + (epoch_num/max_epoch*0.2)
     targets = targets.data.cpu().numpy()
@@ -355,9 +354,12 @@ def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, ta
             for i in range(3):
                 x_3ch[:, :, i] = x[:, :, 0]
             
+            x_3ch, y_colored = np.rot90(x_3ch), np.rot90(y_colored)
+            
             img_mix = np.uint8(x_3ch*0.5 + y_colored*0.5)
             clr_vis_Y.append(img_mix)
             
+    targets, preds = np.concatenate(np.array(clr_vis_Y[:len(clr_vis_Y)//2]), axis=1), np.concatenate(np.array(clr_vis_Y[len(clr_vis_Y)//2:]), axis=1) 
     
     t = np.array(clr_vis_Y)
     t = np.transpose(t, [0, 3, 1, 2])
@@ -368,8 +370,11 @@ def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, ta
     else: 
         txt = os.path.join(out_folder,f'/epoch_{epoch_num:0=4d}_res2.png')
     res = np.transpose(trgts.numpy(), (1,2,0))
-    print(res.shape)
-    cv2.imwrite(txt, res)
+    
+    if wandb_mode:
+        return txt, res, targets, preds
+    else:
+        cv2.imwrite(txt, res)
 
 
 
@@ -394,10 +399,6 @@ def multivariate_gaussian(pos, mu, Sigma):
     return np.exp(-fac / 2) / N
     
 
-
-
-
-
 class SaveOutput:
     def __init__(self):
         self.outputs = []
@@ -408,13 +409,11 @@ class SaveOutput:
     def clear(self):
         self.outputs = []
 
-import math
 def sigmoid(x):
     x = np.array(x)
     x = 1/(1+np.exp(-x))
     x[x<0.0] = 0
     return x
-    # return np.where(1/(1+np.exp(-x))>0.5, 1., 0.)
 
 import copy
 def save_attention(inputs, outputs, targets, att, target_th=0.5):
@@ -477,3 +476,20 @@ def save_attention(inputs, outputs, targets, att, target_th=0.5):
     txt = 'test/visualize/attention_visualization.png'
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(txt, res)
+
+def loss_per_subject(pred, target, vis, criterion):
+    '''
+    Return a list of loss corresponding to each image in the batch
+    
+    :param pred: Network prediction
+    :param target: Ground truth mask
+    '''
+    losses = []
+    if type(pred) == list:  # multiple output
+        for p in pred:
+            for idx in range(p.shape[0]):
+                losses.append(criterion(p[idx], target[idx], vis[idx]).item())
+    else:  # single output
+        for idx in range(pred.shape[0]):
+            losses.append(criterion(torch.unsqueeze(pred[idx], 0), torch.unsqueeze(target[idx], 0), torch.unsqueeze(vis[idx], 0)).item())
+    return losses
