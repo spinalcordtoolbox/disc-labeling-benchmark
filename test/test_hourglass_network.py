@@ -50,7 +50,11 @@ def test_hourglass(args):
                                       subject_names=full[3], 
                                       use_flip = False
                                       ) 
-    MRI_test_loader   = DataLoader(full_dataset_test, batch_size= 1, shuffle=False, num_workers=0)
+    MRI_test_loader   = DataLoader(full_dataset_test, 
+                                   batch_size= 1, 
+                                   shuffle=False, 
+                                   num_workers=0
+                                   )
     model.eval()
     
     # Load disc_coords txt file
