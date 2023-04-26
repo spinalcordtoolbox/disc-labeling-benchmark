@@ -7,3 +7,4 @@ files/
 __pycache__/
 *.pyc
 dlh.egg-info/
+wandb/

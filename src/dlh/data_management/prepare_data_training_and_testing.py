@@ -22,11 +22,11 @@ def main(args):
     split_factor = args.split_factor
                    
     print('Loading dataset: ', os.path.abspath(args.datapath))
-    ds_train = load_Data_Bids2Array(args.datapath, mode= contrast, factor=split_factor, split='train', aim='full')
+    ds_train = load_Data_Bids2Array_with_subjects(args.datapath, mode= contrast, factor=split_factor, split='train', aim='full')
     ds_test = load_Data_Bids2Array_with_subjects(args.datapath, mode= contrast, factor=split_factor, split='test', aim='full')  # we want to keep track of the subjects name
     
     print('Creating heatmap')
-    full_train = extract_groundtruth_heatmap(ds_train)
+    full_train = extract_groundtruth_heatmap_with_subjects_and_GT_coords(ds_train)
     full_test = extract_groundtruth_heatmap_with_subjects_and_GT_coords(ds_test)  # we want to keep track of the subjects name and the ground truth position of the vertebral discs
     
     print('Saving the prepared datasets')
