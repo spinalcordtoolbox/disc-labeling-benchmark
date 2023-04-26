@@ -266,55 +266,6 @@ class HeatmapLoss(torch.nn.Module):
         return l ## l of dim bsize
 
 
-# def save_epoch_res_as_image(inputs, targets, epoch_num, flag_gt):
-
-#     targets = targets.data.cpu().numpy()
-#     inputs = inputs.data.cpu().numpy()
-
-#     if not(flag_gt):
-#        targets[np.where(targets<0.5)] = 0 
-
-#     hues = np.linspace(0, 179, targets.shape[1], dtype=np.uint8)
-#     blank_ch = 255*np.ones_like(targets[0, 0], dtype=np.uint8)
-#     for y, x in zip(targets, inputs):
-#         y_colored = np.zeros([y.shape[1], y.shape[2], 3], dtype=np.uint8)
-#         y_all = np.zeros([y.shape[1], y.shape[2]], dtype=np.uint8)
-#         for ych, hue_i in zip(y, hues):
-#             ych = ych/np.max(np.max(ych))
-#             ych[np.where(ych<0.5)] = 0
-#             # ych = cv2.GaussianBlur(ych,(15,15),cv2.BORDER_DEFAULT)
-
-#             ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
-#             ych = np.uint8(255*ych/np.max(ych))
-            
-#             colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
-#             colored_ych[:, :, 0] = ych_hue
-#             colored_ych[:, :, 1] = blank_ch
-#             colored_ych[:, :, 2] = ych
-#             colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
-
-#             y_colored += colored_y
-#             y_all += ych
-
-#         x = np.moveaxis(x, 0, -1)
-#         x = x/np.max(x)*255
-
-#         x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
-#         for i in range(3):
-#             x_3ch[:, :, i] = x[:, :, 0]
-        
-#         img_mix = np.uint8(x_3ch*0.5 + y_colored*0.5)
-        
-#         txt = ''
-#         if flag_gt:
-#             txt = f'test/visualize/epo_{epoch_num:3d}_gt.png'
-#         else:
-#             txt = f'test/visualize/epo_{epoch_num:3d}_pr.png'
-
-#         cv2.imwrite(txt, img_mix)
-#         break
-
-
 def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, target_th=0.4, pretext=False, wandb_mode=False):
     max_epoch = 500
     target_th = target_th + (epoch_num/max_epoch*0.2)
