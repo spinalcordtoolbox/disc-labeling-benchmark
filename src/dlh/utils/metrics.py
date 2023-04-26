@@ -44,43 +44,51 @@ def compute_z_error(gt, pred):
 
 
 # compute False positive 
-def false_pos(missing_gt, discs_pred):
+def compute_TP_and_FP(discs_gt, discs_pred):
     '''
-    Compute false positive:
+    Compute true and false positive:
     
-    missing_gt: numpy array of non present discs
+    missing_gt: numpy array of ground truth discs
     discs_pred: numpy array of the predicted discs
     
     return:
-        c: number of false positive detection
+        TP: number of true positive detection
+        FP: number of false positive detection
         false_pos_list: numpy array of false positive discs detections
     '''
     false_pos_list = []
-    c = 0
+    FP = 0
+    TP = 0
     for disc in discs_pred:
-        if disc in missing_gt:
-            c += 1
+        if disc not in discs_gt:
+            FP += 1
             false_pos_list.append(disc)
-    return c, np.array(false_pos_list)
+        else:
+            TP += 1
+    return TP, FP, np.array(false_pos_list)
 
 # compute False negative 
-def false_neg(missing_gt, missing_pred):
+def compute_TN_and_FN(missing_gt, missing_pred):
     '''
-    Compute false negative:
+    Compute true and false negative:
     
     missing_gt: numpy array with non present discs
     missing_pred: numpy array of the missed predictions
     
     return:
-        c: number of false negative detection
+        TN: number of true negative detection
+        FN: number of false negative detection
         false_neg_list: numpy array of false negative discs detections
     '''
     false_neg_list = []
-    c = 0
+    FN = 0
+    TN = 0
     for disc in missing_pred:
         if disc not in missing_gt:
-            c += 1
+            FN += 1
             false_neg_list.append(disc)
-    return c, np.array(false_neg_list)
+        else:
+           TN += 1 
+    return TN, FN, np.array(false_neg_list)
 
 
