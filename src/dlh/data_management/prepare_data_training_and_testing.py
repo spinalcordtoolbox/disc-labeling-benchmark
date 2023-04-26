@@ -45,11 +45,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Prepare and split hourglass data into a trainset and a testset')
     
     ## Parameters
-    parser.add_argument('--datapath', type=str,
+    parser.add_argument('--datapath', type=str, required=True,
                             help='Path to vertebral data')                     
-    parser.add_argument('-o','--output-folder', type=str,
+    parser.add_argument('-o','--output-folder', type=str, required=True,
                             help='Path out to store the prepared datasets')  
-    parser.add_argument('-c', '--contrast', type=str,
+    parser.add_argument('-c', '--contrast', type=str, required=True,
                             help='#t1_t2 for both t1 and t2 , t1 for t1 only , t2 for t2 only')
     parser.add_argument('--prefix-name', default='dataset', type=str,
                             help='Prefix particle in the dataset name (default="dataset")')

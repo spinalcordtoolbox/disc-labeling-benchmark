@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from spinalcordtoolbox.image import Image
 import csv
 
-from dlh.utils.metrics import compute_L2_error, compute_z_error, false_pos, false_neg
+from dlh.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
 from dlh.utils.test_utils import CONTRAST, visualize_discs, str2array, check_missing_discs
 
 def compare_methods(args):
@@ -53,15 +53,30 @@ def compare_methods(args):
     methods_results['total']['z_std_sct'] = 0
     methods_results['total']['z_std_spn'] = 0
     
+    # Init true positive rate
+    methods_results['total']['TPR_hg'] = 0
+    methods_results['total']['TPR_sct'] = 0
+    methods_results['total']['TPR_spn'] = 0
+    
     # Init false positive rate
     methods_results['total']['FPR_hg'] = 0
     methods_results['total']['FPR_sct'] = 0
     methods_results['total']['FPR_spn'] = 0
     
+    # Init true negative rate
+    methods_results['total']['TNR_hg'] = 0
+    methods_results['total']['TNR_sct'] = 0
+    methods_results['total']['TNR_spn'] = 0
+    
     # Init false negative rate
     methods_results['total']['FNR_hg'] = 0
     methods_results['total']['FNR_sct'] = 0
     methods_results['total']['FNR_spn'] = 0
+    
+    # Init dice score
+    methods_results['total']['DSC_hg'] = 0
+    methods_results['total']['DSC_sct'] = 0
+    methods_results['total']['DSC_spn'] = 0
     
     for subject in processed_subjects:
         # Extract str coords and convert to numpy array, None stands for fail detections
@@ -144,31 +159,47 @@ def compare_methods(args):
         z_err_sct_std = np.std(z_err_sct) if z_err_sct.size != 0 else 0
         z_err_spn_std = np.std(z_err_spn) if z_err_spn.size != 0 else 0
         
-        #-----------------------------------#
-        # Compute false positive rate (FPR)
-        #-----------------------------------#
+        #----------------------------------------------------#
+        # Compute true and false positive rate (TPR and FPR)
+        #----------------------------------------------------#
         sct_pred_discs = discs_list[~np.in1d(discs_list, sct_missing_discs)]
         hg_pred_discs = discs_list[~np.in1d(discs_list, hg_missing_discs)]
         spn_pred_discs = discs_list[~np.in1d(discs_list, spn_missing_discs)]
+        gt_pred_discs = discs_list[~np.in1d(discs_list, gt_missing_discs)]
     
-        FP_sct, FP_list_sct = false_pos(missing_gt=gt_missing_discs, discs_pred=sct_pred_discs)
-        FP_hg, FP_list_hg = false_pos(missing_gt=gt_missing_discs, discs_pred=hg_pred_discs)
-        FP_spn, FP_list_spn = false_pos(missing_gt=gt_missing_discs, discs_pred=spn_pred_discs)
+        TP_sct, FP_sct, FP_list_sct = compute_TP_and_FP(discs_gt=gt_pred_discs, discs_pred=sct_pred_discs)
+        TP_hg, FP_hg, FP_list_hg = compute_TP_and_FP(discs_gt=gt_pred_discs, discs_pred=hg_pred_discs)
+        TP_spn, FP_spn, FP_list_spn = compute_TP_and_FP(discs_gt=gt_pred_discs, discs_pred=spn_pred_discs)
         
         FPR_sct = FP_sct/total_pred_sct if total_pred_sct != 0 else 0
         FPR_hg = FP_hg/total_pred_hg if total_pred_hg != 0 else 0
         FPR_spn = FP_spn/total_pred_spn if total_pred_spn != 0 else 0
         
-        #-----------------------------------#
-        # Compute false negative rate (FNR)
-        #-----------------------------------#
-        FN_sct, FN_list_sct = false_neg(missing_gt=gt_missing_discs, missing_pred=sct_missing_discs)
-        FN_hg, FN_list_hg = false_neg(missing_gt=gt_missing_discs, missing_pred=hg_missing_discs)
-        FN_spn, FN_list_spn = false_neg(missing_gt=gt_missing_discs, missing_pred=spn_missing_discs)
+        TPR_sct = TP_sct/total_pred_sct if total_pred_sct != 0 else 0
+        TPR_hg = TP_hg/total_pred_hg if total_pred_hg != 0 else 0
+        TPR_spn = TP_spn/total_pred_spn if total_pred_spn != 0 else 0
+        
+        #----------------------------------------------------#
+        # Compute true and false negative rate (TNR and FNR)
+        #----------------------------------------------------#
+        TN_sct, FN_sct, FN_list_sct = compute_TN_and_FN(missing_gt=gt_missing_discs, missing_pred=sct_missing_discs)
+        TN_hg, FN_hg, FN_list_hg = compute_TN_and_FN(missing_gt=gt_missing_discs, missing_pred=hg_missing_discs)
+        TN_spn, FN_spn, FN_list_spn = compute_TN_and_FN(missing_gt=gt_missing_discs, missing_pred=spn_missing_discs)
         
         FNR_sct = FN_sct/total_pred_sct if total_pred_sct != 0 else 1
         FNR_hg = FN_hg/total_pred_hg if total_pred_hg != 0 else 1
         FNR_spn = FN_spn/total_pred_spn if total_pred_spn != 0 else 1
+        
+        TNR_sct = TN_sct/total_pred_sct if total_pred_sct != 0 else 1
+        TNR_hg = TN_hg/total_pred_hg if total_pred_hg != 0 else 1
+        TNR_spn = TN_spn/total_pred_spn if total_pred_spn != 0 else 1
+        
+        #-------------------------------------------#
+        # Compute dice score : DSC=2TP/(2TP+FP+FN)
+        #-------------------------------------------#
+        DSC_sct = 2*TP_sct/(2*TP_sct+FP_sct+FN_sct)
+        DSC_hg = 2*TP_hg/(2*TP_hg+FP_hg+FN_hg)
+        DSC_spn = 2*TP_spn/(2*TP_spn+FP_spn+FN_spn)
         
         ###################################
         # Add computed metrics to subject #
@@ -190,7 +221,12 @@ def compare_methods(args):
         methods_results[subject]['z_std_sct'] = z_err_sct_std
         methods_results[subject]['z_std_spn'] = z_err_spn_std
         
-        # Add false positive rate
+        # Add true positive rate
+        methods_results[subject]['TPR_hg'] = TPR_hg
+        methods_results[subject]['TPR_sct'] = TPR_sct
+        methods_results[subject]['TPR_spn'] = TPR_spn
+        
+        # Add false positive rate and FP list
         methods_results[subject]['FP_list_hg'] = FP_list_hg
         methods_results[subject]['FP_list_sct'] = FP_list_sct
         methods_results[subject]['FP_list_spn'] = FP_list_spn
@@ -198,13 +234,23 @@ def compare_methods(args):
         methods_results[subject]['FPR_sct'] = FPR_sct
         methods_results[subject]['FPR_spn'] = FPR_spn
         
-        # Add false negative rate
+        # Add true negative rate
+        methods_results[subject]['TNR_hg'] = TNR_hg
+        methods_results[subject]['TNR_sct'] = TNR_sct
+        methods_results[subject]['TNR_spn'] = TNR_spn
+        
+        # Add false negative rate and FN list
         methods_results[subject]['FN_list_hg'] = FN_list_hg
         methods_results[subject]['FN_list_sct'] = FN_list_sct
         methods_results[subject]['FN_list_spn'] = FN_list_spn
         methods_results[subject]['FNR_hg'] = FNR_hg
         methods_results[subject]['FNR_sct'] = FNR_sct
         methods_results[subject]['FNR_spn'] = FNR_spn
+        
+        # Add dice score
+        methods_results[subject]['DSC_hg'] = DSC_hg
+        methods_results[subject]['DSC_sct'] = DSC_sct
+        methods_results[subject]['DSC_spn'] = DSC_spn
         
         methods_results[subject]['tot_discs'] = total_discs
         methods_results[subject]['tot_pred_sct'] = total_pred_sct
@@ -233,15 +279,30 @@ def compare_methods(args):
         methods_results['total']['z_std_sct'] += z_err_sct_std/total
         methods_results['total']['z_std_spn'] += z_err_spn_std/total
         
+        # Add true positive rate
+        methods_results['total']['TPR_hg'] += TPR_hg/total
+        methods_results['total']['TPR_sct'] += TPR_sct/total
+        methods_results['total']['TPR_spn'] += TPR_spn/total
+        
         # Add false positive rate
         methods_results['total']['FPR_hg'] += FPR_hg/total
         methods_results['total']['FPR_sct'] += FPR_sct/total
         methods_results['total']['FPR_spn'] += FPR_spn/total
         
+        # Add true negative rate
+        methods_results['total']['TNR_hg'] += TNR_hg/total
+        methods_results['total']['TNR_sct'] += TNR_sct/total
+        methods_results['total']['TNR_spn'] += TNR_spn/total
+        
         # Add false negative rate
-        methods_results['total']['FNR_hg'] = FNR_hg/total
-        methods_results['total']['FNR_sct'] = FNR_sct/total
-        methods_results['total']['FNR_spn'] = FNR_spn/total
+        methods_results['total']['FNR_hg'] += FNR_hg/total
+        methods_results['total']['FNR_sct'] += FNR_sct/total
+        methods_results['total']['FNR_spn'] += FNR_spn/total
+        
+        # Add dice score
+        methods_results['total']['DSC_hg'] += DSC_hg/total
+        methods_results['total']['DSC_sct'] += DSC_sct/total
+        methods_results['total']['DSC_spn'] += DSC_spn/total
     
     if args.create_csv:
         # Get fields for csv conversion    
@@ -262,11 +323,15 @@ def mergedict(a,b):
     return a
 
 def save_graphs(output_folder, methods_results):
+    # ASD and Hausdorff
+    # Isolate total dict 
+    dict_total = methods_results['total']
     del methods_results['total']
+    
+    # Extract subjects and metrics
     subjects, subject_metrics = np.array(list(methods_results.keys())), list(methods_results.values())
     metrics_name = np.array(list(subject_metrics[0].keys()))
     metrics_values = np.array([list(sub_metrics.values()) for sub_metrics in subject_metrics])
-    
         
     # Save L2 error
     l2_mean_hg_idx = np.where(metrics_name == 'l2_mean_hg')[0][0]
@@ -294,8 +359,26 @@ def save_graphs(output_folder, methods_results):
              y1=metrics_values[:,z_mean_hg_idx],
              y2=metrics_values[:,z_mean_sct_idx],
              y3=metrics_values[:,z_mean_spn_idx],
-             output_path=out_path, x_axis='Subjects', 
+             output_path=out_path, 
+             x_axis='Subjects', 
              y_axis='z error (pixels)', 
+             label1 ='hourglass_network', 
+             label2 ='sct_label_vertebrae', 
+             label3 ='spinenetv2_label_vertebrae'
+             )
+    
+    # Save total Dice score DSC
+    DSC_hg = dict_total['DSC_hg']
+    DSC_sct = dict_total['DSC_sct']
+    DSC_spn = dict_total['DSC_spn']
+    out_path = os.path.join(output_folder,'labels_dice_score.png')
+    save_bar(x='Total',
+             y1=DSC_hg,
+             y2=DSC_sct,
+             y3=DSC_spn,
+             output_path=out_path,
+             x_axis='Total', 
+             y_axis='Labels accuracy using DSC', 
              label1 ='hourglass_network', 
              label2 ='sct_label_vertebrae', 
              label3 ='spinenetv2_label_vertebrae'
@@ -304,12 +387,19 @@ def save_graphs(output_folder, methods_results):
     
 def save_bar(x, y1, y2, y3, output_path, x_axis='Subjects', y_axis='L2_error (pixels)', label1 ='Hourglass_network', label2 ='sct_label_vertebrae', label3 ='spinenetv2_label_vertebrae'):
     # set width of bar
-    barWidth = 0.25
-    plt.figure(figsize =(len(x), 10))
-    plt.subplots_adjust(bottom=0.2, top=0.9, left=0.05, right=0.95)
+    if type(x) == np.ndarray:
+        barWidth = 0.25
+        plt.figure(figsize =(len(x), 10))
+        plt.subplots_adjust(bottom=0.2, top=0.9, left=0.05, right=0.95)
+    else:
+        barWidth = 0.05
+        plt.figure(figsize =(10, 10))
         
     # Set position of bar on X axis
-    br1 = np.arange(len(x))
+    if type(x) == np.ndarray:
+        br1 = np.arange(len(x))
+    else:
+        br1 = [0]
     br2 = [x + barWidth for x in br1]
     br3 = [x - barWidth for x in br1]
     
@@ -317,12 +407,19 @@ def save_bar(x, y1, y2, y3, output_path, x_axis='Subjects', y_axis='L2_error (pi
     plt.bar(br1, y1, color='b', width = barWidth, edgecolor ='grey', label=label1)
     plt.bar(br2, y2, color='r', width = barWidth, edgecolor ='grey', label=label2)
     plt.bar(br3, y3, color='g', width = barWidth, edgecolor ='grey', label=label3)
-    plt.title(y_axis, fontweight ='bold', fontsize = 50)
+    plt.title(y_axis, fontweight ='bold', fontsize = 50 if type(x) == np.ndarray else 20)
+    
+    # Set y axis limit 
+    if type(x) == np.ndarray:
+        plt.ylim([0, 20])
     
     # Create axis and adding Xticks
-    plt.xlabel(x_axis, fontweight ='bold', fontsize = 30)
-    plt.ylabel(y_axis, fontweight ='bold', fontsize = 30)
-    plt.xticks([r for r in range(len(x))], x, rotation=70)
+    plt.xlabel(x_axis, fontweight ='bold', fontsize = 30 if type(x) == np.ndarray else 15)
+    plt.ylabel(y_axis, fontweight ='bold', fontsize = 30 if type(x) == np.ndarray else 15)
+    if type(x) == np.ndarray:
+        plt.xticks([r for r in range(len(x))], x, rotation=70)
+    else:
+        plt.xticks([])
     
     # Save plot
     plt.legend()
