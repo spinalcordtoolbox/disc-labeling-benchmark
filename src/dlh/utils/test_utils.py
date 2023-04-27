@@ -456,3 +456,54 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     rmtree(path_tmp)
 
     return output_coords
+
+##
+def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, method_name='hourglass_coord'):
+    '''
+    Write coordinates in txt file
+    Edit txt_file --> line = subject_name contrast disc_num gt_coords sct_label_vertebrae_coords hourglass_coords spinenet_coords
+    
+    :param coords: numpy array of the 2D coordinates of discs plus discs num --> [[x1, y1, disc1], [x2, y2, disc2], ... [xN, yN, discN]]
+    :param txt_lines: list of the txt file lines
+    :param subject_name: name of the subject in the text file
+    :param contrast: contrast of the image
+    '''
+    subject_index = np.where((np.array(txt_lines)[:,0] == subject_name) & (np.array(txt_lines)[:,1] == contrast))  
+    start_index = subject_index[0][0]  # Getting the first line in the txt file
+    last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
+    min_ref_disc = int(txt_lines[start_index][2])  # Getting the first refferenced disc num
+    max_ref_disc = int(txt_lines[last_index][2])  # Getting the last refferenced disc num
+    txt_lines[0][-1] = txt_lines[0][-1].replace('\n','')
+    method_idx = txt_lines[0].index(method_name)
+    if method_idx == len(txt_lines[0])-1:
+        end_of_line = '\n'
+    else:
+        end_of_line = ''
+        
+    for i, disc_num in enumerate(range(min_ref_disc, max_ref_disc+1)):
+        if disc_num in coords[:,-1]:
+            idx = np.where(coords[:,-1] == disc_num)[0][0]
+            txt_lines[start_index + i][method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
+        else:
+            txt_lines[start_index + i][method_idx] = 'None' + end_of_line
+    
+    if max_ref_disc < np.max(coords[:,-1]):
+        print(f'More discs found by {method_name}')
+        for disc_num in coords[:,-1]:
+            if disc_num > max_ref_disc:
+                print(f'Disc number {disc_num} was added')
+                new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
+                disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
+                if disc_shift != 1:
+                    print(f'Adding intermediate {disc_shift-1} discs to txt file')
+                    for shift in range(disc_shift-1):
+                        last_index += 1
+                        intermediate_line = new_line[:]
+                        max_ref_disc += 1
+                        intermediate_line[2] = str(max_ref_disc)
+                        txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
+                new_line[method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
+                last_index += 1
+                txt_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
+                max_ref_disc = disc_num
+    return txt_lines
