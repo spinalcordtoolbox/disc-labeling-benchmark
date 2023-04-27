@@ -219,8 +219,7 @@ def train(train_loader, model, criterion, optimizer, ep, idx):
     bar = Bar('Train', max=len(train_loader))
     
     # init subjects_loss to store individual loss for each subject in the training
-    subjects_loss = [[], []] # subjects_loss[0] --> subjects | subjects_loss[1] --> subject los
-    subjects_loss_dict = {} # subjects_loss[0] --> subjects | subjects_loss[1] --> subject los
+    subjects_loss_dict = {} # subjects_loss_dict = {subject : subject_loss}
     for i, (inputs, targets, vis, subjects) in enumerate(train_loader):
         subjects = list(subjects)
         # measure data loading time
@@ -240,8 +239,7 @@ def train(train_loader, model, criterion, optimizer, ep, idx):
         
         # Extract individual loss for each subject    
         sub_loss = loss_per_subject(pred=output, target=targets, vis=vis, criterion=criterion)
-        #subjects_loss[0].extend(subjects) # add subjects name
-        #subjects_loss[1].extend(sub_loss) # add individual loss
+        
         if type(subjects) == list:
             for i, subject in enumerate(subjects):
                 subjects_loss_dict[subject] = sub_loss[i] # add subjects name and individual loss to dict
