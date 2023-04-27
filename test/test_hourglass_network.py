@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
 from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import CONTRAST, extract_skeleton, best_disc_association, swap_y_origin, coord2list, project_on_spinal_cord 
+from dlh.utils.test_utils import CONTRAST, extract_skeleton, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
@@ -71,81 +71,35 @@ def test_hourglass(args):
         original_img = np.rot90(full[0][i])  # rotate original input image to normal position 
         subject_name = subject_name[0]
         
-        prediction = extract_skeleton(input, output, target, norm_mean_skeleton, ndiscs, Flag_save = True)
-        prediction = np.sum(prediction[0], axis = 0)
-        prediction = cv2.resize(prediction, (original_img.shape[0], original_img.shape[1]), interpolation=cv2.INTER_NEAREST)
-        num_labels, labels_im, states, centers = cv2.connectedComponentsWithStats(np.uint8(np.where(prediction>0, 255, 0)))
+        prediction, pred_discs_coords = extract_skeleton(input, output, target, norm_mean_skeleton, ndiscs, Flag_save = True)
         
-        
+        # Convert pred_discs_coords to original image size
+        pred_shape = prediction[0,0].shape 
+        original_shape = original_img.shape 
+        pred = np.array([[(round(coord[1])/pred_shape[1])*original_shape[1], (round(coord[0])/pred_shape[0])*original_shape[0], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
+       
         # Extract prediction and ground truth
-        pred = centers[1:] #0 for background
         pred = swap_y_origin(coords=pred, img_shape=original_img.shape)  # Move y origin to the bottom of the image like Niftii convention
         gt_coord = np.array(torch.tensor(gt_coord).tolist())
         
         # Project coordinate onto the spinal cord centerline 
         seg_path = os.path.join(origin_data, subject_name, f'{subject_name}_{contrast}_seg.nii.gz' )
-        pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=False, proj_2d=True)
+        pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
         gt_coord = project_on_spinal_cord(coords=gt_coord, seg_path=seg_path, disc_num=True, proj_2d=False)
         
         # Rearrange coordinates
-        pred = coord2list(pred[~pred[:, 1].argsort()])  # Sorting predictions according to first coordinate and swap to coords convention [x, y] --> [lines(y), columns(x)]
-        gt_coord = np.transpose(np.array([gt_coord[:,2],gt_coord[:,1],gt_coord[:,-1]])) # Using same format as prediction + discs label
-
-        # Get best association between pred and gt
-        # TODO - Extract discs numbers from prediction to avoid this step
-        pred, gt = best_disc_association(pred=pred, gt=gt_coord)
+        pred[:, :2] = coord2list(pred[~pred[:, 1].argsort(), :2])  # Sorting predictions according to first coordinate and swap to coords convention [x, y] --> [lines(y), columns(x)]
+        pred = pred.astype(int)
+        gt_coord = np.transpose(np.array([gt_coord[:,2].astype(int),gt_coord[:,1].astype(int),gt_coord[:,-1].astype(int)])) # Using same format as prediction + discs label and convert to integer
         
-        # Write coordinates in txt file
-        # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord spinenet_coord
-        subject_index = np.where((np.array(split_lines)[:,0] == subject_name) & (np.array(split_lines)[:,1] == contrast))  
-        start_index = subject_index[0][0]  # Getting the first line in the txt file
-        last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
-        max_ref_disc = int(split_lines[last_index][2])  # Getting the last refferenced disc num
-        for i in range(len(pred)):
-            pred_coord = pred[i] if pred[i]!=0 else 'None'
-            gt_coord = gt[i] if gt[i]!=0 else 'None'
-            disc_num = i + 1
-            if disc_num > max_ref_disc:
-                print('More discs found')
-                print('Disc number', disc_num)
-                new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
-                disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
-                if disc_shift != 1:
-                    print(f'Adding intermediate {disc_shift-1} discs to txt file')
-                    for shift in range(disc_shift-1):
-                        last_index += 1
-                        intermediate_line = new_line[:]
-                        max_ref_disc += 1
-                        intermediate_line[2] = str(max_ref_disc)
-                        split_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
-                if pred_coord != 'None':
-                    new_line[5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']'
-                elif gt_coord == 'None':
-                    new_line[5] = 'None'
-                else:
-                    new_line[5] = 'Fail'
-                if gt_coord != 'None':
-                    new_line[3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']'
-                else:
-                    new_line[3] = 'None'
-                last_index += 1
-                split_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
-                max_ref_disc = disc_num
-            else:
-                if pred_coord != 'None':
-                    split_lines[start_index + i][5] = '[' + str(pred_coord[0]) + ',' + str(pred_coord[1]) + ']'
-                elif gt_coord == 'None':
-                    split_lines[start_index + i][5] = 'None'
-                else:
-                    split_lines[start_index + i][5] = 'Fail'
-                if gt_coord != 'None':
-                    split_lines[start_index + i][3] = '[' + str(gt_coord[0]) + ',' + str(gt_coord[1]) + ']'
-                else:
-                    split_lines[start_index + i][3] = 'None'
+        # Edit coordinates in txt file
+        # line = subject_name contrast disc_num gt_coords sct_label_vertebrae_coords hourglass_coords spinenet_coords
+        split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=subject_name, contrast=contrast, method_name='gt_coords')
+        split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast, method_name='hourglass_coords')
                 
     for num in range(len(split_lines)):
         split_lines[num] = ' '.join(split_lines[num])
         
     with open(txt_file,"w") as f:
         f.writelines(split_lines)
-        
+

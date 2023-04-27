@@ -71,6 +71,7 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
     target  = target.data.cpu().numpy()
     inputs = inputs.data.cpu().numpy()
     skeleton_images = []  # This variable stores an image to visualize discs 
+    out_list = []
     for idx in range(outputs.shape[0]):    
         count_list = []
         Nch = 0
@@ -107,10 +108,11 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
             if best_loss > loss:
                 best_loss = loss
                 best_skeleton = cnd_skeleton
+        discs_idx = list(center_list.keys())
         Final2  = np.uint8(np.where(Final>0, 1, 0))  # Extract only non-zero values in the Final variable
         cordimg = np.zeros(Final2.shape)
         hits = np.zeros_like(outputs[0])
-        for i, jp, in enumerate(best_skeleton):
+        for i, jp, in enumerate(best_skeleton): # Create an image with best skeleton
             jp = [int(t) for t in jp]
             hits[i, jp[0]-1:jp[0]+2, jp[1]-1:jp[1]+2] = [255, 255, 255]
             hits[i, :, :] = cv2.GaussianBlur(hits[i, :, :],(5,5),cv2.BORDER_DEFAULT)
@@ -124,10 +126,14 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
                    labels_im = labels_im == id_r
                    continue
             Final2[idx, id_] = labels_im
-        Final = Final * Final2           
-                
+        Final = Final * Final2
+        
+        out_dict = {}
+        for i, disc_idx in enumerate(discs_idx):
+            out_dict[str(int(disc_idx)+1)] = best_skeleton[i]          
         
         skeleton_images.append(hits)
+        out_list.append(out_dict)
         
     skeleton_images = np.array(skeleton_images)
     inputs = np.rot90(inputs, axes=(-2, -1))  # Rotate input to normal position
@@ -135,7 +141,7 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
     if Flag_save:
       save_test_results(inputs, skeleton_images, targets=target, name=idtest, target_th=0.5)
     idtest+=1
-    return Final
+    return Final, out_list
 
 ##
 def check_skeleton(cnd_sk, mean_skeleton):
