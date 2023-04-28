@@ -122,31 +122,31 @@ def extract_groundtruth_heatmap(DataSet):
     tmp_train_img = np.expand_dims(train_ds_img, axis=-1)
     return [tmp_train_img, tmp_train_labels]
 
-def extract_groundtruth_heatmap_with_subjects_and_GT_coords(DataSet):
+def extract_groundtruth_heatmap_with_subjects_and_GT_coords(dataset):
     """
     Loop across images to create the dataset of groundtruth and images to input for training
-    :param DataSet: An array containing [images, GT corrdinates]
+    :param dataset: An array containing [images, GT corrdinates]
     :return: an array containing [image, heatmap]
     """
-    [train_ds_img, train_ds_label, subjects_list] = DataSet
+    [ds_img, ds_label, subjects_list] = dataset
 
-    tmp_train_labels = [0 for i in range(len(train_ds_label))]
-    tmp_train_img = [0 for i in range(len(train_ds_label))]
-    train_ds_img = np.array(train_ds_img)
+    tmp_labels = [0]*len(ds_label)
+    tmp_img = [0]*len(ds_label)
+    ds_img = np.array(ds_img)
 
-    for i in range(len(train_ds_label)):
-        final = extract_all(train_ds_label[i], shape_im=train_ds_img[0].shape)
-        tmp_train_labels[i] = normalize(final[0, :, :])
+    for i in range(len(ds_label)):
+        final = extract_all(ds_label[i], shape_im=ds_img[0].shape)
+        tmp_labels[i] = normalize(final[0, :, :])
 
-    tmp_train_labels = np.array(tmp_train_labels)
+    tmp_labels = np.array(tmp_labels)
 
-    for i in range(len(train_ds_img)):
-        print(train_ds_img[i].shape)
-        tmp_train_img[i] = (normalize(train_ds_img[i][:, :, 0]))
+    for i in range(len(ds_img)):
+        print(ds_img[i].shape)
+        tmp_img[i] = (normalize(ds_img[i][:, :, 0]))
 
-    tmp_train_labels = np.expand_dims(tmp_train_labels, axis=-1)
-    tmp_train_img = np.expand_dims(train_ds_img, axis=-1)
-    return [tmp_train_img, tmp_train_labels, train_ds_label, subjects_list]
+    tmp_labels = np.expand_dims(tmp_labels, axis=-1)
+    tmp_img = np.expand_dims(ds_img, axis=-1)
+    return [tmp_img, tmp_labels, ds_label, subjects_list]
 
 class image_Dataset(Dataset):
     def __init__(self, image_paths, target_paths, num_channel, gt_coords = None, subject_names = None, use_flip = True):  # initial logic happens like transform
