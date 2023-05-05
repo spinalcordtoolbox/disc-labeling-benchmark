@@ -10,20 +10,20 @@ import pickle
 import argparse
 import os
 
-from dlh.utils.data2array import load_Data_Bids2Array, load_Data_Bids2Array_with_subjects
-from dlh.utils.train_utils import extract_groundtruth_heatmap, extract_groundtruth_heatmap_with_subjects_and_GT_coords
-
+from dlh.utils.data2array import load_Data_Bids2Array_with_subjects
+from dlh.utils.train_utils import extract_groundtruth_heatmap_with_subjects_and_GT_coords
+from dlh.utils.test_utils import CONTRAST
 
 def main(args):
     '''
     Prepare and split hourglass data into a trainset and a testset
     '''  
-    contrast = args.contrast
+    contrast = CONTRAST[args.contrast]
     split_factor = args.split_factor
                    
     print('Loading dataset: ', os.path.abspath(args.datapath))
-    ds_train = load_Data_Bids2Array_with_subjects(args.datapath, mode= contrast, factor=split_factor, split='train', aim='full')
-    ds_test = load_Data_Bids2Array_with_subjects(args.datapath, mode= contrast, factor=split_factor, split='test', aim='full')  # we want to keep track of the subjects name
+    ds_train = load_Data_Bids2Array_with_subjects(args.datapath, mode=contrast, factor=split_factor, split='train', aim='full')
+    ds_test = load_Data_Bids2Array_with_subjects(args.datapath, mode=contrast, factor=split_factor, split='test', aim='full')  # we want to keep track of the subjects name
     
     print('Creating heatmap')
     full_train = extract_groundtruth_heatmap_with_subjects_and_GT_coords(ds_train)
