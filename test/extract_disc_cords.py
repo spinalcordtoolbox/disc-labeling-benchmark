@@ -7,15 +7,15 @@ from test_spinenet_network import test_spinenet
 from dlh.utils.test_utils import CONTRAST
 
 def init_txt_file(args):
-    datapath = os.path.abspath(args.sct_datapath)
-    contrast = CONTRAST[args.contrast]
+    datapath = os.path.abspath(args.datapath)
+    contrast = CONTRAST[args.contrast][0]
     nb_discs_init = 11
     txt_file = args.out_txt_file
         
     if not os.path.exists(txt_file):
         print("Creating txt file:", txt_file)
         with open(txt_file,"w") as f:
-            f.write("subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords spinenet_coord\n")
+            f.write("subject_name contrast num_disc gt_coords sct_discs_coords hourglass_coords spinenet_coords\n")
         
         # Initialize txt_file with subject_names and nb_discs_init
         print(f"Initializing txt file with subjects and {nb_discs_init} discs")
@@ -26,25 +26,25 @@ def init_txt_file(args):
             with open(txt_file,"a") as f:
                 f.writelines(subject_lines)        
     
-    
-    
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Extract discs coords from sct and hourglass')
 
     ## Parameters
-    parser.add_argument('--hg-datapath', type=str,
-                        help='Hourglass dataset path')                               
-    parser.add_argument('--sct-datapath', type=str,
-                        help='SCT dataset path')                               
+    # All                          
+    parser.add_argument('--datapath', type=str,
+                        help='dataset path')                               
     parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
                         help='MRI contrast')
     parser.add_argument('--ndiscs', type=int, required=True,
                         help='Number of discs to detect')
-    parser.add_argument('-txt', '--out-txt-file', default=os.path.join('test/files', f'{CONTRAST[parser.parse_args().contrast]}_hg{parser.parse_args().ndiscs}_discs_coords.txt'),
+    parser.add_argument('-txt', '--out-txt-file', default=os.path.abspath(os.path.join('test/files', f'{os.path.basename(parser.parse_args().datapath)}_hg{parser.parse_args().ndiscs}_discs_coords.txt')),
                         type=str, metavar='N',help='Generated txt file')
     
-    
+    parser.add_argument('--skeleton-dir', default=os.path.join(parser.parse_args().datapath, 'skeletons'),
+                        type=str, metavar='N',help='Generated txt file')
+    parser.add_argument('--train-contrasts', default=parser.parse_args().contrast, type=str, metavar='N',
+                        help='MRI contrast used for the training default=contrast parameter, multiple contrasts are allowed')
     parser.add_argument('--att', default= True, type=bool,
                         help=' Use attention mechanism') 
     parser.add_argument('-s', '--stacks', default=2, type=int, metavar='N',
