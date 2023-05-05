@@ -9,23 +9,41 @@ from torch.utils.data import DataLoader
 import cv2
 
 from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import CONTRAST
+from dlh.utils.test_utils import CONTRAST, load_niftii_split
 
 def create_skeleton(args):
     '''
     Create Skelet file to improve disc estimation of the hourglass network
     '''
     ## Load the training dataset
-    trainset_path = args.datapath
-    contrast = CONTRAST[args.contrast]
-    ndiscs = args.ndiscs
-    with open(trainset_path, 'rb') as file_pi:
-        full = pickle.load(file_pi)
-    full[0] = full[0][:, :, :, :, 0]    
+    datapath = args.datapath
+    contrasts = CONTRAST[args.contrasts]
+    ndiscs = args.ndiscs 
+    out_dir = os.path.join(datapath,'skeletons')
+
+    
+    # Loading images for training
+    print('loading images...')
+    imgs_train, masks_train, discs_labels_train, subjects_train, _ = load_niftii_split(datapath=datapath, 
+                                                                                   contrasts=contrasts, 
+                                                                                   split='train', 
+                                                                                   split_ratio=args.split_ratio)
 
     ## Create a dataset loader
-    full_dataset_train = image_Dataset(image_paths=full[0], target_paths=full[1], num_channel=ndiscs, use_flip = False)
-    MRI_train_loader = DataLoader(full_dataset_train, batch_size= 1, shuffle=False, num_workers=0)
+    full_dataset_train = image_Dataset(images=imgs_train, 
+                                       targets=masks_train,
+                                       discs_labels_list=discs_labels_train,
+                                       subjects_names=subjects_train,
+                                       num_channel=args.ndiscs,
+                                       use_flip = True,
+                                       load_mode='val'
+                                       )
+    
+    MRI_train_loader = DataLoader(full_dataset_train,
+                                  batch_size= 1, 
+                                  shuffle=False, 
+                                  num_workers=0
+                                  )
 
     All_skeletons = np.zeros((len(MRI_train_loader), ndiscs, 2))
     Joint_counter = np.zeros((ndiscs, 1))
@@ -35,7 +53,7 @@ def create_skeleton(args):
         for idc in range(target.shape[1]):
             mask += target[0, idc]
         mask = np.uint8(np.where(mask>0, 1, 0))
-        mask = np.rot90(mask)
+        #mask = np.rot90(mask)
         num_labels, labels_im, states, centers = cv2.connectedComponentsWithStats(mask)
         centers = [t[::-1] for t in centers]
         skelet = np.zeros((ndiscs, 2))
@@ -53,7 +71,10 @@ def create_skeleton(args):
     Joint_counter[Joint_counter==0]=1  # To avoid dividing by zero
     Skelet /= Joint_counter
 
-    np.save(os.path.join(os.path.dirname(trainset_path), f'{contrast}_Skelet_ndiscs_{ndiscs}.npy'), Skelet)
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+        
+    np.save(os.path.join(out_dir, f'{args.contrasts}_Skelet_ndiscs_{ndiscs}.npy'), Skelet)
     
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Training hourglass network')
