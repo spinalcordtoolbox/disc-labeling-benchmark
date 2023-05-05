@@ -16,7 +16,6 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import numpy as np
 from progress.bar import Bar
-import pickle
 from torch.utils.data import DataLoader 
 import copy
 import wandb
@@ -26,6 +25,7 @@ from dlh.models.atthourglass import atthg
 from dlh.models import JointsMSELoss
 from dlh.models.utils import AverageMeter, adjust_learning_rate, accuracy, dice_loss
 from dlh.utils.train_utils import image_Dataset, SaveOutput, save_epoch_res_as_image2, save_attention, loss_per_subject
+from dlh.utils.test_utils import CONTRAST, load_niftii_split
 from dlh.utils.skeleton import create_skeleton
 
 # select proper device to run
@@ -40,27 +40,39 @@ def main(args):
     best_acc = 0
     weight_folder = args.weight_folder
     vis_folder = args.visual_folder
+    contrasts = CONTRAST[args.contrasts]
+    datapath = args.datapath
     
-    ## Load the prepared dataset
-    with open(args.datapath, 'rb') as file_pi:
-        full = pickle.load(file_pi)
+    # Loading images for training and validation
+    print('loading images...')
+    imgs_train, masks_train, discs_labels_train, subjects_train, _ = load_niftii_split(datapath=datapath, 
+                                                                                   contrasts=contrasts, 
+                                                                                   split='train', 
+                                                                                   split_ratio=args.split_ratio)
     
-    # Split training dataset into training and validation
-    train_idx = int(np.round(len(full[0]) *0.9))
-    validation_idx = int(np.round(len(full[0])))
-    full[0] = full[0][:, :, :, :, 0]
+    imgs_val, masks_val, discs_labels_val, subjects_val, _ = load_niftii_split(datapath=datapath, 
+                                                                            contrasts=contrasts, 
+                                                                            split='val', 
+                                                                            split_ratio=args.split_ratio)
     
     ## Create a dataset loader
-    full_dataset_train = image_Dataset(image_paths=full[0][:train_idx], 
-                                       target_paths=full[1][:train_idx], 
+    full_dataset_train = image_Dataset(images=imgs_train, 
+                                       targets=masks_train,
+                                       discs_labels_list=discs_labels_train,
+                                       subjects_names=subjects_train,
                                        num_channel=args.ndiscs,
-                                       subject_names=full[3][:train_idx]
+                                       use_flip = True,
+                                       load_mode='train'
                                        )
-    full_dataset_val = image_Dataset(image_paths=full[0][train_idx:validation_idx], 
-                                     target_paths=full[1][train_idx:validation_idx],
-                                     num_channel=args.ndiscs,
-                                     use_flip = False
-                                     )
+
+    full_dataset_val = image_Dataset(images=imgs_val, 
+                                    targets=masks_val,
+                                    discs_labels_list=discs_labels_val,
+                                    subjects_names=subjects_val,
+                                    num_channel=args.ndiscs,
+                                    use_flip = False,
+                                    load_mode='val'
+                                    )
 
     MRI_train_loader = DataLoader(full_dataset_train, 
                                 batch_size=args.train_batch,
@@ -107,18 +119,18 @@ def main(args):
     if args.resume:
        print("=> loading checkpoint to continue learing process")
        if args.att:
-            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrasts}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
        else:
-            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrasts}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
     # evaluation only
     if args.evaluate:
         print('\nEvaluation only')
         print('loading the pretrained weight')
         if args.att:
-            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrasts}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
         else:
-            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(f'{weight_folder}/model_{args.contrasts}_stacks_{args.stacks}_ndiscs_{args.ndiscs}', map_location='cpu')['model_weights'])
 
         if args.attshow:
             loss, acc = show_attention(MRI_val_loader, model)
@@ -169,9 +181,9 @@ def main(args):
         if valid_acc > best_acc:
            state = copy.deepcopy({'model_weights': model.state_dict()})
            if args.att:
-                torch.save(state, f'{weight_folder}/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
+                torch.save(state, f'{weight_folder}/model_{args.contrasts}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            else:
-                torch.save(state, f'{weight_folder}/model_{args.contrast}_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
+                torch.save(state, f'{weight_folder}/model_{args.contrasts}_stacks_{args.stacks}_ndiscs_{args.ndiscs}')
            best_acc = valid_acc
            best_acc_epoch = epoch + 1
     
@@ -179,7 +191,7 @@ def main(args):
     wandb.log({"best_accuracy": best_acc, "best_accuracy_epoch": best_acc_epoch})
     
     # 🐝 version your model
-    best_model_path = f'{weight_folder}/model_{args.contrast}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}'
+    best_model_path = f'{weight_folder}/model_{args.contrasts}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}'
     model_artifact = wandb.Artifact("hourglass", 
                                     type="model",
                                     description="Hourglass network for intervertebral discs labeling",
@@ -265,7 +277,7 @@ def train(train_loader, model, criterion, optimizer, ep, idx):
 
         # plot progress
         bar.suffix  = '({batch}/{size}) Data: {data:.6f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | Acc: {acc: .4f}'.format(
-                    batch=i + 1,
+                    batch=(i+1),
                     size=len(train_loader),
                     data=data_time.val,
                     bt=batch_time.val,
@@ -275,7 +287,7 @@ def train(train_loader, model, criterion, optimizer, ep, idx):
                     acc=acces.avg
                     )
         bar.next()
-    
+    bar.finish()
     # 🐝 log bar plot with individual loss in wandb
     wandb.log(subjects_loss_dict)
     return losses.avg, acces.avg
@@ -347,7 +359,7 @@ def validate(val_loader, model, criterion, ep, idx, out_folder):
 
             # plot progress
             bar.suffix  = '({batch}/{size}) Data: {data:.6f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | Acc: {acc: .4f}| dice: {dice:.4f}'.format(
-                        batch=i + 1,
+                        batch=(i+1),
                         size=len(val_loader),
                         data=data_time.val,
                         bt=batch_time.avg,
@@ -394,12 +406,14 @@ if __name__ == '__main__':
     
     ## Parameters
     parser.add_argument('--datapath', type=str, required=True,
-                        help='Path to trainset')
-    parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
-                        help='MRI contrast')               
+                        help='Path to data folder')
+    parser.add_argument('-c', '--contrasts', type=str, metavar='N', required=True,
+                        help='MRI contrasts')               
     parser.add_argument('--ndiscs', type=int, required=True,
                         help='Number of discs to detect')
     
+    parser.add_argument('--split-ratio', default=(0.8, 0.1, 0.1),
+                        help='Split ratio used for (train, val, test)')
     parser.add_argument('--resume', default= False, type=bool,
                         help='Resume the training from the last checkpoint')  
     parser.add_argument('--attshow', default= False, type=bool,
@@ -450,6 +464,6 @@ if __name__ == '__main__':
     if not os.path.exists(parser.parse_args().visual_folder):
         os.mkdir(parser.parse_args().visual_folder)
         
-    main(parser.parse_args())  # Train the hourglass network
+    #main(parser.parse_args())  # Train the hourglass network
     create_skeleton(parser.parse_args())  # Create skeleton file to improve hourglass accuracy during testing
     

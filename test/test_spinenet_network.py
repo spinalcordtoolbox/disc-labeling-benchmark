@@ -6,7 +6,7 @@ import numpy as np
 from spinalcordtoolbox.image import Image, get_dimension
 from spinenet import SpineNet
 
-from dlh.utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord 
+from dlh.utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file 
 
 #---------------------------Test spinenet--------------------------
 def test_spinenet(args, test_mode=False):
@@ -15,8 +15,8 @@ def test_spinenet(args, test_mode=False):
     to a txt file
     '''
     
-    datapath = os.path.abspath(args.sct_datapath)
-    contrast = CONTRAST[args.contrast]
+    datapath = os.path.abspath(args.datapath)
+    contrast = CONTRAST[args.contrast][0]
     txt_file = args.out_txt_file
     
     # load in spinenet
@@ -76,50 +76,27 @@ def test_spinenet(args, test_mode=False):
                         discs_coords[bottom_disc] = poly_mean[-2,:] # Extract the coordinates of the bottom left corner which is the closest to the bottom disc (due to RPI orientation)
                 
                 # Convert discs num and coords to numpy array
-                discs_num, coords = np.array(list(discs_coords.keys())), np.array(list(discs_coords.values()))
+                discs_num, coords = np.transpose([np.array(list(discs_coords.keys()))]), np.array(list(discs_coords.values()))
                 
-                # Move y origin to the bottom of the image like Niftii convention
-                coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape)
+                # Swap to coords convention [x, y] <--> [lines(y), columns(x)]
+                coords = coord2list(coords=coords)
+                
+                # Concatenate discs num and coords
+                coords = np.concatenate((coords, discs_num), axis=1)
                 
                 # Project on spinalcord for 2D comparison
                 seg_path = os.path.join(datapath, subject_name, f'{subject_name}_{contrast}_seg.nii.gz' )
-                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=False, proj_2d=True)
+                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
                 
-                # Swap to coords convention [x, y] --> [lines(y), columns(x)]
-                coords = coord2list(coords=coords)
-                
+                # Move y origin to the bottom of the image like Niftii convention
+                coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
+            else:
+                coords = 'Fail'
+
             if not test_mode: 
                 # Write coordinates in txt file
-                # Edit txt_file --> line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord spinenet_coord
-                subject_index = np.where((np.array(split_lines)[:,0] == subject_name) & (np.array(split_lines)[:,1] == contrast))  
-                start_index = subject_index[0][0]  # Getting the first line for the subject in the txt file
-                last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
-                max_ref_disc = int(split_lines[last_index][2])  # Getting the last refferenced disc num
-                if vert_dicts_niftii != 'Fail': # Handle fail detection of spinenet
-                    for disc_num, coord in zip(discs_num, coords):
-                        coord_2D = '[' + str(coord[0]) + ',' + str(coord[1]) + ']\n'
-                        if disc_num > max_ref_disc:
-                            print('More discs found')
-                            print('Disc number', disc_num)
-                            new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
-                            disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
-                            if disc_shift != 1:
-                                print(f'Adding intermediate {disc_shift-1} discs to txt file')
-                                for shift in range(disc_shift-1):
-                                    last_index += 1
-                                    intermediate_line = new_line[:]
-                                    max_ref_disc += 1
-                                    intermediate_line[2] = str(max_ref_disc)
-                                    split_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
-                            new_line[6] = coord_2D
-                            last_index += 1
-                            split_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
-                            max_ref_disc = disc_num
-                        else:
-                            split_lines[start_index + (disc_num-1)][6] = coord_2D
-                else:
-                    for i in range(last_index - start_index):
-                        split_lines[start_index + i][6] = 'Fail\n'
+                # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
+                split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=subject_name, contrast=contrast, method_name='spinenet_coords')
 
     if not test_mode:
         for num in range(len(split_lines)):
@@ -132,7 +109,7 @@ def test_spinenet(args, test_mode=False):
 
 if __name__ == '__main__':
     
-    parser = argparse.ArgumentParser(description='Extract discs coords from sct and hourglass')
+    parser = argparse.ArgumentParser(description='Run test on spinenet')
 
     parser.add_argument('--sct-datapath', default="/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/data/preprocessed_data/vertebral_data", type=str,
                         help='SCT dataset path')                               
