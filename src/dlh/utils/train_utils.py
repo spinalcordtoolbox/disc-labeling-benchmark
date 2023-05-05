@@ -15,6 +15,7 @@ from torch.utils.data import Dataset
 from torchvision.utils import make_grid
 
 from dlh.utils.transform_spe import RandomHorizontalFlip, ToTensor 
+from dlh.utils.data2array import mask2label, get_midNifti
 
 # normalize Image
 def normalize(arr):
@@ -79,7 +80,7 @@ def label2MaskMap_GT(data, shape, c_dx=0, c_dy=0, radius=5, normalize=False):
     return np.asarray(maskMap)
 
 
-def extract_all(list_coord_label, shape_im=(1, 150, 200)):
+def extract_all(list_coord_label, shape_im):
     """
     Create groundtruth by creating gaussian Function for every ground truth points for a single image
     :param list_coord_label: list of ground truth coordinates
@@ -87,13 +88,11 @@ def extract_all(list_coord_label, shape_im=(1, 150, 200)):
     :return: a 2d heatmap image.
     """
     shape_tmp = (1, shape_im[0], shape_im[1])
-    final = np.zeros(shape_tmp)
+    final = np.zeros(shape_tmp[1:])
     for x in list_coord_label:
         train_lbs_tmp_mask = label2MaskMap_GT(x, shape_tmp)
-        for w in range(shape_im[0]):
-            for h in range(shape_im[1]):
-                final[0, w, h] = max(final[0, w, h], train_lbs_tmp_mask[w, h])
-    return (final)
+        np.maximum(final, train_lbs_tmp_mask, out=final)
+    return np.expand_dims(final, axis=0)
 
 
 def extract_groundtruth_heatmap(DataSet):
@@ -141,34 +140,30 @@ def extract_groundtruth_heatmap_with_subjects_and_GT_coords(dataset):
     tmp_labels = np.array(tmp_labels)
 
     for i in range(len(ds_img)):
-        print(ds_img[i].shape)
-        tmp_img[i] = (normalize(ds_img[i][:, :, 0]))
+        tmp_img[i] = normalize(ds_img[i][:, :])
 
     tmp_labels = np.expand_dims(tmp_labels, axis=-1)
     tmp_img = np.expand_dims(ds_img, axis=-1)
     return [tmp_img, tmp_labels, ds_label, subjects_list]
 
 class image_Dataset(Dataset):
-    def __init__(self, image_paths, target_paths, num_channel, gt_coords = None, subject_names = None, use_flip = True):  # initial logic happens like transform
-
-        self.image_paths = image_paths
-        self.target_paths = target_paths
+    def __init__(self, images, targets, discs_labels_list, subjects_names, num_channel, use_flip = True, load_mode='test'):  # initial logic happens like transform
+        
+        self.images = images
+        self.targets = targets
+        self.discs_labels_list = discs_labels_list
+        self.subjects_names = subjects_names
         self.num_channel = num_channel
-        self.gt_coords = gt_coords
-        self.subject_names = subject_names
         self.num_vis_joints = []
         self.use_flip = use_flip
+        self.load_mode = load_mode
 
-    @staticmethod
-    def rotate_img(img):
-        img = np.rot90(img)
-        img = np.flip(img, axis=1)
-        return img
-
+    def __len__(self):  # return count of sample we have
+        return len(self.images)
     
     def get_posedata(self, img, msk, num_ch=11):
         msk = msk[:, :, 0]
-        msk = self.rotate_img(msk)
+        #msk = rotate_img(msk)
 
         ys = msk.shape
         ys_ch = np.zeros([ys[0], ys[1], num_ch])
@@ -184,28 +179,17 @@ class image_Dataset(Dataset):
         except:
             print(num_labels)
             
-        ys_ch = np.rot90(ys_ch)
-        ys_ch = np.flip(ys_ch, axis=1)
+        #ys_ch = np.rot90(ys_ch)
+        #ys_ch = np.flip(ys_ch, axis=1)
         vis = np.zeros((num_ch, 1))
         vis[:num_labels-1] = 1
         return img, ys_ch, vis
-
-    @staticmethod
-    def bluring2D(data, kernel_halfsize=3, sigma=1.0):
-        x = np.arange(-kernel_halfsize,kernel_halfsize+1,1)
-        y = np.arange(-kernel_halfsize,kernel_halfsize+1,1)
-        xx, yy = np.meshgrid(x,y)
-        kernel = np.exp(-(xx**2 + yy**2)/(2*sigma**2))
-        filtered = signal.convolve(data, kernel, mode="same")
-        return filtered
-
 
     def transform(self, image, mask):
         image = normalize(image[:, :, 0])
         image = np.expand_dims(image, -1)
 
         ## extract joints for pose model
-        
         # Random horizontal flipping
         if self.use_flip:
             image, mask = RandomHorizontalFlip()(image, mask)
@@ -223,34 +207,40 @@ class image_Dataset(Dataset):
         image, mask = ToTensor()(image, mask)
         
         return image, mask
-
+    
     def __getitem__(self, index):
-        mask = self.target_paths[index]
         
-        mask = cv2.resize(mask, (256, 256))
-        mask = mask.astype(np.float32)
-        mask = np.expand_dims(mask, axis= -1)
-
-        image = self.image_paths[index]
-        image = cv2.resize(image, (256, 256))
-        image = image.astype(np.float32)
-        image = np.expand_dims(image, axis= -1)
+        image = self.images[index]
+        mask = self.targets[index]
+        discs_labels = self.discs_labels_list[index]
+        subject = self.subjects_names[index]
+                
+        mask, image = np.expand_dims(mask, axis= -1), np.expand_dims(image, axis= -1)
         
         image, mask, vis  = self.get_posedata(image, mask, num_ch=self.num_channel)
         t_image, t_mask = self.transform(image, mask)
         
         vis = torch.FloatTensor(vis)
-        out = (t_image, t_mask, vis)
-        if self.gt_coords != None:
-            out += (torch.Tensor(self.gt_coords[index]),)
-        if self.subject_names != None:
-            out += (self.subject_names[index],)
-        return out
+        if self.load_mode == 'train':
+            return (t_image, t_mask, vis, subject)
+        if self.load_mode == 'val':
+            return (t_image, t_mask, vis)
+        if self.load_mode == 'test':
+            return (t_image, t_mask, vis, discs_labels, subject)
 
-    def __len__(self):  # return count of sample we have
-        
-        return len(self.image_paths)
 
+def bluring2D(data, kernel_halfsize=3, sigma=1.0):
+    x = np.arange(-kernel_halfsize,kernel_halfsize+1,1)
+    y = np.arange(-kernel_halfsize,kernel_halfsize+1,1)
+    xx, yy = np.meshgrid(x,y)
+    kernel = np.exp(-(xx**2 + yy**2)/(2*sigma**2))
+    filtered = signal.convolve(data, kernel, mode="same")
+    return filtered
+
+def rotate_img(img):
+    img = np.rot90(img)
+    img = np.flip(img, axis=1)
+    return img
 
 
 class HeatmapLoss(torch.nn.Module):
@@ -283,11 +273,11 @@ def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, ta
             y_colored = np.zeros([y.shape[1], y.shape[2], 3], dtype=np.uint8)
             y_all = np.zeros([y.shape[1], y.shape[2]], dtype=np.uint8)
             for ych, hue_i in zip(y, hues):
-                ych = ych/np.max(np.max(ych))
+                ych = ych/(np.max(np.max(ych))+0.00001)
                 ych[np.where(ych<target_th)] = 0
 
                 ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
-                ych = np.uint8(255*ych/np.max(ych))
+                ych = np.uint8(255*ych/(np.max(ych)+0.00001))
                 
                 colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
                 colored_ych[:, :, 0] = ych_hue
@@ -304,9 +294,7 @@ def save_epoch_res_as_image2(inputs, outputs, targets, out_folder, epoch_num, ta
             x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
             for i in range(3):
                 x_3ch[:, :, i] = x[:, :, 0]
-            
-            x_3ch, y_colored = np.rot90(x_3ch), np.rot90(y_colored)
-            
+                        
             img_mix = np.uint8(x_3ch*0.5 + y_colored*0.5)
             clr_vis_Y.append(img_mix)
             
@@ -444,3 +432,23 @@ def loss_per_subject(pred, target, vis, criterion):
         for idx in range(pred.shape[0]):
             losses.append(criterion(torch.unsqueeze(pred[idx], 0), torch.unsqueeze(target[idx], 0), torch.unsqueeze(vis[idx], 0)).item())
     return losses
+
+def apply_preprocessing(img_path, target_path):
+    '''
+    Load and apply preprocessing steps on input data
+    :param img_path: Path to Niftii image
+    :param target_path: Path to Niftii target mask
+    '''
+    image = get_midNifti(img_path)
+    discs_labels = mask2label(target_path)
+    mask = extract_all(discs_labels, shape_im=image.shape)
+    
+    image = (image - np.mean(image))/(np.std(image)+1e-100) # Equivalent to images_normalization function in dlh.utils.data2array
+    image = normalize(image)
+    image = cv2.resize(image, (256, 256))
+    image = image.astype(np.float32)
+
+    mask = normalize(mask[0, :, :])
+    mask = cv2.resize(mask, (256, 256))
+    mask = mask.astype(np.float32)
+    return image, mask, discs_labels
