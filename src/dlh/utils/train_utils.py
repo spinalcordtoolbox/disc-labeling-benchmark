@@ -112,7 +112,6 @@ class image_Dataset(Dataset):
     
     def get_posedata(self, img, msk, num_ch=11):
         msk = msk[:, :, 0]
-        #msk = rotate_img(msk)
 
         ys = msk.shape
         ys_ch = np.zeros([ys[0], ys[1], num_ch])
@@ -127,9 +126,7 @@ class image_Dataset(Dataset):
                 ys_ch[:,:, i-1] = y_i
         except:
             print(num_labels)
-            
-        #ys_ch = np.rot90(ys_ch)
-        #ys_ch = np.flip(ys_ch, axis=1)
+        
         vis = np.zeros((num_ch, 1))
         vis[:num_labels-1] = 1
         return img, ys_ch, vis
@@ -352,7 +349,6 @@ def save_attention(inputs, outputs, targets, att, target_th=0.5):
                 x_3ch[:, :, i] = x[:, :, 0]
             
             img_mix = np.uint8(x_3ch*0.5 + y_colored*0.5)
-            # img_mix = cv2.cvtColor(img_mix, cv2.COLOR_BGR2RGB)
             clr_vis_Y.append(img_mix)
             
     clr_vis_Y.append(rgbatt)
