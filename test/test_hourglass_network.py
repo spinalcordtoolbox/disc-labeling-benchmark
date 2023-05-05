@@ -10,8 +10,7 @@ from torch.utils.data import DataLoader
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
 from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import CONTRAST, extract_skeleton, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file, load_niftii_split
-from dlh.utils.data2array import get_midNifti
+from dlh.utils.test_utils import CONTRAST, extract_skeleton, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, load_niftii_split
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
