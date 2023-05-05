@@ -10,16 +10,22 @@ import os
 import cv2
 import numpy as np
 import torch
+import pickle
+from progress.bar import Bar
 from sklearn.utils.extmath import cartesian
 from torchvision.utils import make_grid
 from spinalcordtoolbox.image import Image, zeros_like
 from spinalcordtoolbox.utils.fs import tmp_create, rmtree
 from spinalcordtoolbox.utils.sys import run_proc
 
+from dlh.utils.train_utils import apply_preprocessing
+from dlh.utils.data2array import get_midNifti
+
 ## Variables
-CONTRAST = {'t1': 'T1w',
-            't2': 'T2w',
-            't2s':'T2star'}
+CONTRAST = {'t1': ['T1w'],
+            't2': ['T2w'],
+            't2s':['T2star'],
+            't1_t2': ['T1w', 'T2w']}
 
 # Association between a vertebrae and the disc right above
 VERT_DISC = {
@@ -65,7 +71,7 @@ def visualize_discs(input_img, coords_list, out_path):
     save_discs_image(input_img, discs_images, out_path)
 
 ##    
-def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_save = False, target_th=0.5):
+def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_save=False, target_th=0.5):
     idtest = 1
     outputs  = outputs.data.cpu().numpy()
     target  = target.data.cpu().numpy()
@@ -83,7 +89,7 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
         Final  = np.zeros((outputs.shape[0], Nch, outputs.shape[2], outputs.shape[3])) # Final array composed of the prediction (outputs) normalized and after applying a threshold       
         for idy in range(Nch): 
             ych = outputs[idx, idy]
-            ych = np.rot90(ych)  # Rotate prediction to normal position
+            #ych = np.rot90(ych)  # Rotate prediction to normal position
             ych = ych/np.max(np.max(ych))
             ych[np.where(ych<target_th)] = 0
             Final[idx, idy] = ych
@@ -136,8 +142,8 @@ def extract_skeleton(inputs, outputs, target, norm_mean_skeleton, ndiscs, Flag_s
         out_list.append(out_dict)
         
     skeleton_images = np.array(skeleton_images)
-    inputs = np.rot90(inputs, axes=(-2, -1))  # Rotate input to normal position
-    target = np.rot90(target, axes=(-2, -1))  # Rotate target to normal position
+    #inputs = np.rot90(inputs, axes=(-2, -1))  # Rotate input to normal position
+    #target = np.rot90(target, axes=(-2, -1))  # Rotate target to normal position
     if Flag_save:
       save_test_results(inputs, skeleton_images, targets=target, name=idtest, target_th=0.5)
     idtest+=1
@@ -165,12 +171,12 @@ def save_test_results(inputs, outputs, targets, name='', target_th=0.5):
             y_all = np.zeros([y.shape[1], y.shape[2]], dtype=np.uint8)
             
             for ych, hue_i in zip(y, hues):
-                ych = ych/np.max(np.max(ych))
+                ych = ych/(np.max(np.max(ych))+0.0001)
                 ych[np.where(ych<target_th)] = 0
                 # ych = cv2.GaussianBlur(ych,(15,15),cv2.BORDER_DEFAULT)
 
                 ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
-                ych = np.uint8(255*ych/np.max(ych))
+                ych = np.uint8(255*ych/(np.max(ych)+0.0001))
 
                 colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
                 colored_ych[:, :, 0] = ych_hue
@@ -198,6 +204,7 @@ def save_test_results(inputs, outputs, targets, name='', target_th=0.5):
     trgts = make_grid(torch.Tensor(t), nrow=4)
 
     txt = f'test/visualize/{name}_test_result.png'
+    print(f'{txt} was created')
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(txt, res)
 
@@ -397,7 +404,7 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     '''
     # Get segmentation
     fname_seg = os.path.abspath(seg_path)
-    seg = Image(fname_seg).change_orientation('RPI')
+    seg = Image(fname_seg).change_orientation('RSP')
     
     # Create temp folder
     path_tmp = tmp_create(basename="label-vertebrae-project")
@@ -461,9 +468,11 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
 def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, method_name='hourglass_coord'):
     '''
     Write coordinates in txt file
-    Edit txt_file --> line = subject_name contrast disc_num gt_coords sct_label_vertebrae_coords hourglass_coords spinenet_coords
+    Edit txt_file --> line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
     
-    :param coords: numpy array of the 2D coordinates of discs plus discs num --> [[x1, y1, disc1], [x2, y2, disc2], ... [xN, yN, discN]]
+    :param coords: 
+        - numpy array of the 2D coordinates of discs plus discs num --> [[x1, y1, disc1], [x2, y2, disc2], ... [xN, yN, discN]]
+        - if coords == 'Fail' --> method enable to perform on this subject
     :param txt_lines: list of the txt file lines
     :param subject_name: name of the subject in the text file
     :param contrast: contrast of the image
@@ -473,37 +482,105 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
     last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
     min_ref_disc = int(txt_lines[start_index][2])  # Getting the first refferenced disc num
     max_ref_disc = int(txt_lines[last_index][2])  # Getting the last refferenced disc num
-    txt_lines[0][-1] = txt_lines[0][-1].replace('\n','')
-    method_idx = txt_lines[0].index(method_name)
-    if method_idx == len(txt_lines[0])-1:
+    methods = txt_lines[0][:]
+    methods[-1] = methods[-1].replace('\n','')
+    method_idx = methods.index(method_name)
+    if method_idx == len(methods)-1:
         end_of_line = '\n'
     else:
         end_of_line = ''
         
-    for i, disc_num in enumerate(range(min_ref_disc, max_ref_disc+1)):
-        if disc_num in coords[:,-1]:
-            idx = np.where(coords[:,-1] == disc_num)[0][0]
-            txt_lines[start_index + i][method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
-        else:
-            txt_lines[start_index + i][method_idx] = 'None' + end_of_line
-    
-    if max_ref_disc < np.max(coords[:,-1]):
-        print(f'More discs found by {method_name}')
-        for disc_num in coords[:,-1]:
-            if disc_num > max_ref_disc:
-                print(f'Disc number {disc_num} was added')
-                new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
-                disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
-                if disc_shift != 1:
-                    print(f'Adding intermediate {disc_shift-1} discs to txt file')
-                    for shift in range(disc_shift-1):
-                        last_index += 1
-                        intermediate_line = new_line[:]
-                        max_ref_disc += 1
-                        intermediate_line[2] = str(max_ref_disc)
-                        txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
-                new_line[method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
-                last_index += 1
-                txt_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
-                max_ref_disc = disc_num
+    if coords == 'Fail':
+        for i, _ in enumerate(range(min_ref_disc, max_ref_disc+1)):
+            txt_lines[start_index + i][method_idx] = 'Fail' + end_of_line
+    else:
+        for i, disc_num in enumerate(range(min_ref_disc, max_ref_disc+1)):
+            if disc_num in coords[:,-1]:
+                idx = np.where(coords[:,-1] == disc_num)[0][0]
+                txt_lines[start_index + i][method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
+            else:
+                txt_lines[start_index + i][method_idx] = 'None' + end_of_line
+        
+        if max_ref_disc < np.max(coords[:,-1]):
+            print(f'More discs found by {method_name}')
+            for disc_num in coords[:,-1]:
+                if disc_num > max_ref_disc:
+                    print(f'Disc number {disc_num} was added')
+                    new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
+                    disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
+                    if disc_shift != 1:
+                        print(f'Adding intermediate {disc_shift-1} discs to txt file')
+                        for shift in range(disc_shift-1):
+                            last_index += 1
+                            intermediate_line = new_line[:]
+                            max_ref_disc += 1
+                            intermediate_line[2] = str(max_ref_disc)
+                            txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
+                    idx = np.where(coords[:,-1] == disc_num)[0][0]
+                    new_line[method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
+                    last_index += 1
+                    txt_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
+                    max_ref_disc = disc_num
     return txt_lines
+
+##
+def load_niftii_split(datapath, contrasts, split='train', split_ratio=(0.8, 0.1, 0.1), label_suffix='_labels-disc-manual'):
+    '''
+    This function output 3 lists corresponding to:
+        - the midle slice extracted from the niftii images
+        - the corresponding masks with discs labels
+        - the discs labels
+        - the subjects names
+    
+    :param datapath: Path to dataset
+    :param contrasts: Contrasts of the images loaded
+    :param split: Split of the data needed ('train', 'val', 'test', 'full')
+    :param split_ratio: Ratio used to split the data: split_ratio=(train, val, test)
+    '''
+    # Loading dataset
+    dir_list = os.listdir(datapath)
+    dir_list.sort() # TODO: check if sorting the data is relevant --> mixing data could be more relevant 
+    
+    nb_dir = len(dir_list)
+    if split == 'train':
+        begin = 0
+        end = int(np.round(nb_dir * split_ratio[0]))
+    elif split == 'val':
+        begin = int(np.round(nb_dir * split_ratio[0]))
+        end = int(np.round(nb_dir * (split_ratio[0]+split_ratio[1])))
+    elif split == 'test':
+        begin = int(np.round(nb_dir * (split_ratio[0]+split_ratio[1])))
+        end = int(np.round(nb_dir * 1))
+    else:
+        begin = 0
+        end = int(np.round(nb_dir))
+    
+    # Init progression bar
+    bar = Bar(f'Load {split} data with pre-processing', max=len(dir_list[begin:end]))
+    
+    imgs = []
+    masks = []
+    discs_labels_list = []
+    subjects = []
+    shapes = []
+    for dir_name in dir_list[begin:end]:
+        if dir_name.startswith('sub'):
+            for contrast in contrasts:
+                img_path = os.path.join(datapath,dir_name,dir_name + '_' + contrast + '.nii.gz')
+                label_path = os.path.join(datapath,dir_name,dir_name + '_' + contrast + label_suffix + '.nii.gz')
+                if not os.path.exists(img_path) or not os.path.exists(label_path):
+                    print(f'Error while importing {dir_name}\n {img_path} and {label_path} may not exist')
+                else:
+                    # Applying preprocessing steps
+                    image, mask, discs_labels = apply_preprocessing(img_path, label_path)
+                    imgs.append(image)
+                    masks.append(mask)
+                    discs_labels_list.append(discs_labels)
+                    subjects.append(dir_name)
+                    shapes.append(get_midNifti(img_path).shape)
+        
+        # Plot progress
+        bar.suffix  = f'{dir_list[begin:end].index(dir_name)+1}/{len(dir_list[begin:end])}'
+        bar.next()
+    bar.finish()
+    return imgs, masks, discs_labels_list, subjects, shapes
