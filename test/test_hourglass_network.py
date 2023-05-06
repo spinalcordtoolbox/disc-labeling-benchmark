@@ -75,7 +75,6 @@ def test_hourglass(args):
         subject_name = subject_name[0]
         
         prediction, pred_discs_coords = extract_skeleton(inputs, output, targets, norm_mean_skeleton, ndiscs, Flag_save=True)
-        gt_coord = np.array(torch.tensor(gt_coord).tolist())
         
         # Convert pred_discs_coords to original image size
         pred_shape = prediction[0,0].shape 
@@ -85,18 +84,12 @@ def test_hourglass(args):
         # Project coordinate onto the spinal cord centerline
         seg_path = os.path.join(origin_data, subject_name, f'{subject_name}_{contrast[0]}_seg.nii.gz' )
         pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
-        gt_coord = project_on_spinal_cord(coords=gt_coord, seg_path=seg_path, disc_num=True, proj_2d=False)
-        
-        # Remove thinkness coordinate
-        gt_coord = gt_coord[:, 1:]
         
         # Swap axis prediction and ground truth
         pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
-        gt_coord = swap_y_origin(coords=gt_coord, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
         
         # Edit coordinates in txt file
         # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-        split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name='gt_coords')
         split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name='hourglass_coords')
                 
     for num in range(len(split_lines)):
