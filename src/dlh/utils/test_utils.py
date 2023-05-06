@@ -383,7 +383,7 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
     
     :param coords: 
         - numpy array of the 2D coordinates of discs plus discs num --> [[x1, y1, disc1], [x2, y2, disc2], ... [xN, yN, discN]]
-        - if coords == 'Fail' --> method enable to perform on this subject
+        - if coords == np.array([]) # Fail --> method enable to perform on this subject
     :param txt_lines: list of the txt file lines
     :param subject_name: name of the subject in the text file
     :param contrast: contrast of the image
@@ -401,7 +401,8 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
     else:
         end_of_line = ''
         
-    if coords == 'Fail':
+    if coords.shape[0] == 0: # Fail
+        print(f'{method_name} fails with subject {subject_name}')
         for i, _ in enumerate(range(min_ref_disc, max_ref_disc+1)):
             txt_lines[start_index + i][method_idx] = 'Fail' + end_of_line
     else:
@@ -420,7 +421,7 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
                     new_line = [subject_name, contrast, str(disc_num), 'None', 'None', 'None', 'None\n']
                     disc_shift = disc_num - max_ref_disc # Check if discs are missing between in the text file
                     if disc_shift != 1:
-                        print(f'Adding intermediate {disc_shift-1} discs to txt file')
+                        print(f'Adding {disc_shift-1} intermediate discs to txt file')
                         for shift in range(disc_shift-1):
                             last_index += 1
                             intermediate_line = new_line[:]
