@@ -47,10 +47,8 @@ def test_spinenet(args, test_mode=False):
             # detect and identify vertebrae in scan. Note that pixel spacing information is required 
             # so SpineNet knows what size to split patches into.
             try:
-                vert_dicts_niftii = spnt.detect_vb(img, 1/px)
-                print('1/px =', 1/px)
+                vert_dicts_niftii = spnt.detect_vb(img, px)
             except RuntimeError:
-                print(f'Spinenet Fail detection on subject {subject_name}')
                 vert_dicts_niftii = 'Fail'
 
             if vert_dicts_niftii != 'Fail':
@@ -91,7 +89,7 @@ def test_spinenet(args, test_mode=False):
                 # Move y origin to the bottom of the image like Niftii convention
                 coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
             else:
-                coords = 'Fail'
+                coords = np.array([]) # Fail
 
             if not test_mode: 
                 # Write coordinates in txt file

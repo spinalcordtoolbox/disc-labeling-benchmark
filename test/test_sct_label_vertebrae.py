@@ -36,7 +36,7 @@ def test_sct_label_vertebrae(args):
                                         '-o', seg_path])
                 if status != 0:
                     print('Fail segmentation')
-                    discs_coords = 'Fail'
+                    discs_coords = np.array([]) # Fail
             
             disc_file_path = file_path.replace('.nii.gz', '_seg_labeled_discs.nii.gz')  # path to the file with disc labels
             if os.path.exists(disc_file_path):
@@ -57,7 +57,7 @@ def test_sct_label_vertebrae(args):
                 else:
                     print('Exit value 1')
                     print('Fail sct_label_vertebrae')
-                    discs_coords = 'Fail'
+                    discs_coords = np.array([]) # Fail
             
             subject_name = dir_name
             # Edit coordinates in txt file
