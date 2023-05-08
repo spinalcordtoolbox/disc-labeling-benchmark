@@ -42,6 +42,7 @@ def main(args):
     vis_folder = args.visual_folder
     contrasts = CONTRAST[args.contrasts]
     datapath = args.datapath
+    wandb_mode = args.wandb
     
     # Loading images for training and validation
     print('loading images...')
@@ -138,16 +139,17 @@ def main(args):
             loss, acc = validate(MRI_val_loader, model, criterion, epoch, idx, vis_folder)
         return
     
-    # 🐝 initialize wandb run
-    wandb.init(project='hourglass-network',config=vars(args))
+    if wandb_mode:
+        # 🐝 initialize wandb run
+        wandb.init(project='hourglass-network',config=vars(args))
     
-    # 🐝 log gradients of the models to wandb
-    wandb.watch(model, log_freq=100)
-    
-    # 🐝 add training script as an artifact
-    artifact_script = wandb.Artifact(name='script', type='file')
-    artifact_script.add_file(local_path=os.path.abspath(__file__), name=os.path.basename(__file__))
-    wandb.log_artifact(artifact_script)
+        # 🐝 log gradients of the models to wandb
+        wandb.watch(model, log_freq=100)
+        
+        # 🐝 add training script as an artifact
+        artifact_script = wandb.Artifact(name='script', type='file')
+        artifact_script.add_file(local_path=os.path.abspath(__file__), name=os.path.basename(__file__))
+        wandb.log_artifact(artifact_script)
     
     # train and eval
     lr = args.lr
@@ -161,21 +163,23 @@ def main(args):
             MRI_val_loader.dataset.sigma *=  args.sigma_decay
 
         # train for one epoch
-        epoch_loss, epoch_acc = train(MRI_train_loader, model, criterion, optimizer, epoch, idx)
+        epoch_loss, epoch_acc = train(MRI_train_loader, model, criterion, optimizer, epoch, idx, wandb_mode)
 
-        wandb.log({"training_loss/epoch": epoch_loss})
-        
-        # 🐝 log train_loss over the epoch to wandb
-        wandb.log({"training_loss/epoch": epoch_loss})
-        
-        # 🐝 log training learning rate over the epoch to wandb
-        wandb.log({"training_lr/epoch": lr})
+        if wandb_mode:
+            wandb.log({"training_loss/epoch": epoch_loss})
+            
+            # 🐝 log train_loss over the epoch to wandb
+            wandb.log({"training_loss/epoch": epoch_loss})
+            
+            # 🐝 log training learning rate over the epoch to wandb
+            wandb.log({"training_lr/epoch": lr})
         
         # evaluate on validation set
-        valid_loss, valid_acc, valid_dice = validate(MRI_val_loader, model, criterion, epoch, idx, vis_folder)
+        valid_loss, valid_acc, valid_dice = validate(MRI_val_loader, model, criterion, epoch, idx, vis_folder, wandb_mode)
 
-        # 🐝 log valid_dice over the epoch to wandb
-        wandb.log({"validation_dice/epoch": valid_dice})
+        if wandb_mode:
+            # 🐝 log valid_dice over the epoch to wandb
+            wandb.log({"validation_dice/epoch": valid_dice})
         
         # remember best acc and save checkpoint
         if valid_acc > best_acc:
@@ -187,26 +191,27 @@ def main(args):
            best_acc = valid_acc
            best_acc_epoch = epoch + 1
     
-    # 🐝 log best score and epoch number to wandb
-    wandb.log({"best_accuracy": best_acc, "best_accuracy_epoch": best_acc_epoch})
+    if wandb_mode:
+        # 🐝 log best score and epoch number to wandb
+        wandb.log({"best_accuracy": best_acc, "best_accuracy_epoch": best_acc_epoch})
     
-    # 🐝 version your model
-    best_model_path = f'{weight_folder}/model_{args.contrasts}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}'
-    model_artifact = wandb.Artifact("hourglass", 
-                                    type="model",
-                                    description="Hourglass network for intervertebral discs labeling",
-                                    metadata=vars(args)
-                                    )
-    model_artifact.add_file(best_model_path)
-    wandb.log_artifact(model_artifact)
-    
-    # 🐝 close wandb run
-    wandb.finish()
+        # 🐝 version your model
+        best_model_path = f'{weight_folder}/model_{args.contrasts}_att_stacks_{args.stacks}_ndiscs_{args.ndiscs}'
+        model_artifact = wandb.Artifact("hourglass", 
+                                        type="model",
+                                        description="Hourglass network for intervertebral discs labeling",
+                                        metadata=vars(args)
+                                        )
+        model_artifact.add_file(best_model_path)
+        wandb.log_artifact(model_artifact)
+        
+        # 🐝 close wandb run
+        wandb.finish()
 
     
                 
 
-def train(train_loader, model, criterion, optimizer, ep, idx):
+def train(train_loader, model, criterion, optimizer, ep, idx, wandb_mode):
     '''
     Train hourglass for one epoch
     
@@ -258,8 +263,9 @@ def train(train_loader, model, criterion, optimizer, ep, idx):
         else:
             subjects_loss_dict[subjects] = sub_loss # add subjects name and individual loss to dict
         
-        # 🐝 log train_loss for each step to wandb
-        wandb.log({"training_loss/step": loss.item()})
+        if wandb_mode:
+            # 🐝 log train_loss for each step to wandb
+            wandb.log({"training_loss/step": loss.item()})
 
         # measure accuracy and record loss
         acc = accuracy(output, targets, idx)
@@ -288,12 +294,15 @@ def train(train_loader, model, criterion, optimizer, ep, idx):
                     )
         bar.next()
     bar.finish()
-    # 🐝 log bar plot with individual loss in wandb
-    wandb.log(subjects_loss_dict)
+    
+    if wandb_mode:
+        # 🐝 log bar plot with individual loss in wandb
+        wandb.log(subjects_loss_dict)
+    
     return losses.avg, acces.avg
 
 
-def validate(val_loader, model, criterion, ep, idx, out_folder):
+def validate(val_loader, model, criterion, ep, idx, out_folder, wandb_mode):
     '''
     Compute validation dataset with hourglass for one epoch
     
@@ -337,16 +346,18 @@ def validate(val_loader, model, criterion, ep, idx, out_folder):
             acc = accuracy(output.cpu(), target.cpu(), idx)
             loss_dice = dice_loss(output, target)
             
-            # 🐝 log validation_loss for each step to wandb
-            wandb.log({"validation_dice/step": loss_dice})
+            if wandb_mode:
+                # 🐝 log validation_loss for each step to wandb
+                wandb.log({"validation_dice/step": loss_dice})
 
-            # 🐝 log visuals for the first validation batch only in wandb
             if i == 0:
-                txt, res, targets, preds = save_epoch_res_as_image2(input, output, target, out_folder, epoch_num=ep, target_th=0.5, wandb_mode=True)
+                txt, res, targets, preds = save_epoch_res_as_image2(input, output, target, out_folder, epoch_num=ep, target_th=0.5, wandb_mode=wandb_mode)
                 
-                wandb.log({"validation_img/batch_1": wandb.Image(res, caption=txt)})
-                wandb.log({"validation_img/groud_truth": wandb.Image(targets, caption=f'ground_truth_{ep}')})
-                wandb.log({"validation_img/prediction": wandb.Image(preds, caption=f'prediction_{ep}')})
+                if wandb_mode:
+                    # 🐝 log visuals for the first validation batch only in wandb
+                    wandb.log({"validation_img/batch_1": wandb.Image(res, caption=txt)})
+                    wandb.log({"validation_img/groud_truth": wandb.Image(targets, caption=f'ground_truth_{ep}')})
+                    wandb.log({"validation_img/prediction": wandb.Image(preds, caption=f'prediction_{ep}')})
                 
             # measure accuracy and record loss
             losses.update(loss.item(), input.size(0))
@@ -412,6 +423,8 @@ if __name__ == '__main__':
     parser.add_argument('--ndiscs', type=int, required=True,
                         help='Number of discs to detect')
     
+    parser.add_argument('--wandb', default=True,
+                        help='Train with wandb')
     parser.add_argument('--split-ratio', default=(0.8, 0.1, 0.1),
                         help='Split ratio used for (train, val, test)')
     parser.add_argument('--resume', default= False, type=bool,
