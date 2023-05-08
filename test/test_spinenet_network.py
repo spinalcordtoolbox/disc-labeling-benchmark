@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 import argparse
 from matplotlib.patches import Polygon, Circle 
 import numpy as np
+from scipy.ndimage import zoom
+
 from spinalcordtoolbox.image import Image, get_dimension
-from spinenet import SpineNet
+from spinenet import SpineNet, io
 
 from dlh.utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file 
 
@@ -17,13 +19,13 @@ def test_spinenet(args, test_mode=False):
     
     datapath = os.path.abspath(args.datapath)
     contrast = CONTRAST[args.contrast][0]
-    txt_file = args.out_txt_file
     
     # load in spinenet
     spnt = SpineNet(device='cuda:0', verbose=True, scan_type='whole')
     
     # Extract txt file lines
     if not test_mode:
+        txt_file = args.out_txt_file
         prefix = 'sub'
         with open(txt_file,"r") as f:
             file_lines = f.readlines()
@@ -39,15 +41,26 @@ def test_spinenet(args, test_mode=False):
             img_path = os.path.join(datapath, dir_name, file_name)  # path to the original image
             
             # img_niftii --> 3D image: shape = (64, 320, 320)
-            img_niftii = Image(img_path).change_orientation("RPI")
+            img_niftii = Image(img_path).change_orientation("RSP")
             nx, ny, nz, nt, px, py, pz, pt = get_dimension(img_niftii)
-            nb_slice = 6 # Use less slices
-            img = np.rot90(np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2])
-            
+            pixel_spacing = np.array([py, pz])
+            nb_slice = 12 # Use less slices
+            if abs(px-py) < 0.2 or abs(px-pz) < 0.2: # True if isotropic according to right-left direction
+                skip_slices = 4
+                nx = nx//skip_slices
+                slice_thickness = px*skip_slices
+                #img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-(nb_slice*skip_slices)//2:nx//2+(skip_slices*nb_slice)//2:skip_slices]
+                img = np.moveaxis(zoom(img_niftii.data, (1/skip_slices, 1, 1)), 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2] # Use zoom function to down sample the image to a more non-isotropic image
+            else:
+                slice_thickness = px
+                img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2]
+            scan = io.SpinalScan(img, pixel_spacing, slice_thickness)
+            #img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2]
+
             # detect and identify vertebrae in scan. Note that pixel spacing information is required 
             # so SpineNet knows what size to split patches into.
             try:
-                vert_dicts_niftii = spnt.detect_vb(img, px)
+                vert_dicts_niftii = spnt.detect_vb(img, scan.pixel_spacing[0])
             except RuntimeError:
                 vert_dicts_niftii = 'Fail'
 
@@ -109,19 +122,17 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Run test on spinenet')
 
-    parser.add_argument('--sct-datapath', default="/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/data/preprocessed_data/vertebral_data", type=str,
+    parser.add_argument('--datapath', default="/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/data/preprocessed_data/vertebral_data", type=str,
                         help='SCT dataset path')                               
     parser.add_argument('-c', '--contrast', default='t2', type=str, metavar='N',
                         help='MRI contrast')
-    parser.add_argument('-txt', '--out-txt-file', default= None,
-                        type=str, metavar='N',help='Generated txt file')
-    parser.add_argument('-sub', default= 'sub-perform04',
+    parser.add_argument('-sub', default= 'sub-perform05',
                         type=str, metavar='N',help='Generated txt file') # 'sub-juntendo750w06'
     
     nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
     fig = plt.figure(figsize=(40,40))
     for slice_idx in range(nb_slice):
-        ax = fig.add_subplot(2,3,slice_idx+1)
+        ax = fig.add_subplot(3,4,slice_idx+1)
         ax.imshow(img[:,:,slice_idx], cmap='gray')
         ax.set_title(f'Slice {slice_idx+1}', fontsize=60)
         ax.axis('off')
