@@ -47,6 +47,7 @@ def add_gt_coordinate_to_txt_file(args):
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
     
+    print('Adding ground truth coords')
     for dir_name in dir_list:
         if dir_name.startswith('sub'):
             img_path = os.path.join(datapath,dir_name,dir_name + '_' + contrast + '.nii.gz')
