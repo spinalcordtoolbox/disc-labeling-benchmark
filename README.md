@@ -1,23 +1,36 @@
-# Intervertebral disc labeling methods
+# Intervertebral Discs Labeling Comparison
 
-## Description
+This repository contains an evaluation and comparison of various automatic methods for intervertebral disc labeling. The goal of this project is to provide researchers and developers with a comprehensive overview of existing algorithms and techniques for accurately and efficiently labeling intervertebral discs in MRI images.
 
-This is the continuation of the work made by [Reza Azad](https://www.linkedin.com/in/reza-azad-37a652109/), [Lucas Rouhier](https://www.linkedin.com/in/lucas-rouhier-1aa36a131/?originalSubdomain=ca), and [Julien Cohen-Adad](https://scholar.google.ca/citations?user=6cAZ028AAAAJ&hl=en) on a deeplearning based architecture called `Stacked Hourglass Network` to detect and classify vertebral discs automatically on MR images.
+## Motivation
 
-Their work was [published](https://dl.acm.org/doi/abs/10.1007/978-3-030-87589-3_42) in a paper called "Stacked Hourglass Network with a Multi-level Attention Mechanism: Where to Look for Intervertebral Disc Labeling" for a MICCAI Workshop in 2021
+Accurate identification and labeling of intervertebral discs are crucial in medical imaging analysis, particularly in tasks related to spinal pathology assessment, surgery planning, and biomechanical modeling. However, manually labeling these discs is a time-consuming and labor-intensive process. Therefore, the development of automated methods to perform this task is of great importance, as it can significantly improve efficiency and consistency in clinical practice.
 
-This repository will be used to train and test the `Stacked Hourglass Network` in different MR case scenario and to compare his results with the current `sct_label_vertebrae` function implemented in the [spinalcordtoolbox](https://github.com/spinalcordtoolbox/spinalcordtoolbox) and other disc labeling technics described in the literature.
+## Repository Structure
 
-## Cross references
+The repository is organized as follows:
 
-In this section are referenced repositories and issues related to this work.
+- **Evaluation** (in development): This directory contains evaluation scripts and metrics to compare and quantify the performance of different labeling methods. It provides tools to assess accuracy, precision, recall, and other relevant measures.
 
-### Issues
+- **Results** (in development): After running the evaluation scripts, the obtained results will be stored in this directory. It includes performance metrics, visualizations, and comparisons of the different methods.
 
-* Summary [issue](https://github.com/spinalcordtoolbox/spinalcordtoolbox/issues/3793) by @joshuacwnewton on the work previously done to replace the current `sct_label_vertebrae`. 
+## Getting Started
 
-### Older repositories
+To get started with this repository, follow the steps below:
 
-* [Original](https://github.com/rezazad68/Deep-Intervertebral-Disc-Labeling) hourglass work done by @rezazad68.
-* [Method comparison](https://github.com/NathanMolinier/intervertebral-disc-labeling/blob/master/README.md) between hourglass and the current non deepllearning based method `sct_label_vertebrae` implemented in the [spinalcordtoolbox](https://github.com/spinalcordtoolbox/spinalcordtoolbox).
-* [Retrained model](https://github.com/ivadomed/model_label_intervertebral-disc_t1-t2_hourglass-net) by @joshuacwnewton to fix [straight vs. curved input data](https://github.com/ivadomed/ivadomed/pull/852#discussion_r710455668) issues. 
+1. Clone the repository to your local machine using the command:
+```Bash
+git clone https://github.com/spinalcordtoolbox/disc-labeling-benchmark.git
+```
+
+2. Set up the required environment and dependencies. 
+
+(in development)
+
+## Contributions and Feedback
+
+Contributions to this repository are welcome. If you have developed a new method or have improvements to existing methods, please submit a pull request. Additionally, feedback and suggestions for improvement are highly appreciated. Feel free to open an issue to report bugs, propose new features, or ask questions.
+
+## License
+
+For more information regarding the license, please refere to the LICENSE file.
