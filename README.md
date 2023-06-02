@@ -1,4 +1,4 @@
-# Intervertebral Discs Labeling Comparison
+# Intervertebral Discs Labeling Benchmark
 
 This repository contains an evaluation and comparison of various automatic methods for intervertebral disc labeling. The goal of this project is to provide researchers and developers with a comprehensive overview of existing algorithms and techniques for accurately and efficiently labeling intervertebral discs in MRI images.
 
