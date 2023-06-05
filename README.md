@@ -25,7 +25,22 @@ git clone https://github.com/spinalcordtoolbox/disc-labeling-benchmark.git
 
 2. Set up the required environment and dependencies. 
 
-(in development)
+(in development) --> see https://github.com/spinalcordtoolbox/disc-labeling-benchmark/issues/2
+
+3. Gather only vertebral data (from [BIDS](https://bids.neuroimaging.io/) format)
+```Bash
+python src/bcm/utils/gather_data.py --datapath DATAPATH -o VERTEBRAL_DATA --suffix-img SUFFIX_IMG --suffix-label SUFFIX_LABEL
+```
+
+4. Extract the coordinates of the discs for each image in the `VERTEBRAL_DATA` and create a `TXT_FILE` in results/
+```Bash
+python src/bcm/run/extract_disc_cords.py --datapath VERTEBRAL_DATA -c t2
+```
+
+5. Compute metrics and plot graphs for each methods based on the `TXT_FILE`. A `CSV_FILE` is also generated for more evaluation
+```Bash
+python src/bcm/run/compute_disc_labeling_comparison.py --datapath VERTEBRAL_DATA -txt results/files/spinegeneric_vert_T1w_hg15_discs_coords.txt -c t2
+```
 
 ## Contributions and Feedback
 

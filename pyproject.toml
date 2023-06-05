@@ -3,6 +3,6 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dlh"
+name = "bcm"
 version = "0.0.1"
 dependencies = []

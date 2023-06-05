@@ -1,10 +1,6 @@
-visualize/
 .idea/
-output.avi
-weights/
-files/
 .vscode/
 __pycache__/
 *.pyc
-dlh.egg-info/
-wandb/
+src/bcm.egg-info/
+results/

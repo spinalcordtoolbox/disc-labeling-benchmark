@@ -7,7 +7,7 @@ from spinalcordtoolbox.image import Image
 import csv
 import pandas as pd
 
-from dlh.utils.test_utils import CONTRAST, visualize_discs, edit_metric_csv
+from bcm.utils.utils import CONTRAST, visualize_discs, edit_metric_csv
 
 def compare_methods(args):
     if args.datapath != None:
@@ -175,7 +175,7 @@ if __name__=='__main__':
                         help='Path to dataset cf gather_data format')
     parser.add_argument('-txt', '--input-txt-file', type=str, metavar='N', required=True,
                         help='Input txt file with the methods coordinates')
-    parser.add_argument('-o', '--output-folder', type=str, metavar='N', required=True,
+    parser.add_argument('-o', '--output-folder', type=str, metavar='N', default='results',
                         help='Output folder for created graphs') 
     parser.add_argument('-c', '--modality', type=str, metavar='N', required=True,
                         help='Data modality')

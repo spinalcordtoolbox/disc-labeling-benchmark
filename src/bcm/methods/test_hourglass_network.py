@@ -1,16 +1,17 @@
 import os
 import sys
-import cv2
 import torch
-import pickle
 import argparse
 import numpy as np
 from torch.utils.data import DataLoader
 
+from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
+
+
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
 from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import CONTRAST, extract_skeleton, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, load_niftii_split
+from dlh.utils.test_utils import extract_skeleton, load_niftii_split
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):

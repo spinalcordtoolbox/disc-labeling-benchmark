@@ -6,9 +6,10 @@ import numpy as np
 from scipy.ndimage import zoom
 
 from spinalcordtoolbox.image import Image, get_dimension
+
 from spinenet import SpineNet, io
 
-from dlh.utils.test_utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file 
+from bcm.utils.utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file 
 
 #---------------------------Test spinenet--------------------------
 def test_spinenet(args, test_mode=False):

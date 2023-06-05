@@ -2,13 +2,13 @@ import argparse
 import os
 import numpy as np
 
-from test_sct_label_vertebrae import test_sct_label_vertebrae
-from test_hourglass_network import test_hourglass
-from test_spinenet_network import test_spinenet
+from bcm.methods.test_sct_label_vertebrae import test_sct_label_vertebrae
+from bcm.methods.test_hourglass_network import test_hourglass
+from bcm.methods.test_spinenet_network import test_spinenet
+from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
 
 from spinalcordtoolbox.utils.sys import run_proc
 
-from dlh.utils.test_utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
 from dlh.utils.data2array import mask2label, get_midNifti
 
 def init_txt_file(args):
@@ -19,6 +19,7 @@ def init_txt_file(args):
     methods_str = 'subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords\n'
         
     if not os.path.exists(txt_file):
+        os.makedirs(os.path.dirname(txt_file), exist_ok=True)
         print("Creating txt file:", txt_file)
         with open(txt_file,"w") as f:
             f.write(methods_str)
@@ -101,10 +102,10 @@ if __name__=='__main__':
                         help='dataset path')                               
     parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
                         help='MRI contrast')
-    parser.add_argument('--ndiscs', type=int, required=True,
-                        help='Number of discs to detect')
-    parser.add_argument('-txt', '--out-txt-file', default=os.path.abspath(os.path.join('test/files', f'{os.path.basename(parser.parse_args().datapath)}_{CONTRAST[parser.parse_args().contrast][0]}_hg{parser.parse_args().ndiscs}_discs_coords.txt')),
-                        type=str, metavar='N',help='Generated txt file')
+    parser.add_argument('--ndiscs', type=int, default=15,
+                        help='Number of class hourglass')
+    parser.add_argument('-txt', '--out-txt-file', default=os.path.abspath(os.path.join('results/files', f'{os.path.basename(os.path.normpath(parser.parse_args().datapath))}_{CONTRAST[parser.parse_args().contrast][0]}_hg{parser.parse_args().ndiscs}_discs_coords.txt')),
+                        type=str, metavar='N',help='Generated txt file path default="results/files/(data_folder)_(test_CONTRAST)_hg(nb_class_hourglass)_discs_coords.txt"')
     
     parser.add_argument('--suffix-label', type=str, default='_labels-disc-manual',
                         help='Specify label suffix (default= "_labels-disc-manual")') 
