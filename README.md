@@ -29,7 +29,7 @@ git clone https://github.com/spinalcordtoolbox/disc-labeling-benchmark.git
 
 3. Gather only vertebral data (from [BIDS](https://bids.neuroimaging.io/) format)
 ```Bash
-python src/dlh/data_management/gather_data.py --datapath DATAPATH -o VERTEBRAL_DATA --suffix-img SUFFIX_IMG --suffix-label SUFFIX_LABEL
+python src/bcm/utils/gather_data.py --datapath DATAPATH -o VERTEBRAL_DATA --suffix-img SUFFIX_IMG --suffix-label SUFFIX_LABEL
 ```
 
 4. Extract the coordinates of the discs for each image in the `VERTEBRAL_DATA` and create a `TXT_FILE` in results/
