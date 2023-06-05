@@ -27,7 +27,7 @@ git clone https://github.com/spinalcordtoolbox/disc-labeling-benchmark.git
 
 (in development) --> see https://github.com/spinalcordtoolbox/disc-labeling-benchmark/issues/2
 
-3. Gather only vertebral data (from [BIDS](https://bids.neuroimaging.io/) format)
+3. Gather only the relevant data for comparison (The input dataset needs to be in [BIDS](https://bids.neuroimaging.io/) format): the `DATAPATH` corresponds to the path to the input BIDS compliant dataset and `VERTEBRAL_DATA` corresponds to the path to the output folder. The free multi-center spinegeneric dataset is available in https://github.com/spine-generic/data-multi-subject.
 ```Bash
 python src/bcm/utils/gather_data.py --datapath DATAPATH -o VERTEBRAL_DATA --suffix-img SUFFIX_IMG --suffix-label SUFFIX_LABEL
 ```
