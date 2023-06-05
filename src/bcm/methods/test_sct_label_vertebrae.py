@@ -3,7 +3,7 @@ import numpy as np
 from spinalcordtoolbox.image import Image
 from spinalcordtoolbox.utils.sys import run_proc
 
-from utils.utils import CONTRAST, edit_subject_lines_txt_file
+from bcm.utils.utils import CONTRAST, edit_subject_lines_txt_file
 
 
 #---------------------------Test Sct Label Vertebrae--------------------------

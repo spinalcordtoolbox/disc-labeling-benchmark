@@ -7,7 +7,7 @@ from spinalcordtoolbox.image import Image
 import csv
 import pandas as pd
 
-from utils.utils import CONTRAST, visualize_discs, edit_metric_csv
+from bcm.utils.utils import CONTRAST, visualize_discs, edit_metric_csv
 
 def compare_methods(args):
     if args.datapath != None:

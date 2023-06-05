@@ -14,7 +14,7 @@ from progress.bar import Bar
 from sklearn.utils.extmath import cartesian
 from torchvision.utils import make_grid
 
-from metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
+from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
 
 from spinalcordtoolbox.image import Image, zeros_like
 from spinalcordtoolbox.utils.fs import tmp_create, rmtree
