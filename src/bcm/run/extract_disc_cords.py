@@ -102,9 +102,9 @@ if __name__=='__main__':
                         help='dataset path')                               
     parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
                         help='MRI contrast')
-    parser.add_argument('--ndiscs', type=int, required=True,
-                        help='Number of discs to detect')
-    parser.add_argument('-txt', '--out-txt-file', default=os.path.abspath(os.path.join('results/files', f'{os.path.basename(parser.parse_args().datapath)}_{CONTRAST[parser.parse_args().contrast][0]}_hg{parser.parse_args().ndiscs}_discs_coords.txt')),
+    parser.add_argument('--ndiscs', type=int, default=15,
+                        help='Number of class hourglass')
+    parser.add_argument('-txt', '--out-txt-file', default=os.path.abspath(os.path.join('results/files', f'{os.path.basename(os.path.normpath(parser.parse_args().datapath))}_{CONTRAST[parser.parse_args().contrast][0]}_hg{parser.parse_args().ndiscs}_discs_coords.txt')),
                         type=str, metavar='N',help='Generated txt file path default="results/files/(data_folder)_(test_CONTRAST)_hg(nb_class_hourglass)_discs_coords.txt"')
     
     parser.add_argument('--suffix-label', type=str, default='_labels-disc-manual',
