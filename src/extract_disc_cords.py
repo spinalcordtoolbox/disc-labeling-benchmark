@@ -2,10 +2,10 @@ import argparse
 import os
 import numpy as np
 
-from test_sct_label_vertebrae import test_sct_label_vertebrae
-from test_hourglass_network import test_hourglass
-from test_spinenet_network import test_spinenet
-from utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
+from methods.test_sct_label_vertebrae import test_sct_label_vertebrae
+from methods.test_hourglass_network import test_hourglass
+from methods.test_spinenet_network import test_spinenet
+from utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
 
 from spinalcordtoolbox.utils.sys import run_proc
 

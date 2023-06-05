@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 from torch.utils.data import DataLoader
 
-from utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
+from utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
 
 
 from dlh.models.hourglass import hg
