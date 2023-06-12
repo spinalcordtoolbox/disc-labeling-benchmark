@@ -12,7 +12,7 @@ from bcm.utils.utils import CONTRAST, visualize_discs, edit_metric_csv
 def compare_methods(args):
     if args.datapath != None:
         datapath = args.datapath
-    contrast = CONTRAST[args.modality][0]
+    contrast = CONTRAST[args.contrast][0]
     txt_file_path = args.input_txt_file
     output_folder = os.path.join(args.output_folder, f'out_{contrast}')
     computed_methods = args.computed_methods
@@ -172,23 +172,24 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')
     
     parser.add_argument('--datapath', type=str, metavar='N', default=None,
-                        help='Path to dataset cf gather_data format')
-    parser.add_argument('-txt', '--input-txt-file', type=str, metavar='N', required=True,
-                        help='Input txt file with the methods coordinates')
+                        help='Path to data folder generated using bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')
+    parser.add_argument('-txt', '--input-txt-file', type=str, metavar='<file>', required=True,
+                        help='Path to txt file generated using bcm/run/extract_disc_cords.py Example: ~/<your_dataset>/vertebral_data (Required)')
+    parser.add_argument('-c', '--contrast', type=str, required=True,
+                        help='MRI contrast: choices=["t1", "t2"] (Required)')
+    
     parser.add_argument('-o', '--output-folder', type=str, metavar='N', default='results',
-                        help='Output folder for created graphs') 
-    parser.add_argument('-c', '--modality', type=str, metavar='N', required=True,
-                        help='Data modality')
-    parser.add_argument('-csv', '--create-csv', metavar='N', default=True,
-                        help='Output csv file with computed metrics') 
+                        help='Output folder where created graphs and images will be stored (default="results")') 
+    parser.add_argument('-csv', '--create-csv', type=bool, default=True,
+                        help='If "True" generate a csv file with the computed metrics within the txt file folder (default=True)') 
     parser.add_argument('--computed-methods', 
-                        metavar='N', 
                         default=['sct_discs_coords', 
                                  'spinenet_coords', 
                                  'hourglass_t1_coords', 
                                  'hourglass_t2_coords', 
                                  'hourglass_t1_t2_coords'],
-                        help='Methods on which metrics will be computed') 
+                        help='Methods on which metrics will be computed'
+                        '["sct_discs_coords", "spinenet_coords", "hourglass_t1_coords", "hourglass_t2_coords", "hourglass_t1_t2_coords"]') 
     
     
     compare_methods(parser.parse_args())

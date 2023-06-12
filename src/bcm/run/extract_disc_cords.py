@@ -94,35 +94,35 @@ def add_gt_coordinate_to_txt_file(args):
 
 
 if __name__=='__main__':
-    parser = argparse.ArgumentParser(description='Extract discs coords from sct and hourglass')
+    parser = argparse.ArgumentParser(description='Extract discs coords from benchmark methods')
 
     ## Parameters
     # All                          
-    parser.add_argument('--datapath', type=str,
-                        help='dataset path')                               
-    parser.add_argument('-c', '--contrast', type=str, metavar='N', required=True,
-                        help='MRI contrast')
-    parser.add_argument('--ndiscs', type=int, default=15,
-                        help='Number of class hourglass')
+    parser.add_argument('--datapath', type=str, metavar='<folder>',
+                        help='Path to data folder generated using bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
+    parser.add_argument('-c', '--contrast', type=str, required=True,
+                        help='MRI contrast: choices=["t1", "t2"] (Required)')
     parser.add_argument('-txt', '--out-txt-file', default=os.path.abspath(os.path.join('results/files', f'{os.path.basename(os.path.normpath(parser.parse_args().datapath))}_{CONTRAST[parser.parse_args().contrast][0]}_hg{parser.parse_args().ndiscs}_discs_coords.txt')),
-                        type=str, metavar='N',help='Generated txt file path default="results/files/(data_folder)_(test_CONTRAST)_hg(nb_class_hourglass)_discs_coords.txt"')
+                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(test_CONTRAST)_hg(nb_class_hourglass)_discs_coords.txt")')
     
+    parser.add_argument('--ndiscs', type=int, default=15,
+                        help='Number of class hourglass (default=15)')
     parser.add_argument('--suffix-label', type=str, default='_labels-disc-manual',
                         help='Specify label suffix (default= "_labels-disc-manual")') 
     parser.add_argument('--suffix-img', type=str, default='',
                         help='Specify img suffix (default= "")')
     parser.add_argument('--skeleton-dir', default=os.path.join(parser.parse_args().datapath, 'skeletons'),
-                        type=str, metavar='N',help='Generated txt file')
-    parser.add_argument('--train-contrasts', default=parser.parse_args().contrast, type=str, metavar='N',
+                        type=str, metavar='<folder>',help='Path to skeleton dir (default=datapath)')
+    parser.add_argument('--train-contrasts', default=parser.parse_args().contrast, type=str,
                         help='MRI contrast used for the training'
-                        'default= "--contrast" parameter'
+                        '(default= --contrast parameter)'
                         'write "all" for multipe contrast comparison')
-    parser.add_argument('--att', default= True, type=bool,
-                        help=' Use attention mechanism') 
+    parser.add_argument('--att', default=True, type=bool,
+                        help=' Use attention mechanism (default=True)') 
     parser.add_argument('-s', '--stacks', default=2, type=int, metavar='N',
-                        help='Number of hourglasses to stack')
+                        help='Number of hourglasses to stack (default=2)')
     parser.add_argument('-b', '--blocks', default=1, type=int, metavar='N',
-                        help='Number of residual modules at each location in the hourglass')                                                                                               
+                        help='Number of residual modules at each location in the hourglass (default=1)')                                                                                               
     
     init_txt_file(parser.parse_args())
     add_gt_coordinate_to_txt_file(parser.parse_args())
