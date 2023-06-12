@@ -113,9 +113,9 @@ if __name__=='__main__':
                         help='Specify img suffix (default= "")')
     parser.add_argument('--skeleton-dir', default=os.path.join(parser.parse_args().datapath, 'skeletons'),
                         type=str, metavar='<folder>',help='Path to skeleton dir (default=datapath)')
-    parser.add_argument('--train-contrasts', default=parser.parse_args().contrast, type=str,
-                        help='MRI contrast used for the training'
-                        '(default= --contrast parameter)'
+    parser.add_argument('--train-contrasts', default="all", type=str,
+                        help='MRI contrast used for the hourglass training'
+                        '(default= "all")'
                         'write "all" for multipe contrast comparison')
     parser.add_argument('--att', default=True, type=bool,
                         help=' Use attention mechanism (default=True)') 
