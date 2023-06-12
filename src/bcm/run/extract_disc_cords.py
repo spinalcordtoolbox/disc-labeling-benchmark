@@ -112,7 +112,9 @@ if __name__=='__main__':
     parser.add_argument('--suffix-img', type=str, default='',
                         help='Specify img suffix (default= "")')
     parser.add_argument('--skeleton-dir', default=os.path.join(parser.parse_args().datapath, 'skeletons'),
-                        type=str, metavar='<folder>',help='Path to skeleton dir (default=datapath)')
+                        type=str, metavar='<folder>',help='Path to skeleton dir (default=<datapath>/skeletons)')
+    parser.add_argument('--weights-dir', default='../disc-labeling-hourglass/src/dlh/weights',
+                        type=str, metavar='<folder>',help='Path to weights folder hourglass (default=../disc-labeling-hourglass/src/dlh/weights)')
     parser.add_argument('--train-contrasts', default="all", type=str,
                         help='MRI contrast used for the hourglass training'
                         '(default= "all")'

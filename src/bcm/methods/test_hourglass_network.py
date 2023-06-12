@@ -20,6 +20,7 @@ def test_hourglass(args):
     ndiscs = args.ndiscs
     origin_data = args.datapath
     skeleton_dir = args.skeleton_dir
+    weights_dir = args.weights_dir
     txt_file = args.out_txt_file
     label_suffix = args.suffix_label
     img_suffix = args.suffix_img
@@ -55,12 +56,11 @@ def test_hourglass(args):
             # Load network weights
             if args.att:
                 model = atthg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=ndiscs)
-                model = torch.nn.DataParallel(model).to(device)
-                model.load_state_dict(torch.load(f'src/dlh/weights/model_{train_contrast}_att_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
             else:
                 model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=ndiscs)
-                model = torch.nn.DataParallel(model).to(device)
-                model.load_state_dict(torch.load(f'src/dlh/weights/model_{train_contrast}_stacks_{args.stacks}_ndiscs_{ndiscs}', map_location='cpu')['model_weights'])
+
+            model = torch.nn.DataParallel(model).to(device)
+            model.load_state_dict(torch.load(os.path.join(weights_dir, f'/model_{train_contrast}_att_stacks_{args.stacks}_ndiscs_{ndiscs}'), map_location='cpu')['model_weights'])
 
             # Create Dataloader
             full_dataset_test = image_Dataset(images=imgs_test, 
