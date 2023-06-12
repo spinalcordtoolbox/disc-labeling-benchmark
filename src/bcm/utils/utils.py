@@ -24,7 +24,6 @@ from spinalcordtoolbox.utils.sys import run_proc
 ## Variables
 CONTRAST = {'t1': ['T1w'],
             't2': ['T2w'],
-            't2s':['T2star'],
             't1_t2': ['T1w', 'T2w']}
 
 # Association between a vertebrae and the disc right above

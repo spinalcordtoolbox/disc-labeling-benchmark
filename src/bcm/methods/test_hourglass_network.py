@@ -31,7 +31,7 @@ def test_hourglass(args):
 
     # Handle multiple contrast for hourglass WEIGHTS
     if args.train_contrasts == 'all':
-        train_contrasts = ['t1_t2'] #list(CONTRAST.keys()) TODO: Example can't use T1w training for T2w testing check
+        train_contrasts = [cont for cont in list(CONTRAST.keys()) if args.contrast in cont] # TODO: Example can't use T1w training for T2w testing check
     else:
         train_contrasts = [args.train_contrasts]
     
