@@ -62,8 +62,15 @@ def compare_methods(args):
             for k,d in sorted(methods_results.items()):
                 w.writerow(mergedict({'subject': k},d))
     
-    methods_short = [method.split('_coords')[0] for method in computed_methods] # Remove '_coords' suffix
-    save_graphs(output_folder, methods_results, methods_short)
+    # Remove unrelevant hourglass contrasts and shorten methods names
+    methods_plot = []
+    for method in computed_methods:
+        if 'hourglass' in method:
+            if args.contrast in method:
+                methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
+        else:
+            methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
+    save_graphs(output_folder, methods_results, methods_plot)
     return
 
 def mergedict(a,b):
@@ -172,9 +179,9 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')
     
     parser.add_argument('--datapath', type=str, metavar='N', default=None,
-                        help='Path to data folder generated using bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')
+                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')
     parser.add_argument('-txt', '--input-txt-file', type=str, metavar='<file>', required=True,
-                        help='Path to txt file generated using bcm/run/extract_disc_cords.py Example: ~/<your_dataset>/vertebral_data (Required)')
+                        help='Path to txt file generated using src/bcm/run/extract_disc_cords.py Example: ~/<your_dataset>/vertebral_data (Required)')
     parser.add_argument('-c', '--contrast', type=str, required=True,
                         help='MRI contrast: choices=["t1", "t2"] (Required)')
     
