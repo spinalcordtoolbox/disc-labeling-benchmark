@@ -92,6 +92,13 @@ def add_gt_coordinate_to_txt_file(args):
     with open(txt_file,"w") as f:
         f.writelines(split_lines)
 
+def parser_default(args):
+    '''
+    This functions configure custom default values
+    '''
+    if args.out_txt_file == '':
+        args.out_txt_file = os.path.abspath(os.path.join('results/files', f'{os.path.basename(os.path.normpath(args.datapath))}_{CONTRAST[args.contrast][0]}_hg{args.ndiscs}_discs_coords.txt'))
+    return args
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Extract discs coords from benchmark methods')
@@ -99,37 +106,39 @@ if __name__=='__main__':
     ## Parameters
     # All                          
     parser.add_argument('--datapath', type=str, metavar='<folder>',
-                        help='Path to data folder generated using bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
+                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
     parser.add_argument('-c', '--contrast', type=str, required=True,
                         help='MRI contrast: choices=["t1", "t2"] (Required)')
-    parser.add_argument('-txt', '--out-txt-file', default=os.path.abspath(os.path.join('results/files', f'{os.path.basename(os.path.normpath(parser.parse_args().datapath))}_{CONTRAST[parser.parse_args().contrast][0]}_hg{parser.parse_args().ndiscs}_discs_coords.txt')),
+    parser.add_argument('-txt', '--out-txt-file', default='',
                         type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(test_CONTRAST)_hg(nb_class_hourglass)_discs_coords.txt")')
     
     parser.add_argument('--ndiscs', type=int, default=15,
                         help='Number of class hourglass (default=15)')
     parser.add_argument('--suffix-label', type=str, default='_labels-disc-manual',
-                        help='Specify label suffix (default= "_labels-disc-manual")') 
+                        help='Specify label suffix example: sub-250791(img_suffix)_T2w(label_suffix).nii.gz (default= "_labels-disc-manual")') 
     parser.add_argument('--suffix-img', type=str, default='',
-                        help='Specify img suffix (default= "")')
-    parser.add_argument('--skeleton-dir', default=os.path.join(parser.parse_args().datapath, 'skeletons'),
-                        type=str, metavar='<folder>',help='Path to skeleton dir (default=<datapath>/skeletons)')
+                        help='Specify img suffix example: sub-250791(img_suffix)_T2w(label_suffix).nii.gz (default= "")')
+    parser.add_argument('--skeleton-dir', default='../disc-labeling-hourglass/src/dlh/skeletons',
+                        type=str, metavar='<folder>',help='Path to skeleton dir (default=../disc-labeling-hourglass/src/dlh/skeletons)')
     parser.add_argument('--weights-dir', default='../disc-labeling-hourglass/src/dlh/weights',
                         type=str, metavar='<folder>',help='Path to weights folder hourglass (default=../disc-labeling-hourglass/src/dlh/weights)')
     parser.add_argument('--train-contrasts', default="all", type=str,
-                        help='MRI contrast used for the hourglass training'
-                        '(default= "all")'
-                        'write "all" for multipe contrast comparison')
+                        help='MRI contrast used for the hourglass training '
+                        'write "all" for multipe contrast comparison (default= "all")')
     parser.add_argument('--att', default=True, type=bool,
                         help=' Use attention mechanism (default=True)') 
     parser.add_argument('-s', '--stacks', default=2, type=int, metavar='N',
                         help='Number of hourglasses to stack (default=2)')
     parser.add_argument('-b', '--blocks', default=1, type=int, metavar='N',
                         help='Number of residual modules at each location in the hourglass (default=1)')                                                                                               
+    parser.add_argument('--split-hourglass', default='full', type=str, metavar='N',
+                        help='Split of the dataset used for the hourglass network choices=["train", "val", "test", "full"] (default="full")')                                                                                               
+    args = parser_default(parser.parse_args())
     
-    init_txt_file(parser.parse_args())
-    add_gt_coordinate_to_txt_file(parser.parse_args())
-    test_sct_label_vertebrae(parser.parse_args())
-    test_spinenet(parser.parse_args())
-    test_hourglass(parser.parse_args())
+    init_txt_file(args)
+    add_gt_coordinate_to_txt_file(args)
+    test_sct_label_vertebrae(args)
+    test_spinenet(args)
+    test_hourglass(args)
     
     print('All the methods have been computed')
