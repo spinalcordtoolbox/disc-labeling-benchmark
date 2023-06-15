@@ -40,7 +40,7 @@ def test_hourglass(args):
     print('loading images...')
     imgs_test, masks_test, discs_labels_test, subjects_test, original_shapes = load_niftii_split(datapath=origin_data, 
                                                                                                 contrasts=contrast, 
-                                                                                                split='test', 
+                                                                                                split=args.split_hourglass, 
                                                                                                 split_ratio=(0.8, 0.1, 0.1),
                                                                                                 label_suffix=label_suffix,
                                                                                                 img_suffix=img_suffix)
@@ -60,7 +60,7 @@ def test_hourglass(args):
                 model = hg(num_stacks=args.stacks, num_blocks=args.blocks, num_classes=ndiscs)
 
             model = torch.nn.DataParallel(model).to(device)
-            model.load_state_dict(torch.load(os.path.join(weights_dir, f'/model_{train_contrast}_att_stacks_{args.stacks}_ndiscs_{ndiscs}'), map_location='cpu')['model_weights'])
+            model.load_state_dict(torch.load(os.path.join(weights_dir, f'model_{train_contrast}_att_stacks_{args.stacks}_ndiscs_{ndiscs}'), map_location='cpu')['model_weights'])
 
             # Create Dataloader
             full_dataset_test = image_Dataset(images=imgs_test, 
@@ -98,7 +98,7 @@ def test_hourglass(args):
                 pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
                 
                 # Project coordinate onto the spinal cord centerline
-                seg_path = os.path.join(origin_data, subject_name, f'{subject_name}_{contrast[0]}_seg.nii.gz' )
+                seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}_seg.nii.gz' )
                 pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
                 
                 # Swap axis prediction and ground truth
