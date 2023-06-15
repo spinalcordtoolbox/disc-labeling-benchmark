@@ -98,7 +98,7 @@ def test_spinenet(args, test_mode=False):
                 coords = np.concatenate((coords, discs_num), axis=1)
                 
                 # Project on spinalcord for 2D comparison
-                seg_path = os.path.join(datapath, subject_name, f'{subject_name}_{contrast}_seg.nii.gz' )
+                seg_path = os.path.join(datapath, subject_name, f'{subject_name}{img_suffix}_{contrast}_seg.nii.gz' )
                 coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
                 
                 # Move y origin to the bottom of the image like Niftii convention
