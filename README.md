@@ -42,6 +42,12 @@ python src/bcm/run/extract_disc_cords.py --datapath VERTEBRAL_DATA -c t2
 python src/bcm/run/compute_disc_labeling_comparison.py --datapath VERTEBRAL_DATA -txt results/files/spinegeneric_vert_T1w_hg15_discs_coords.txt -c t2
 ```
 
+## See also
+
+NeuroPoly disc labeling implementations:
+- Hourglass approach: https://github.com/spinalcordtoolbox/disc-labeling-hourglass
+- nnU-Net approach: https://github.com/spinalcordtoolbox/disc-labeling-nnunet
+
 ## Contributions and Feedback
 
 Contributions to this repository are welcome. If you have developed a new method or have improvements to existing methods, please submit a pull request. Additionally, feedback and suggestions for improvement are highly appreciated. Feel free to open an issue to report bugs, propose new features, or ask questions.
