@@ -49,13 +49,13 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 # General parameters
 DATA_DIR=""
 CONTRAST=""
-OUTPUT_TXT=""
+OUTPUT_DIR="results/files/"
 SUFFIX_IMG=""
 SUFFIX_LABEL_DISC="_labels-disc-manual"
 SUFFIX_SEG="_seg"
 VERBOSE=0
 
-# Hourglass parameters
+# Hourglass parameters --> TODO: create config file
 SKELETON_DIR="../disc-labeling-hourglass/src/dlh/skeletons"
 WEIGHTS_DIR="../disc-labeling-hourglass/src/dlh/weights"
 TRAIN_CONTRASTS="all"
@@ -67,17 +67,7 @@ SPLIT_HOURGLASS="full"
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-# while getopts d:c:o:v: flag
-# do
-#   case "${flag}" in
-#     d) DATA_DIR=${OPTARG};;
-#     c) CONTRAST=${OPTARG};;
-#     o) OUTPUT_TXT=${OPTARG};;
-#     v) VERBOSE=${OPTARG};;
-#   esac
-# done
-
-params="$(getopt -o d:c:o:vnA -l data:,contrast:,out:,verbose,ndiscs:,no-att --name "$0" -- "$@")"
+params="$(getopt -o d:c:ov -l data:,contrast:,out:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
@@ -92,19 +82,11 @@ do
             shift 2
             ;;
         -o|--out)
-            echo charlie
-            shift
+            OUTPUT_TXT="$2"
+            shift 2
             ;;
         -v|--verbose)
             VERBOSE=1
-            shift
-            ;;
-        -n|--ndiscs)
-            echo charlie
-            shift
-            ;;
-        -A|--no-att)
-            echo charlie
             shift
             ;;
         --)
@@ -121,19 +103,19 @@ done
 # Get full path for all parameters.
 DATA_DIR=$(realpath "${DATA_DIR}")
 OUTPUT_DIR=$(realpath "${OUTPUT_DIR}")
-PAM50_SEG=$(realpath "${PAM50_SEG}")
+
+# Define default value OUTPUT_TXT
+OUTPUT_TXT="${OUTPUT_DIR}$(basename -- $DATA_DIR)_${CONTRAST}_discs_coords.txt"
 
 # Print the parameters if VERBOSE is enabled.
 # ----------------------------------------------------------------------------------------------------------------------
-if [[ ${VERBOSE} == 1 ]]; then
+if [[ ${VERBOSE} == 0 ]]; then
     echo ""
     echo "Running with the following parameters:"
     echo "DATA_DIR=${DATA_DIR}"
     echo "OUTPUT_DIR=${OUTPUT_DIR}"
-    echo "PAM50_SEG=${PAM50_SEG}"
-    echo "OVERWRITE=${OVERWRITE}"
-    echo "CLEANUP=${CLEANUP}"
     echo "VERBOSE=${VERBOSE}"
+    echo "OUTPUT_TXT=${OUTPUT_TXT}"
     echo ""
 fi
 
@@ -155,3 +137,29 @@ fi
 
 # SCRIPT STARTS HERE
 # ======================================================================================================================
+
+## Activate env HOURGLASS + SCT
+conda activate sct_hourglass_env
+
+# Init text file
+python src/bcm/utils/init_txt_file.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT
+
+# Add ground truth discs coordinates
+python src/bcm/methods/add_gt_coordinates.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+
+# Test sct_label_vertebrae
+python src/bcm/methods/test_sct_label_vertebrae.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+
+# Test Hourglass Network
+python src/bcm/methods/test_hourglass_network.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+
+## Deactivate env
+conda deactivate
+
+## Activate env SPINENET
+conda activate spinenet_env
+
+# Test Spinenet Network
+python src/bcm/methods/test_spinenet_network.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+
+echo "All the methods have been computed"
