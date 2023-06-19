@@ -41,9 +41,9 @@ def add_gt_coordinate_to_txt_file(args):
     contrast = CONTRAST[args.contrast][0]
     txt_file = args.out_txt_file
     dir_list = os.listdir(datapath)
-    label_suffix = args.suffix_label
     img_suffix = args.suffix_img
-    seg_suffix = '_seg'
+    disc_label_suffix = args.suffix_label_disc
+    seg_suffix = args.suffix_seg
     
     # Load disc_coords txt file
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
@@ -54,10 +54,10 @@ def add_gt_coordinate_to_txt_file(args):
     for dir_name in dir_list:
         if dir_name.startswith('sub'):
             img_path = os.path.join(datapath, dir_name, dir_name + img_suffix + '_' + contrast + '.nii.gz')
-            label_path = os.path.join(datapath, dir_name, dir_name + img_suffix + '_' + contrast + label_suffix + '.nii.gz')
+            label_path = os.path.join(datapath, dir_name, dir_name + img_suffix + '_' + contrast + disc_label_suffix + '.nii.gz')
             seg_path = os.path.join(datapath, dir_name, dir_name + img_suffix + '_' + contrast + seg_suffix + '.nii.gz' )
             if not os.path.exists(label_path):
-                print(f'Error while importing {dir_name}\n {img_path} may not exist\n {label_path} may not exist, please check suffix {label_suffix}\n')
+                print(f'Error while importing {dir_name}\n {img_path} may not exist\n {label_path} may not exist, please check suffix {disc_label_suffix}\n')
             else:
                 if os.path.exists(seg_path):
                     status = 0
@@ -97,27 +97,32 @@ def parser_default(args):
     This functions configure custom default values
     '''
     if args.out_txt_file == '':
-        args.out_txt_file = os.path.abspath(os.path.join('results/files', f'{os.path.basename(os.path.normpath(args.datapath))}_{CONTRAST[args.contrast][0]}_hg{args.ndiscs}_discs_coords.txt'))
+        args.out_txt_file = os.path.abspath(os.path.join('results/files', f'{os.path.basename(os.path.normpath(args.datapath))}_{CONTRAST[args.contrast][0]}_discs_coords.txt'))
     return args
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Extract discs coords from benchmark methods')
 
     ## Parameters
-    # All                          
+    # All mandatory                          
     parser.add_argument('--datapath', type=str, metavar='<folder>',
                         help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
     parser.add_argument('-c', '--contrast', type=str, required=True,
                         help='MRI contrast: choices=["t1", "t2"] (Required)')
     parser.add_argument('-txt', '--out-txt-file', default='',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(test_CONTRAST)_hg(nb_class_hourglass)_discs_coords.txt")')
+                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
     
+    # All methods
+    parser.add_argument('--suffix-img', type=str, default='',
+                        help='Specify img suffix example: sub-250791(IMG_SUFFIX)_T2w.nii.gz (default= "")')
+    parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
+                        help='Specify label suffix example: sub-250791(IMG_SUFFIX)_T2w(DISC_LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")')
+    parser.add_argument('--suffix-seg', type=str, default='_seg',
+                        help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    
+    # Hourglass arguments
     parser.add_argument('--ndiscs', type=int, default=15,
                         help='Number of class hourglass (default=15)')
-    parser.add_argument('--suffix-label', type=str, default='_labels-disc-manual',
-                        help='Specify label suffix example: sub-250791(img_suffix)_T2w(label_suffix).nii.gz (default= "_labels-disc-manual")') 
-    parser.add_argument('--suffix-img', type=str, default='',
-                        help='Specify img suffix example: sub-250791(img_suffix)_T2w(label_suffix).nii.gz (default= "")')
     parser.add_argument('--skeleton-dir', default='../disc-labeling-hourglass/src/dlh/skeletons',
                         type=str, metavar='<folder>',help='Path to skeleton dir (default=../disc-labeling-hourglass/src/dlh/skeletons)')
     parser.add_argument('--weights-dir', default='../disc-labeling-hourglass/src/dlh/weights',
@@ -125,7 +130,7 @@ if __name__=='__main__':
     parser.add_argument('--train-contrasts', default="all", type=str,
                         help='MRI contrast used for the hourglass training '
                         'write "all" for multipe contrast comparison (default= "all")')
-    parser.add_argument('--att', default=True, type=bool,
+    parser.add_argument('--att', default=True, action="store_true",
                         help=' Use attention mechanism (default=True)') 
     parser.add_argument('-s', '--stacks', default=2, type=int, metavar='N',
                         help='Number of hourglasses to stack (default=2)')
