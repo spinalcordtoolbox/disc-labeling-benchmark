@@ -6,10 +6,12 @@ import numpy as np
 from scipy.ndimage import zoom
 
 from spinalcordtoolbox.image import Image, get_dimension
+from spinalcordtoolbox.utils.sys import run_proc
 
 from spinenet import SpineNet, io
 
 from bcm.utils.utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file 
+from bcm.utils.init_txt_file import init_txt_file
 
 #---------------------------Test spinenet--------------------------
 def test_spinenet(args, test_mode=False):
@@ -21,6 +23,7 @@ def test_spinenet(args, test_mode=False):
     datapath = os.path.abspath(args.datapath)
     contrast = CONTRAST[args.contrast][0]
     img_suffix = args.suffix_img
+    seg_suffix = args.suffix_seg
     
     # load in spinenet
     spnt = SpineNet(device='cuda:0', verbose=True, scan_type='whole')
@@ -98,11 +101,21 @@ def test_spinenet(args, test_mode=False):
                 coords = np.concatenate((coords, discs_num), axis=1)
                 
                 # Project on spinalcord for 2D comparison
-                seg_path = os.path.join(datapath, subject_name, f'{subject_name}{img_suffix}_{contrast}_seg.nii.gz' )
-                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
-                
-                # Move y origin to the bottom of the image like Niftii convention
-                coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
+                seg_path = os.path.join(datapath, subject_name, f'{subject_name}{img_suffix}_{contrast}{seg_suffix}.nii.gz' )
+                if os.path.exists(seg_path):
+                    status = 0
+                else:
+                    status, _ = run_proc(['sct_deepseg_sc',
+                                            '-i', img_path, 
+                                            '-c', args.contrast,
+                                            '-o', seg_path])
+                if status != 0:
+                    print(f'Fail segmentation for {subject_name} cannot project')
+                else:
+                    coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
+                    
+                    # Move y origin to the bottom of the image like Niftii convention
+                    coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
             else:
                 coords = np.array([]) # Fail
 
@@ -124,34 +137,51 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Run test on spinenet')
 
-    parser.add_argument('--datapath', default="/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/data/preprocessed_data/vertebral_data", type=str,
-                        help='SCT dataset path')                               
-    parser.add_argument('-c', '--contrast', default='t2', type=str, metavar='N',
-                        help='MRI contrast')
-    parser.add_argument('-sub', default= 'sub-beijingGE01',
+    ## Parameters
+    # All mandatory                          
+    parser.add_argument('--datapath', type=str, metavar='<folder>',
+                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
+    parser.add_argument('-c', '--contrast', type=str, required=True,
+                        help='MRI contrast: choices=["t1", "t2"] (Required)')
+    parser.add_argument('-txt', '--out-txt-file', default='',
+                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
+    
+    # All methods
+    parser.add_argument('--suffix-img', type=str, default='',
+                        help='Specify img suffix example: sub-250791(IMG_SUFFIX)_T2w.nii.gz (default= "")')
+    parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
+                        help='Specify label suffix example: sub-250791(IMG_SUFFIX)_T2w(DISC_LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")')
+    parser.add_argument('--suffix-seg', type=str, default='_seg',
+                        help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    
+    # Test mode only --> no txt file
+    parser.add_argument('-sub', default= '',
                         type=str, metavar='N',help='Generated txt file') # 'sub-juntendo750w06'
     
-    parser.add_argument('--suffix-label', type=str, default='_labels-disc-manual',
-                        help='Specify label suffix (default= "_labels-disc-manual")') 
-    parser.add_argument('--suffix-img', type=str, default='',
-                        help='Specify img suffix (default= "")')
-    
-    nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
-    fig = plt.figure(figsize=(40,40))
-    for slice_idx in range(nb_slice):
-        ax = fig.add_subplot(4,4,slice_idx+1)
-        ax.imshow(img[:,:,slice_idx], cmap='gray')
-        ax.set_title(f'Slice {slice_idx+1}', fontsize=60)
-        ax.axis('off')
-        for disc, coord in discs_coords.items():
-            ax.add_patch(Circle(coord, radius=1, ec='r'))
-            ax.text(coord[0]-15, coord[1], disc, color='r', fontsize=15)
-        for vert_dict in vert_dicts_niftii:
-            if slice_idx in vert_dict['slice_nos']:
-                poly_idx = int(vert_dict['slice_nos'].index(slice_idx))
-                poly = np.array(vert_dict['polys'][poly_idx])
-                ax.add_patch(Polygon(poly, ec='y',fc='none'))
-                ax.text(np.mean(poly[:,0]), np.mean(poly[:,1]), vert_dict['predicted_label'],c='y', ha='center',va='center', fontsize=15)
+    if parser.parse_args() != '':
+        nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
+        fig = plt.figure(figsize=(40,40))
+        for slice_idx in range(nb_slice):
+            ax = fig.add_subplot(4,4,slice_idx+1)
+            ax.imshow(img[:,:,slice_idx], cmap='gray')
+            ax.set_title(f'Slice {slice_idx+1}', fontsize=60)
+            ax.axis('off')
+            for disc, coord in discs_coords.items():
+                ax.add_patch(Circle(coord, radius=1, ec='r'))
+                ax.text(coord[0]-15, coord[1], disc, color='r', fontsize=15)
+            for vert_dict in vert_dicts_niftii:
+                if slice_idx in vert_dict['slice_nos']:
+                    poly_idx = int(vert_dict['slice_nos'].index(slice_idx))
+                    poly = np.array(vert_dict['polys'][poly_idx])
+                    ax.add_patch(Polygon(poly, ec='y',fc='none'))
+                    ax.text(np.mean(poly[:,0]), np.mean(poly[:,1]), vert_dict['predicted_label'],c='y', ha='center',va='center', fontsize=15)
 
-    fig.suptitle('Detected Vertebrae (all slices)', fontsize=100)
-    fig.savefig('test/visualize/test_spinenet.png')
+        fig.suptitle('Detected Vertebrae (all slices)', fontsize=100)
+        fig.savefig('test/visualize/test_spinenet.png')
+    else:
+        # Init output txt file if does not exist
+        if not os.path.exists(parser.parse_args().out_txt_file):
+            init_txt_file(parser.parse_args())
+        
+        # Run Hourglass Network on input data
+        test_spinenet(parser.parse_args())

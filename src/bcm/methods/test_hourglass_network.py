@@ -6,7 +6,9 @@ import numpy as np
 from torch.utils.data import DataLoader
 
 from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
+from bcm.utils.init_txt_file import init_txt_file
 
+from spinalcordtoolbox.utils.sys import run_proc
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
@@ -22,8 +24,9 @@ def test_hourglass(args):
     skeleton_dir = args.skeleton_dir
     weights_dir = args.weights_dir
     txt_file = args.out_txt_file
-    label_suffix = args.suffix_label
+    disc_label_suffix = args.suffix_label_disc
     img_suffix = args.suffix_img
+    seg_suffix = args.suffix_seg
     
     # Error if multiple contrasts for DATA selected
     if len(contrast) > 1:
@@ -42,7 +45,7 @@ def test_hourglass(args):
                                                                                                 contrasts=contrast, 
                                                                                                 split=args.split_hourglass, 
                                                                                                 split_ratio=(0.8, 0.1, 0.1),
-                                                                                                label_suffix=label_suffix,
+                                                                                                label_suffix=disc_label_suffix,
                                                                                                 img_suffix=img_suffix)
     
     for train_contrast in train_contrasts:
@@ -98,15 +101,26 @@ def test_hourglass(args):
                 pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
                 
                 # Project coordinate onto the spinal cord centerline
-                seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}_seg.nii.gz' )
-                pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
-                
-                # Swap axis prediction and ground truth
-                pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
-                
-                # Edit coordinates in txt file
-                # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-                split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name=f'hourglass_{train_contrast}_coords')
+                img_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}.nii.gz' )
+                seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}{seg_suffix}.nii.gz' )
+                if os.path.exists(seg_path):
+                    status = 0
+                else:
+                    status, _ = run_proc(['sct_deepseg_sc',
+                                            '-i', img_path, 
+                                            '-c', args.contrast,
+                                            '-o', seg_path])
+                if status != 0:
+                    print(f'Fail segmentation for {subject_name} cannot project')
+                else:
+                    pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+                    
+                    # Swap axis prediction and ground truth
+                    pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                    
+                    # Edit coordinates in txt file
+                    # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
+                    split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name=f'hourglass_{train_contrast}_coords')
         else:
             print(f'Path to skeleton {path_skeleton} does not exist'
                   f'Please check if contrasts {train_contrast} was used for training')     
@@ -118,28 +132,47 @@ def test_hourglass(args):
         f.writelines(split_lines)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run test on hourglass')
+    parser = argparse.ArgumentParser(description='Add Hourglass Network coordinates to text file')
 
-    parser.add_argument('--datapath', default="/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/data/preprocessed_data/vertebral_data", type=str,
-                        help='dataset path')                                                             
-    parser.add_argument('-c', '--contrast', default='t2', type=str, metavar='N',
-                        help='MRI contrast of the tested images defaut=t2, only one contrast is possible here')
-    parser.add_argument('--train-contrasts', default=parser.parse_args().contrast, type=str, metavar='N',
-                        help='MRI contrast used for the training default=contrast parameter, multiple contrasts are allowed')
+    ## Parameters
+    # All mandatory                          
+    parser.add_argument('--datapath', type=str, metavar='<folder>',
+                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
+    parser.add_argument('-c', '--contrast', type=str, required=True,
+                        help='MRI contrast: choices=["t1", "t2"] (Required)')
+    parser.add_argument('-txt', '--out-txt-file', default='',
+                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
+    
+    # All methods
+    parser.add_argument('--suffix-img', type=str, default='',
+                        help='Specify img suffix example: sub-250791(IMG_SUFFIX)_T2w.nii.gz (default= "")')
+    parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
+                        help='Specify label suffix example: sub-250791(IMG_SUFFIX)_T2w(DISC_LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")')
+    parser.add_argument('--suffix-seg', type=str, default='_seg',
+                        help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    
+    # Hourglass arguments
     parser.add_argument('--ndiscs', type=int, default=15,
-                        help='Number of discs to detect')
-    parser.add_argument('-txt', '--out-txt-file', default=os.path.join('test/files', f'{CONTRAST[parser.parse_args().contrast]}_hg{parser.parse_args().ndiscs}_discs_coords.txt'),
-                        type=str, metavar='N',help='Generated txt file')
-    parser.add_argument('--skeleton-dir', default=os.path.join(parser.parse_args().datapath, 'skeletons'),
-                        type=str, metavar='N',help='Generated txt file')
-    parser.add_argument('-sub', default= 'sub-perform04',
-                        type=str, metavar='N',help='Generated txt file') # 'sub-juntendo750w06'
-    
-    parser.add_argument('--att', default= True, type=bool,
-                        help=' Use attention mechanism') 
+                        help='Number of class hourglass (default=15)')
+    parser.add_argument('--skeleton-dir', default='../disc-labeling-hourglass/src/dlh/skeletons',
+                        type=str, metavar='<folder>',help='Path to skeleton dir (default=../disc-labeling-hourglass/src/dlh/skeletons)')
+    parser.add_argument('--weights-dir', default='../disc-labeling-hourglass/src/dlh/weights',
+                        type=str, metavar='<folder>',help='Path to weights folder hourglass (default=../disc-labeling-hourglass/src/dlh/weights)')
+    parser.add_argument('--train-contrasts', default="all", type=str,
+                        help='MRI contrast used for the hourglass training '
+                        'write "all" for multipe contrast comparison (default= "all")')
+    parser.add_argument('--att', default=True, action="store_true",
+                        help=' Use attention mechanism (default=True)') 
     parser.add_argument('-s', '--stacks', default=2, type=int, metavar='N',
-                        help='Number of hourglasses to stack')
+                        help='Number of hourglasses to stack (default=2)')
     parser.add_argument('-b', '--blocks', default=1, type=int, metavar='N',
-                        help='Number of residual modules at each location in the hourglass')
+                        help='Number of residual modules at each location in the hourglass (default=1)')                                                                                               
+    parser.add_argument('--split-hourglass', default='full', type=str, metavar='N',
+                        help='Split of the dataset used for the hourglass network choices=["train", "val", "test", "full"] (default="full")')                                                                                               
+
+    # Init output txt file if does not exist
+    if not os.path.exists(parser.parse_args().out_txt_file):
+        init_txt_file(parser.parse_args())
     
+    # Run Hourglass Network on input data
     test_hourglass(parser.parse_args())
