@@ -19,6 +19,7 @@ from dlh.utils.test_utils import extract_skeleton, load_niftii_split
 def test_hourglass(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     contrast = CONTRAST[args.contrast]
+    train_contrasts = 'all'
     ndiscs = args.ndiscs
     origin_data = args.datapath
     skeleton_dir = args.skeleton_dir
@@ -34,7 +35,7 @@ def test_hourglass(args):
         sys.exit(1)
 
     # Handle multiple contrast for hourglass WEIGHTS
-    if args.train_contrasts == 'all':
+    if train_contrasts == 'all':
         train_contrasts = [cont for cont in list(CONTRAST.keys()) if args.contrast in cont] # TODO: Example can't use T1w training for T2w testing check
     else:
         train_contrasts = [args.train_contrasts]
@@ -43,7 +44,7 @@ def test_hourglass(args):
     print('loading images...')
     imgs_test, masks_test, discs_labels_test, subjects_test, original_shapes = load_niftii_split(datapath=origin_data, 
                                                                                                 contrasts=contrast, 
-                                                                                                split=args.split_hourglass, 
+                                                                                                split='full', 
                                                                                                 split_ratio=(0.8, 0.1, 0.1),
                                                                                                 label_suffix=disc_label_suffix,
                                                                                                 img_suffix=img_suffix)

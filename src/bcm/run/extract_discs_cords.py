@@ -120,24 +120,20 @@ if __name__=='__main__':
     parser.add_argument('--suffix-seg', type=str, default='_seg',
                         help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
     
-    # Hourglass arguments
+    # Hourglass parameters
     parser.add_argument('--ndiscs', type=int, default=15,
                         help='Number of class hourglass (default=15)')
     parser.add_argument('--skeleton-dir', default='../disc-labeling-hourglass/src/dlh/skeletons',
                         type=str, metavar='<folder>',help='Path to skeleton dir (default=../disc-labeling-hourglass/src/dlh/skeletons)')
     parser.add_argument('--weights-dir', default='../disc-labeling-hourglass/src/dlh/weights',
                         type=str, metavar='<folder>',help='Path to weights folder hourglass (default=../disc-labeling-hourglass/src/dlh/weights)')
-    parser.add_argument('--train-contrasts', default="all", type=str,
-                        help='MRI contrast used for the hourglass training '
-                        'write "all" for multipe contrast comparison (default= "all")')
     parser.add_argument('--att', default=True, action="store_true",
                         help=' Use attention mechanism (default=True)') 
     parser.add_argument('-s', '--stacks', default=2, type=int, metavar='N',
                         help='Number of hourglasses to stack (default=2)')
     parser.add_argument('-b', '--blocks', default=1, type=int, metavar='N',
-                        help='Number of residual modules at each location in the hourglass (default=1)')                                                                                               
-    parser.add_argument('--split-hourglass', default='full', type=str, metavar='N',
-                        help='Split of the dataset used for the hourglass network choices=["train", "val", "test", "full"] (default="full")')                                                                                               
+                        help='Number of residual modules at each location in the hourglass (default=1)')                                                                                          
+    
     args = parser_default(parser.parse_args())
     
     init_txt_file(args)
