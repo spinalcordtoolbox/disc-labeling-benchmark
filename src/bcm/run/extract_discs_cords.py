@@ -109,31 +109,18 @@ if __name__=='__main__':
                         help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
     parser.add_argument('-c', '--contrast', type=str, required=True,
                         help='MRI contrast: choices=["t1", "t2"] (Required)')
-    parser.add_argument('-txt', '--out-txt-file', default='',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
+    parser.add_argument('--config-hg', type=str, required=True,
+                        help='Config file where hourglass training parameters are stored Example: Example: ~/<your_path>/config.json (Required)')  # Hourglass config file
     
     # All methods
+    parser.add_argument('-txt', '--out-txt-file', default='',
+                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
     parser.add_argument('--suffix-img', type=str, default='',
                         help='Specify img suffix example: sub-250791(IMG_SUFFIX)_T2w.nii.gz (default= "")')
     parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
                         help='Specify label suffix example: sub-250791(IMG_SUFFIX)_T2w(DISC_LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")')
     parser.add_argument('--suffix-seg', type=str, default='_seg',
                         help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
-    
-    # Hourglass parameters
-    parser.add_argument('--ndiscs', type=int, default=15,
-                        help='Number of class hourglass (default=15)')
-    parser.add_argument('--skeleton-dir', default='../disc-labeling-hourglass/src/dlh/skeletons',
-                        type=str, metavar='<folder>',help='Path to skeleton dir (default=../disc-labeling-hourglass/src/dlh/skeletons)')
-    parser.add_argument('--weights-dir', default='../disc-labeling-hourglass/src/dlh/weights',
-                        type=str, metavar='<folder>',help='Path to weights folder hourglass (default=../disc-labeling-hourglass/src/dlh/weights)')
-    parser.add_argument('--att', default=True, action="store_true",
-                        help=' Use attention mechanism (default=True)') 
-    parser.add_argument('-s', '--stacks', default=2, type=int, metavar='N',
-                        help='Number of hourglasses to stack (default=2)')
-    parser.add_argument('-b', '--blocks', default=1, type=int, metavar='N',
-                        help='Number of residual modules at each location in the hourglass (default=1)')                                                                                          
-    
     args = parser_default(parser.parse_args())
     
     init_txt_file(args)

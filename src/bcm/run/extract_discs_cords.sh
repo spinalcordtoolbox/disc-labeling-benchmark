@@ -55,19 +55,13 @@ SUFFIX_LABEL_DISC="_labels-disc-manual"
 SUFFIX_SEG="_seg"
 VERBOSE=0
 
-# Hourglass parameters --> TODO: create config file
-SKELETON_DIR="../disc-labeling-hourglass/src/dlh/skeletons"
-WEIGHTS_DIR="../disc-labeling-hourglass/src/dlh/weights"
-TRAIN_CONTRASTS="all"
-NDISCS="15"
-ATT="True"
-STACKS="2"
-BLOCKS="1"
-SPLIT_HOURGLASS="full"
+# Hourglass config file
+CONFIG_HG="../disc-labeling-hourglass/src/dlh/weights/config_spinegeneric_vert_t2.json"
+
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:c:ov -l data:,contrast:,out:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:c:f:ov -l data:,contrast:,file:,out:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
@@ -79,6 +73,10 @@ do
             ;;
         -c|--contrast)
             CONTRAST="$2"
+            shift 2
+            ;;
+        -f|--file)
+            CONFIG_HG="$2"
             shift 2
             ;;
         -o|--out)
@@ -151,7 +149,7 @@ python src/bcm/methods/add_gt_coordinates.py --datapath $DATA_DIR --contrast $CO
 python src/bcm/methods/test_sct_label_vertebrae.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
 
 # Test Hourglass Network
-python src/bcm/methods/test_hourglass_network.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+python src/bcm/methods/test_hourglass_network.py --datapath $DATA_DIR --contrast $CONTRAST --config-hg $CONFIG_HG --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
 
 ## Deactivate env
 conda deactivate
