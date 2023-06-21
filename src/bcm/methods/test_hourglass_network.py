@@ -9,6 +9,7 @@ from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edi
 from bcm.utils.init_txt_file import init_txt_file
 
 from spinalcordtoolbox.utils.sys import run_proc
+from spinalcordtoolbox.image import Image
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
@@ -112,7 +113,7 @@ def test_hourglass(args):
                 # Project coordinate onto the spinal cord centerline
                 img_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}.nii.gz' )
                 seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}{seg_suffix}.nii.gz' )
-                if os.path.exists(seg_path):
+                if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg 
                     status = 0
                 else:
                     status, _ = run_proc(['sct_deepseg_sc',

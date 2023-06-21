@@ -102,7 +102,7 @@ def test_spinenet(args, test_mode=False):
                 
                 # Project on spinalcord for 2D comparison
                 seg_path = os.path.join(datapath, subject_name, f'{subject_name}{img_suffix}_{contrast}{seg_suffix}.nii.gz' )
-                if os.path.exists(seg_path):
+                if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==img_niftii.data.shape:  # Check if seg_shape == img_shape or create new seg 
                     status = 0
                 else:
                     status, _ = run_proc(['sct_deepseg_sc',
