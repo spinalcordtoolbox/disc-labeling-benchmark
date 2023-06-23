@@ -14,7 +14,7 @@ from spinalcordtoolbox.image import Image
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
 from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import extract_skeleton, load_niftii_split
+from dlh.utils.test_utils import extract_skeleton, load_img_only, load_niftii_split
 from dlh.utils.config2parser import config2parser
 
 #---------------------------Test Hourglass Network----------------------------
@@ -23,11 +23,9 @@ def test_hourglass(args):
     origin_data = args.datapath
     contrast = CONTRAST[args.contrast]
     txt_file = args.out_txt_file
-    disc_label_suffix = args.suffix_label_disc
     img_suffix = args.suffix_img
     seg_suffix = args.suffix_seg
     train_contrasts = 'all'
-    split_hourglass = 'full'
     
     # Get hourglass training parameters
     config_parser = config2parser(args.config_hg)
@@ -35,8 +33,8 @@ def test_hourglass(args):
     att = config_parser.att
     stacks = config_parser.stacks
     blocks = config_parser.blocks
-    skeleton_dir = config_parser.skeleton_dir
-    weights_dir = config_parser.weights_dir
+    skeleton_dir = config_parser.skeleton_folder
+    weights_dir = config_parser.weight_folder
     
     # Error if multiple contrasts for DATA selected
     if len(contrast) > 1:
@@ -51,12 +49,9 @@ def test_hourglass(args):
     
     # Loading image paths
     print('loading images...')
-    imgs_test, masks_test, discs_labels_test, subjects_test, original_shapes = load_niftii_split(datapath=origin_data, 
-                                                                                                contrasts=contrast, 
-                                                                                                split=split_hourglass, 
-                                                                                                split_ratio=(0.8, 0.1, 0.1),
-                                                                                                label_suffix=disc_label_suffix,
-                                                                                                img_suffix=img_suffix)
+    imgs_test, subjects_test, original_shapes = load_img_only(datapath=origin_data, 
+                                                            contrasts=contrast,
+                                                            img_suffix=img_suffix)
     
     for train_contrast in train_contrasts:
         path_skeleton = os.path.join(skeleton_dir, f'{train_contrast}_Skelet_ndiscs_{ndiscs}.npy')
@@ -77,13 +72,12 @@ def test_hourglass(args):
 
             # Create Dataloader
             full_dataset_test = image_Dataset(images=imgs_test, 
-                                            targets=masks_test,
-                                            discs_labels_list=discs_labels_test,
                                             subjects_names=subjects_test,
                                             num_channel=ndiscs,
                                             use_flip = False,
                                             load_mode='test'
                                             ) 
+            
             MRI_test_loader   = DataLoader(full_dataset_test, 
                                         batch_size= 1, 
                                         shuffle=False, 
@@ -97,13 +91,13 @@ def test_hourglass(args):
                 split_lines = [line.split(' ') for line in file_lines]
             
             # Extract discs coordinates from the test set
-            for i, (inputs, targets, vis, gt_coord, subject_name) in enumerate(MRI_test_loader): # subject_name
-                inputs, targets = inputs.to(device), targets.to(device, non_blocking=True)
+            for i, (inputs, subject_name) in enumerate(MRI_test_loader): # subject_name
+                inputs = inputs.to(device)
                 output = model(inputs) 
                 output = output[-1]
                 subject_name = subject_name[0]
                 
-                prediction, pred_discs_coords = extract_skeleton(inputs, output, targets, norm_mean_skeleton, ndiscs, Flag_save=True)
+                prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
                 
                 # Convert pred_discs_coords to original image size
                 pred_shape = prediction[0,0].shape 
