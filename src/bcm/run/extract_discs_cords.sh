@@ -50,13 +50,14 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 DATA_DIR=""
 CONTRAST=""
 OUTPUT_DIR="results/files/"
-SUFFIX_IMG=""
+OUTPUT_TXT=""
+SUFFIX_IMG="_ses-M0"
 SUFFIX_LABEL_DISC="_labels-disc-manual"
-SUFFIX_SEG="_seg"
-VERBOSE=0
+SUFFIX_SEG="_seg-manual"
+VERBOSE=1
 
 # Hourglass config file
-CONFIG_HG="../disc-labeling-hourglass/src/dlh/weights/config_spinegeneric_vert_t2.json"
+CONFIG_HG=""
 
 
 # Get command-line parameters to override default values.
@@ -92,7 +93,7 @@ do
             break
             ;;
         *)
-            echo "Not implemented: $1" >&2
+            echo "Not implemented: $1"
             exit 1
             ;;
     esac
@@ -101,19 +102,23 @@ done
 # Get full path for all parameters.
 DATA_DIR=$(realpath "${DATA_DIR}")
 OUTPUT_DIR=$(realpath "${OUTPUT_DIR}")
+CONFIG_HG=$(realpath "${CONFIG_HG}")
 
 # Define default value OUTPUT_TXT
-OUTPUT_TXT="${OUTPUT_DIR}$(basename -- $DATA_DIR)_${CONTRAST}_discs_coords.txt"
+if [[ -z "$OUTPUT_TXT" ]] ; then
+    OUTPUT_TXT="${OUTPUT_DIR}/$(basename -- $DATA_DIR)_${CONTRAST}_discs_coords.txt"
+fi
 
 # Print the parameters if VERBOSE is enabled.
 # ----------------------------------------------------------------------------------------------------------------------
-if [[ ${VERBOSE} == 0 ]]; then
+if [[ ${VERBOSE} == 1 ]]; then
     echo ""
     echo "Running with the following parameters:"
     echo "DATA_DIR=${DATA_DIR}"
-    echo "OUTPUT_DIR=${OUTPUT_DIR}"
-    echo "VERBOSE=${VERBOSE}"
+    echo "CONTRAST=${CONTRAST}"
+    echo "CONFIG_HG=${CONFIG_HG}"
     echo "OUTPUT_TXT=${OUTPUT_TXT}"
+    echo "VERBOSE=${VERBOSE}"
     echo ""
 fi
 
@@ -136,28 +141,39 @@ fi
 # SCRIPT STARTS HERE
 # ======================================================================================================================
 
+# Mandatory args
+args=( --datapath "$DATA_DIR" --contrast "$CONTRAST" --out-txt-file "$OUTPUT_TXT")
+
+# Methods args
+args_m=${args[*]}
+if [ ! -z "$SUFFIX_IMG" ]; then args_m+=( --suffix-img "$SUFFIX_IMG" );fi
+if [ ! -z "$SUFFIX_LABEL_DISC" ]; then args_m+=( --suffix-label-disc "$SUFFIX_LABEL_DISC" );fi
+if [ ! -z "$SUFFIX_SEG" ]; then args_m+=( --suffix-seg "$SUFFIX_SEG" );fi
+
+# Add config file parameter for hourglass
+args_hg=${args_m[*]}
+args_hg+=( --config-hg "$CONFIG_HG" )
+
 ## Activate env HOURGLASS + SCT
-conda activate sct_hourglass_env
+source /usr/local/miniforge3/etc/profile.d/conda.sh
+conda activate sct_hg_env
 
 # Init text file
-python src/bcm/utils/init_txt_file.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT
+python src/bcm/utils/init_txt_file.py ${args[@]}
 
 # Add ground truth discs coordinates
-python src/bcm/methods/add_gt_coordinates.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+python src/bcm/methods/add_gt_coordinates.py ${args_m[@]}
 
 # Test sct_label_vertebrae
-python src/bcm/methods/test_sct_label_vertebrae.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+# python src/bcm/methods/test_sct_label_vertebrae.py ${args_m[@]}
 
 # Test Hourglass Network
-python src/bcm/methods/test_hourglass_network.py --datapath $DATA_DIR --contrast $CONTRAST --config-hg $CONFIG_HG --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+python src/bcm/methods/test_hourglass_network.py ${args_hg[@]}
 
 ## Deactivate env
 conda deactivate
 
-## Activate env SPINENET
-conda activate spinenet_env
-
-# Test Spinenet Network
-python src/bcm/methods/test_spinenet_network.py --datapath $DATA_DIR --contrast $CONTRAST --out-txt-file $OUTPUT_TXT --suffix-img $SUFFIX_IMG --suffix-label-disc $SUFFIX_LABEL_DISC --suffix-seg $SUFFIX_SEG
+# Test Spinenet Network with spinenet-venv
+../spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args_m[@]}"
 
 echo "All the methods have been computed"
