@@ -34,8 +34,8 @@ def add_gt_coordinate_to_txt_file(args):
             label_path = os.path.join(datapath, dir_name, dir_name + img_suffix + '_' + contrast + disc_label_suffix + '.nii.gz')
             seg_path = os.path.join(datapath, dir_name, dir_name + img_suffix + '_' + contrast + seg_suffix + '.nii.gz' )
             if not os.path.exists(label_path):
-                print(f'Error while importing {dir_name}\n {img_path} may not exist\n {label_path} may not exist, please check suffix {disc_label_suffix}\n')
-            elif Image(label_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Shape not matching between image and labels
+                print(f'Error while importing {dir_name}\n {label_path} does not exist, please check suffix {disc_label_suffix}\n')
+            elif Image(label_path).change_orientation('RSP').data.shape != Image(img_path).change_orientation('RSP').data.shape:  # Shape not matching between image and labels
                 print(f'Error with {dir_name}\n Image shape and label shape do not match')
             else:
                 if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg:
