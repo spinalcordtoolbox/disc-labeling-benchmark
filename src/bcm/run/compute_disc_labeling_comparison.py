@@ -14,8 +14,10 @@ def compare_methods(args):
         datapath = args.datapath
     contrast = CONTRAST[args.contrast][0]
     txt_file_path = args.input_txt_file
-    output_folder = os.path.join(args.output_folder, f'out_{contrast}')
+    dataset = os.path.basename(txt_file_path).split('_')[0]
+    output_folder = os.path.join(args.output_folder, f'out_{dataset}_{contrast}')
     computed_methods = args.computed_methods
+    do_visualize = False
     
     # Create output folder
     if not os.path.exists(output_folder):
@@ -30,7 +32,7 @@ def compare_methods(args):
     # line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord spinenet_coord
     processed_subjects = []
     for line in split_lines[1:]:
-        if (line[0] not in processed_subjects) and (line[1]==contrast) and (line[7]!='None'): # 3rd colum corresponds to ground truth coordinates
+        if (line[0] not in processed_subjects) and (line[1]==contrast): #and (line[8]!='None'): # 3rd colum corresponds to ground truth coordinates
             processed_subjects.append(line[0])
     
     # Initialize metrics
@@ -40,7 +42,8 @@ def compare_methods(args):
     for method in computed_methods:
         print(f"Computing method {method}")
         for subject in processed_subjects:
-            methods_results, pred_discs_list = edit_metric_csv(methods_results, txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
+            if args.gt_exists: # TODO: Check if relevant to run this script without GT
+                methods_results, pred_discs_list = edit_metric_csv(methods_results, txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
             
             # Visualize discs on image
             if args.datapath != None:
@@ -168,7 +171,9 @@ def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='L2_erro
 
     # Make the plot 
     plot = sns.violinplot(data=result_df)  
-    
+    plot.set(xlabel='methods', ylabel='L2 error (pixels)')
+    plot.set(title='Position error (pixels)')
+    #plot.set_ylim(-10,60)
     # Create axis and adding Xticks
     
     # Save plot
@@ -189,6 +194,8 @@ if __name__=='__main__':
                         help='Output folder where created graphs and images will be stored (default="results")') 
     parser.add_argument('-csv', '--create-csv', type=bool, default=True,
                         help='If "True" generate a csv file with the computed metrics within the txt file folder (default=True)') 
+    parser.add_argument('--gt-exists', type=bool, default=True,
+                        help='If "True" metrics will be computed (default=True)') 
     parser.add_argument('--computed-methods', 
                         default=['sct_discs_coords', 
                                  'spinenet_coords', 
