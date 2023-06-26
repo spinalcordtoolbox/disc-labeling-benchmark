@@ -142,7 +142,7 @@ def str2array(coords):
             output_coords.append([float(coord_split[0].split('[')[1]),float(coord_split[1].split(']')[0])])
         else:
             output_coords.append(None)
-    return np.array(output_coords)
+    return np.array(output_coords, dtype=object)
 
 ## 
 def check_missing_discs(coords):
