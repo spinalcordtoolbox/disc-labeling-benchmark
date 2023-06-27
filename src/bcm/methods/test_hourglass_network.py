@@ -53,6 +53,11 @@ def test_hourglass(args):
                                                             contrasts=contrast,
                                                             img_suffix=img_suffix)
     
+    # Load disc_coords txt file
+    with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
+        file_lines = f.readlines()
+        split_lines = [line.split(' ') for line in file_lines]
+    
     for train_contrast in train_contrasts:
         path_skeleton = os.path.join(skeleton_dir, f'{train_contrast}_Skelet_ndiscs_{ndiscs}.npy')
         
@@ -85,18 +90,15 @@ def test_hourglass(args):
                                         )
             model.eval()
             
-            # Load disc_coords txt file
-            with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
-                file_lines = f.readlines()
-                split_lines = [line.split(' ') for line in file_lines]
-            
             # Extract discs coordinates from the test set
             for i, (inputs, subject_name) in enumerate(MRI_test_loader): # subject_name
+                print(f'Running inference on {subject_name[0]}')
                 inputs = inputs.to(device)
                 output = model(inputs) 
                 output = output[-1]
                 subject_name = subject_name[0]
                 
+                print('Extracting skeleton')
                 prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
                 
                 # Convert pred_discs_coords to original image size
@@ -105,6 +107,7 @@ def test_hourglass(args):
                 pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
                 
                 # Project coordinate onto the spinal cord centerline
+                print('Projecting labels onto the centerline')
                 img_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}.nii.gz' )
                 seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}{seg_suffix}.nii.gz' )
                 if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg 
