@@ -5,7 +5,7 @@ import numpy as np
 
 def get_dataset_parameters(args):
     '''
-    The aim of this function is to extract parameters from the input dataset (TODO:BIDS ?) such as:
+    The aim of this function is to extract parameters from the input dataset such as:
     - Number of subject --> Potentially missing files
     - Images resolution
     - Images dimensions
@@ -21,19 +21,26 @@ def get_dataset_parameters(args):
     nb_discs = []
     max_disc = 0
     distribution_list = [0]*15
-    for sub in sub_folders:
-        if sub.startswith('sub'):
-            data_path = os.path.join(data_folder, sub)
-            files = os.listdir(data_path)
-            # TEMPORARY CODE
-            path_label = os.path.join(data_path, f'{sub}_{contrast}{label_suffix}.nii.gz')
-            disc_list = np.array([list(coord) for coord in Image(path_label).change_orientation('RSP').getNonZeroCoordinates(sorting='value')])
-            for disc in disc_list:
-                distribution_list[disc[-1]-1] += 1 # To determine the data distribution
-            nb_discs.append(len(disc_list))
-            if len(disc_list) > max_disc:
-                max_disc = len(disc_list)
-                sub_max = sub
+    for root, dirs, files in os.walk(data_folder):
+        level = root.replace(data_folder, '').count(os.sep)
+        indent = ' ' * 4 * (level)
+        print('{}{}/'.format(indent, os.path.basename(root)))
+        subindent = ' ' * 4 * (level + 1)
+        for f in files:
+            print('{}{}'.format(subindent, f))
+    # for sub in sub_folders:
+    #     if sub.startswith('sub'):
+    #         data_path = os.path.join(data_folder, sub)
+    #         files = os.listdir(data_path)
+    #         # TEMPORARY CODE
+    #         path_label = os.path.join(data_path, f'{sub}_{contrast}{label_suffix}.nii.gz')
+    #         disc_list = np.array([list(coord) for coord in Image(path_label).change_orientation('RSP').getNonZeroCoordinates(sorting='value')])
+    #         for disc in disc_list:
+    #             distribution_list[disc[-1]-1] += 1 # To determine the data distribution
+    #         nb_discs.append(len(disc_list))
+    #         if len(disc_list) > max_disc:
+    #             max_disc = len(disc_list)
+    #             sub_max = sub
     print(f'The maximum number of discs in the dataset {os.path.basename(data_folder)} is {max(nb_discs)} with the subject {sub_max}')
     print(f'The distribution is {distribution_list}')
             # sub-amu01_T2w_labels-disc-manual.nii.gz
