@@ -25,10 +25,10 @@ def test_hourglass(args):
     txt_file = args.out_txt_file
     img_suffix = args.suffix_img
     seg_suffix = args.suffix_seg
-    train_contrasts = 'all'
     
     # Get hourglass training parameters
     config_parser = config2parser(args.config_hg)
+    train_contrast = config_parser.contrasts
     ndiscs = config_parser.ndiscs
     att = config_parser.att
     stacks = config_parser.stacks
@@ -40,12 +40,6 @@ def test_hourglass(args):
     if len(contrast) > 1:
         print(f'Only one test contrast may be selected with args.contrast, {len(contrast)} were selected')
         sys.exit(1)
-
-    # Handle multiple contrast for hourglass WEIGHTS
-    if train_contrasts == 'all':
-        train_contrasts = [cont for cont in list(CONTRAST.keys()) if args.contrast in cont] # TODO: Example can't use T1w training for T2w testing check
-    else:
-        train_contrasts = [train_contrasts]
     
     # Loading image paths
     print('loading images...')
@@ -57,80 +51,78 @@ def test_hourglass(args):
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
-    
-    for train_contrast in train_contrasts:
-        path_skeleton = os.path.join(skeleton_dir, f'{train_contrast}_Skelet_ndiscs_{ndiscs}.npy')
+
+    # Verify if skeleton exists before running test
+    path_skeleton = os.path.join(skeleton_dir, f'{train_contrast}_Skelet_ndiscs_{ndiscs}.npy')
+    if os.path.exists(path_skeleton):
+        print(f'Processing with hourglass trained on contrast {train_contrast}')
+        norm_mean_skeleton = np.load(path_skeleton)
         
-        # Verify if skeleton exists before running test
-        if os.path.exists(path_skeleton):
-            print(f'Processing with hourglass trained on contrast {train_contrast}')
-            norm_mean_skeleton = np.load(path_skeleton)
-            
-            # Load network weights
-            if att:
-                model = atthg(num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
-            else:
-                model = hg(num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
-
-            model = torch.nn.DataParallel(model).to(device)
-            model.load_state_dict(torch.load(os.path.join(weights_dir, f'model_{train_contrast}_att_stacks_{stacks}_ndiscs_{ndiscs}'), map_location='cpu')['model_weights'])
-
-            # Create Dataloader
-            full_dataset_test = image_Dataset(images=imgs_test, 
-                                            subjects_names=subjects_test,
-                                            num_channel=ndiscs,
-                                            use_flip = False,
-                                            load_mode='test'
-                                            ) 
-            
-            MRI_test_loader   = DataLoader(full_dataset_test, 
-                                        batch_size= 1, 
-                                        shuffle=False, 
-                                        num_workers=0
-                                        )
-            model.eval()
-            
-            # Extract discs coordinates from the test set
-            for i, (inputs, subject_name) in enumerate(MRI_test_loader): # subject_name
-                print(f'Running inference on {subject_name[0]}')
-                inputs = inputs.to(device)
-                output = model(inputs) 
-                output = output[-1]
-                subject_name = subject_name[0]
-                
-                print('Extracting skeleton')
-                prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
-                
-                # Convert pred_discs_coords to original image size
-                pred_shape = prediction[0,0].shape 
-                original_shape = original_shapes[i] 
-                pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
-                
-                # Project coordinate onto the spinal cord centerline
-                print('Projecting labels onto the centerline')
-                img_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}.nii.gz' )
-                seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}{seg_suffix}.nii.gz' )
-                if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg 
-                    status = 0
-                else:
-                    status, _ = run_proc(['sct_deepseg_sc',
-                                            '-i', img_path, 
-                                            '-c', args.contrast,
-                                            '-o', seg_path])
-                if status != 0:
-                    print(f'Fail segmentation for {subject_name} cannot project')
-                else:
-                    pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
-                    
-                    # Swap axis prediction and ground truth
-                    pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
-                    
-                    # Edit coordinates in txt file
-                    # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-                    split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name=f'hourglass_{train_contrast}_coords')
+        # Load network weights
+        if att:
+            model = atthg(num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
         else:
-            print(f'Path to skeleton {path_skeleton} does not exist'
-                  f'Please check if contrasts {train_contrast} was used for training')     
+            model = hg(num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
+
+        model = torch.nn.DataParallel(model).to(device)
+        model.load_state_dict(torch.load(os.path.join(weights_dir, f'model_{train_contrast}_att_stacks_{stacks}_ndiscs_{ndiscs}'), map_location='cpu')['model_weights'])
+
+        # Create Dataloader
+        full_dataset_test = image_Dataset(images=imgs_test, 
+                                        subjects_names=subjects_test,
+                                        num_channel=ndiscs,
+                                        use_flip = False,
+                                        load_mode='test'
+                                        ) 
+        
+        MRI_test_loader   = DataLoader(full_dataset_test, 
+                                    batch_size= 1, 
+                                    shuffle=False, 
+                                    num_workers=0
+                                    )
+        model.eval()
+        
+        # Extract discs coordinates from the test set
+        for i, (inputs, subject_name) in enumerate(MRI_test_loader): # subject_name
+            print(f'Running inference on {subject_name[0]}')
+            inputs = inputs.to(device)
+            output = model(inputs) 
+            output = output[-1]
+            subject_name = subject_name[0]
+            
+            print('Extracting skeleton')
+            prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
+            
+            # Convert pred_discs_coords to original image size
+            pred_shape = prediction[0,0].shape 
+            original_shape = original_shapes[i] 
+            pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
+            
+            # Project coordinate onto the spinal cord centerline
+            print('Projecting labels onto the centerline')
+            img_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}.nii.gz' )
+            seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}{seg_suffix}.nii.gz' )
+            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg 
+                status = 0
+            else:
+                status, _ = run_proc(['sct_deepseg_sc',
+                                        '-i', img_path, 
+                                        '-c', args.contrast,
+                                        '-o', seg_path])
+            if status != 0:
+                print(f'Fail segmentation for {subject_name} cannot project')
+            else:
+                pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+                
+                # Swap axis prediction and ground truth
+                pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                
+                # Edit coordinates in txt file
+                # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
+                split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name=f'hourglass_{train_contrast}_coords')
+    else:
+        print(f'Path to skeleton {path_skeleton} does not exist'
+                f'Please check if contrasts {train_contrast} was used for training')     
                 
     for num in range(len(split_lines)):
         split_lines[num] = ' '.join(split_lines[num])

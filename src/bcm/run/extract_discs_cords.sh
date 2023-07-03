@@ -51,9 +51,9 @@ DATA_DIR=""
 CONTRAST=""
 OUTPUT_DIR="results/files/"
 OUTPUT_TXT=""
-SUFFIX_IMG="_ses-M0"
-SUFFIX_LABEL_DISC="_labels-disc-manual"
-SUFFIX_SEG="_seg-manual"
+SUFFIX_IMG="_acq-sagittal"
+SUFFIX_LABEL_DISC="_labels-manual"
+SUFFIX_SEG="_seg"
 VERBOSE=1
 
 # Hourglass config file
@@ -62,13 +62,13 @@ CONFIG_HG=""
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:c:f:ov -l data:,contrast:,file:,out:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:c:f:ov -l datapath:,contrast:,file:,out:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
 do
     case "$1" in
-        -d|--data)
+        -d|--datapath)
             DATA_DIR="$2"
             shift 2
             ;;
@@ -77,7 +77,7 @@ do
             shift 2
             ;;
         -f|--file)
-            CONFIG_HG="$2"
+            CONFIG_HG+=" $2"
             shift 2
             ;;
         -o|--out)
@@ -102,7 +102,6 @@ done
 # Get full path for all parameters.
 DATA_DIR=$(realpath "${DATA_DIR}")
 OUTPUT_DIR=$(realpath "${OUTPUT_DIR}")
-CONFIG_HG=$(realpath "${CONFIG_HG}")
 
 # Define default value OUTPUT_TXT
 if [[ -z "$OUTPUT_TXT" ]] ; then
@@ -150,10 +149,6 @@ if [ ! -z "$SUFFIX_IMG" ]; then args_m+=( --suffix-img "$SUFFIX_IMG" );fi
 if [ ! -z "$SUFFIX_LABEL_DISC" ]; then args_m+=( --suffix-label-disc "$SUFFIX_LABEL_DISC" );fi
 if [ ! -z "$SUFFIX_SEG" ]; then args_m+=( --suffix-seg "$SUFFIX_SEG" );fi
 
-# Add config file parameter for hourglass
-args_hg=${args_m[*]}
-args_hg+=( --config-hg "$CONFIG_HG" )
-
 ## Activate env HOURGLASS + SCT
 source /usr/local/miniforge3/etc/profile.d/conda.sh
 conda activate sct_hg_env
@@ -165,10 +160,17 @@ python src/bcm/utils/init_txt_file.py ${args[@]}
 python src/bcm/methods/add_gt_coordinates.py ${args_m[@]}
 
 # Test sct_label_vertebrae
-# python src/bcm/methods/test_sct_label_vertebrae.py ${args_m[@]}
+python src/bcm/methods/test_sct_label_vertebrae.py ${args_m[@]}
 
 # Test Hourglass Network
-python src/bcm/methods/test_hourglass_network.py ${args_hg[@]}
+# Add config file parameter for hourglass
+for file in $CONFIG_HG
+    do
+        file=$(realpath "${file}")
+        args_hg=${args_m[*]}
+        args_hg+=" --config-hg $file " # why quotes ?? and not parentheses
+        python src/bcm/methods/test_hourglass_network.py ${args_hg[@]}
+    done
 
 ## Deactivate env
 conda deactivate
