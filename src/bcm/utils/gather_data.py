@@ -55,7 +55,7 @@ def main(args):
                     dst3 = os.path.join(destination_path, sub, img3)
                     
                     # Copy image and discs labels if both are present in the dataset or if args.img_only is True   
-                    if os.path.exists(src1) and os.path.exists(src2) or args.img_only: 
+                    if os.path.exists(src1) and os.path.exists(src2) or os.path.exists(src1) and args.img_only: 
                         out_path = os.path.join(destination_path, sub)
                         if not os.path.exists(out_path):
                             os.makedirs(out_path)
@@ -112,7 +112,7 @@ if __name__ == '__main__':
                         help='If True all the images will be moved even if discs labels does not exist'
                         ' If False images and labels will be moved only if both exist')
     parser.add_argument('--suffix-img', type=str, default='',
-                        help='Specify img suffix example: sub-296085(IMG_SUFFIX)_T2w.nii.gz (default= "")')
+                        help='Specify img suffix example: sub-296085(SESSION)(IMG_SUFFIX)_T2w.nii.gz (default= "")')
     parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
                         help='Specify disc label suffix example: sub-296085(IMG_SUFFIX)_T2w(LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")') 
     parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
