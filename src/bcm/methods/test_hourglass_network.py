@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import torch
 import argparse
 import numpy as np
@@ -14,38 +15,40 @@ from spinalcordtoolbox.image import Image
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
 from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import extract_skeleton, load_img_only, load_niftii_split
+from dlh.utils.test_utils import extract_skeleton, load_img_only
 from dlh.utils.config2parser import config2parser
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    origin_data = args.datapath
-    contrast = CONTRAST[args.contrast]
     txt_file = args.out_txt_file
-    img_suffix = args.suffix_img
-    seg_suffix = args.suffix_seg
-    
+
     # Get hourglass training parameters
-    config_parser = config2parser(args.config_hg)
-    train_contrast = config_parser.contrasts
-    ndiscs = config_parser.ndiscs
-    att = config_parser.att
-    stacks = config_parser.stacks
-    blocks = config_parser.blocks
-    skeleton_dir = config_parser.skeleton_folder
-    weights_dir = config_parser.weight_folder
+    config_hg = config2parser(args.config_hg)
+    train_contrast = config_hg.train_contrast
+    ndiscs = config_hg.ndiscs
+    att = config_hg.att
+    stacks = config_hg.stacks
+    blocks = config_hg.blocks
+    skeleton_dir = config_hg.skeleton_folder
+    weights_dir = config_hg.weight_folder
+
+    # Read json file and create a dictionary
+    with open(args.config_data, "r") as file:
+        config_data = json.load(file)
     
-    # Error if multiple contrasts for DATA selected
-    if len(contrast) > 1:
-        print(f'Only one test contrast may be selected with args.contrast, {len(contrast)} were selected')
-        sys.exit(1)
+    # Fetch contrast info from config data
+    data_contrast = CONTRAST[config_data['CONTRASTS']] # contrast_str is a unique string representing all the contrasts
+    
+    # Error if data contrast not in training
+    for cont in data_contrast:
+        if cont not in CONTRAST[train_contrast]:
+            raise ValueError(f"Data contrast {cont} not used for training.")
     
     # Loading image paths
     print('loading images...')
-    imgs_test, subjects_test, original_shapes = load_img_only(datapath=origin_data, 
-                                                            contrasts=contrast,
-                                                            img_suffix=img_suffix)
+    imgs_test, subjects_test, original_shapes = load_img_only(config_data=config_data,
+                                                              split='TESTING')
     
     # Load disc_coords txt file
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
@@ -134,24 +137,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Add Hourglass Network coordinates to text file')
 
     ## Parameters
-    # All mandatory                          
-    parser.add_argument('--datapath', type=str, metavar='<folder>',
-                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
-    parser.add_argument('-c', '--contrast', type=str, required=True,
-                        help='MRI contrast: choices=["t1", "t2"] (Required)')
+    # All mandatory parameters                         
+    parser.add_argument('--config-data', type=str, metavar='<folder>',
+                        help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
     parser.add_argument('--config-hg', type=str, required=True,
                         help='Config file where hourglass training parameters are stored Example: Example: ~/<your_path>/config.json (Required)')  # Hourglass config file
     
     # All methods
     parser.add_argument('-txt', '--out-txt-file', default='',
                         type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
-    parser.add_argument('--suffix-img', type=str, default='',
-                        help='Specify img suffix example: sub-250791(IMG_SUFFIX)_T2w.nii.gz (default= "")')
-    parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
-                        help='Specify label suffix example: sub-250791(IMG_SUFFIX)_T2w(DISC_LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")')
     parser.add_argument('--suffix-seg', type=str, default='_seg',
                         help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
-    
         
     # Init output txt file if does not exist
     if not os.path.exists(parser.parse_args().out_txt_file):
