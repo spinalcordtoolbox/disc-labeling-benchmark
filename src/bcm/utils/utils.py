@@ -8,11 +8,13 @@
 
 import os
 import cv2
+import re
 import numpy as np
 import torch
 from progress.bar import Bar
 from sklearn.utils.extmath import cartesian
 from torchvision.utils import make_grid
+from pathlib import Path
 
 from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
 
@@ -25,6 +27,9 @@ from spinalcordtoolbox.utils.sys import run_proc
 CONTRAST = {'t1': ['T1w'],
             't2': ['T2w'],
             't1_t2': ['T1w', 'T2w']}
+
+SCT_CONTRAST = {'T1w': 't1',
+                'T2w': 't2'}
 
 # Association between a vertebrae and the disc right above
 VERT_DISC = {
@@ -57,6 +62,147 @@ VERT_DISC = {
 
 
 ## Functions
+def fetch_img_and_seg_paths(path_list, path_type, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
+    """
+    :param path_list: List of path in a BIDS compliant dataset
+    :param path_type: Type of files specified (LABEL or IMAGE)
+    :param seg_suffix: Suffix used for segmentation files
+    :param derivatives_path: Path to derivatives folder (only if path to images are specified)
+
+    :return img_paths: List of paths to images
+            seg_paths: List of paths to the corresponding spinal cord segmentations
+    """
+    img_paths = []
+    seg_paths = []
+    for str_path in path_list:
+        if path_type == 'LABEL':
+            img_paths.append(get_img_path_from_label_path(str_path))
+            seg_paths.append(get_seg_path_from_label_path(str_path))
+        elif path_type == 'IMAGE':
+            img_paths.append(str_path)
+            seg_paths.append(get_seg_path_from_img_path(str_path, seg_suffix=seg_suffix, derivatives_path=derivatives_path))
+        else:
+            raise ValueError(f"invalid image type in data config: {path_type}")
+    return img_paths, seg_paths
+    
+
+##
+def get_seg_path_from_img_path(img_path, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
+    """
+    This function returns the segmentaion path from an image path. Images need to be stored in a BIDS compliant dataset.
+
+    :param img_path: String path to niftii image
+    :param seg_suffix: Segmentation suffix
+    :param derivatives_path: Relative path to derivatives folder where labels are stored (e.i. '/derivatives/labels')
+    """
+    # Extract information from path
+    subjectID, sessionID, filename, contrast = fetch_subject_and_session(img_path)
+
+    # Extract file extension
+    path_obj = Path(img_path)
+    ext = ''.join(path_obj.suffixes)
+
+    # Create segmentation name
+    seg_name = path_obj.name.split('.')[0] + seg_suffix + ext
+
+    # Split path using "/" (TODO: check if it works for windows users)
+    path_list = img_path.split('/')
+
+    # Extract subject folder index
+    sub_folder_idx = path_list.index(subjectID)
+
+    # Reconstruct seg_path
+    seg_path = os.path.join('/'.join(path_list[:sub_folder_idx]), derivatives_path, path_list[sub_folder_idx:-1], seg_name)
+    return seg_path
+
+##
+def get_img_path_from_label_path(str_path):
+    """
+    This function does 2 things: ⚠️ Files need to be stored in a BIDS compliant dataset
+        - Step 1: Remove label suffix (e.g. "_labels-disc-manual"). The suffix is always between the MRI contrast and the file extension.
+        - Step 2: Remove derivatives path (e.g. derivatives/labels/). The first folders is always called derivatives but the second may vary (e.g. labels_soft)
+
+    :param path: absolute path to the label img. Example: /<path_to_BIDS_data>/derivatives/labels/sub-amuALT/anat/sub-amuALT_T1w_labels-disc-manual.nii.gz
+    :return: img path. Example: /<path_to_BIDS_data>/sub-amuALT/anat/sub-amuALT_T1w.nii.gz
+
+    Copied from https://github.com/spinalcordtoolbox/disc-labeling-hourglass
+
+    """
+    # Load path
+    path = Path(str_path)
+
+    # Extract file extension
+    ext = ''.join(path.suffixes)
+
+    # Get img name
+    img_name = '_'.join(path.name.split('_')[:-1]) + ext
+    
+    # Create a list of the directories
+    dir_list = str(path.parent).split('/')
+
+    # Remove "derivatives" and "labels" folders
+    derivatives_idx = dir_list.index('derivatives')
+    dir_path = '/'.join(dir_list[0:derivatives_idx] + dir_list[derivatives_idx+2:])
+
+    # Recreate img path
+    img_path = os.path.join(dir_path, img_name)
+
+    return img_path
+
+##
+def get_seg_path_from_label_path(label_path, seg_suffix='_seg'):
+    """
+    This function remove the label suffix to add the segmentation suffix
+    """
+    # Load path
+    path = Path(label_path)
+
+    # Extract file extension
+    ext = ''.join(path.suffixes)
+
+    # Get img name
+    seg_path = '_'.join(label_path.split('_')[:-1]) + seg_suffix + ext
+    return seg_path
+
+##
+def fetch_subject_and_session(filename_path):
+    """
+    Get subject ID, session ID and filename from the input BIDS-compatible filename or file path
+    The function works both on absolute file path as well as filename
+    :param filename_path: input nifti filename (e.g., sub-001_ses-01_T1w.nii.gz) or file path
+    (e.g., /home/user/MRI/bids/derivatives/labels/sub-001/ses-01/anat/sub-001_ses-01_T1w.nii.gz
+    :return: subjectID: subject ID (e.g., sub-001)
+    :return: sessionID: session ID (e.g., ses-01)
+    :return: filename: nii filename (e.g., sub-001_ses-01_T1w.nii.gz)
+    Copied from https://github.com/spinalcordtoolbox/manual-correction
+    """
+
+    _, filename = os.path.split(filename_path)              # Get just the filename (i.e., remove the path)
+    subject = re.search('sub-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    subjectID = subject.group(0)[:-1] if subject else ""    # [:-1] removes the last underscore or slash
+
+    session = re.search('ses-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    sessionID = session.group(0)[:-1] if session else ""    # [:-1] removes the last underscore or slash
+    # REGEX explanation
+    # . - match any character (except newline)
+    # *? - match the previous element as few times as possible (zero or more times)
+
+    contrast = 'dwi' if 'dwi' in filename_path else 'anat'  # Return contrast (dwi or anat)
+
+    return subjectID, sessionID, filename, contrast
+
+##
+def fetch_contrast(filename_path):
+    '''
+    Extract MRI contrast from a BIDS-compatible filename/filepath
+    The function handles images only.
+    :param filename_path: image file path or file name. (e.g sub-001_ses-01_T1w.nii.gz)
+
+    Copied from https://github.com/spinalcordtoolbox/disc-labeling-hourglass
+    '''
+    return filename_path.rstrip(''.join(Path(filename_path).suffixes)).split('_')[-1]
+
+##
 def swap_y_origin(coords, img_shape, y_pos=1):
     '''
     This function returns a list of coords where the y origin coords was moved from top and bottom
