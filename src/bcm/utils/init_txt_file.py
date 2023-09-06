@@ -1,29 +1,68 @@
 import os
 import argparse
+import json
 
-from bcm.utils.utils import CONTRAST
+from bcm.utils.utils import CONTRAST, get_img_path_from_label_path, fetch_subject_and_session, fetch_contrast
 
-def init_txt_file(args):
-    datapath = os.path.abspath(args.datapath)
-    contrast = CONTRAST[args.contrast][0]
-    nb_discs_init = 11
-    txt_file = args.out_txt_file
+def init_txt_file(args, split='TESTING', init_discs=11):
+    """
+    Initialize txt file where discs coordinates will be stored.
+
+    :param out_txt_file: Generated txt file path (default="results/files/(CONTRAST)_discs_coords.txt")
+    :param config_data_path: Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)
+    :param split: Split of the data used
+    :param init_discs: Number of discs used to initialize the txt file
+    """
+    # Read json file and create a dictionary
+    with open(args.config_data, "r") as file:
+        config_data = json.load(file)
+    
+    # Initialize txt file with a constant number of line for each subject
+    nb_discs_init = init_discs
+
+    # Get outpath
+    path_out = args.out_txt_file
+    
+    # Initialize txt file lines with method list
     methods_str = 'subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords\n'
-        
-    if not os.path.exists(txt_file):
-        os.makedirs(os.path.dirname(txt_file), exist_ok=True)
-        print("Creating txt file:", txt_file)
-        with open(txt_file,"w") as f:
-            f.write(methods_str)
+    txt_lines = [methods_str]
+    
+    # Create a dict to keep track of problematique redundant subject/contrasts associations
+    subject_contrast_arr = dict()
+    duplicate_sub_cont = []
+    if not os.path.exists(path_out):
+        os.makedirs(os.path.dirname(path_out), exist_ok=True)
+        print("Creating TXT file:", path_out)
         
         # Initialize txt_file with subject_names and nb_discs_init
         print(f"Initializing txt file with subjects and {nb_discs_init} discs")
-        for subject_name in os.listdir(datapath):
-            if subject_name.startswith('sub'):
-                # line = subject_name contrast disc_num ground_truth_coord + methods...
-                subject_lines = [subject_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
-            with open(txt_file,"a") as f:
-                f.writelines(subject_lines)
+        for path in config_data[split]:
+            if config_data['TYPE'] == 'LABEL':
+                img_path = get_img_path_from_label_path(path)
+            if config_data['TYPE'] == 'IMAGE':
+                img_path = path
+            subjectID, _, _, _ = fetch_subject_and_session(img_path)
+            contrast = fetch_contrast(img_path)
+
+            if subject_contrast_arr[subjectID]:
+                if contrast in subject_contrast_arr[subjectID]:
+                    duplicate_sub_cont.append(f'Duplicate {subjectID} with contrast {contrast}')
+                else:
+                    subject_contrast_arr[subjectID].append(contrast)
+                    # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
+                    txt_lines += [subjectID + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+            else:
+                subject_contrast_arr[subjectID] = [contrast]
+                # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
+                txt_lines += [subjectID + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+        
+        if duplicate_sub_cont:
+            raise ValueError("Duplicate subject/contrast:\n" + '\n'.join(duplicate_sub_cont))
+
+        with open(path_out,"w") as f:
+            f.writelines(txt_lines)
+        
+        print(f"TXT file: {path_out} was created")
 
 
 if __name__=='__main__':
@@ -31,12 +70,11 @@ if __name__=='__main__':
 
     ## Parameters
     # All mandatory                          
-    parser.add_argument('--datapath', type=str, metavar='<folder>',
-                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
-    parser.add_argument('-c', '--contrast', type=str, required=True,
-                        help='MRI contrast: choices=["t1", "t2"] (Required)')
-    parser.add_argument('-txt', '--out-txt-file', default='',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
+    parser.add_argument('--config-data', type=str, metavar='<folder>',
+                        help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')  
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
+                        type=str, metavar='N',help='Generated txt file path (default="results/files/(CONTRAST)_discs_coords.txt")')
     
+    args = parser.parse_args()
     # Run init_txt_file
-    init_txt_file(parser.parse_args())
+    init_txt_file(args)

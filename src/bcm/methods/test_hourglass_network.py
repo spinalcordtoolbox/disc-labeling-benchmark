@@ -6,8 +6,9 @@ import argparse
 import numpy as np
 from torch.utils.data import DataLoader
 
-from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
+from bcm.utils.utils import CONTRAST, SCT_CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast
 from bcm.utils.init_txt_file import init_txt_file
+from bcm.run.extract_discs_coords import parser_default
 
 from spinalcordtoolbox.utils.sys import run_proc
 from spinalcordtoolbox.image import Image
@@ -22,6 +23,7 @@ from dlh.utils.config2parser import config2parser
 def test_hourglass(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     txt_file = args.out_txt_file
+    seg_suffix = args.suffix_seg
 
     # Get hourglass training parameters
     config_hg = config2parser(args.config_hg)
@@ -45,11 +47,17 @@ def test_hourglass(args):
         if cont not in CONTRAST[train_contrast]:
             raise ValueError(f"Data contrast {cont} not used for training.")
     
-    # Loading image paths
+    # Load images
     print('loading images...')
     imgs_test, subjects_test, original_shapes = load_img_only(config_data=config_data,
                                                               split='TESTING')
     
+    # Get image and segmentation paths
+    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
+                                                   path_type=config_data['TYPE'], 
+                                                   seg_suffix=seg_suffix, 
+                                                   derivatives_path='derivatives/labels')
+
     # Load disc_coords txt file
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
@@ -103,15 +111,28 @@ def test_hourglass(args):
             
             # Project coordinate onto the spinal cord centerline
             print('Projecting labels onto the centerline')
-            img_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}.nii.gz' )
-            seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}{seg_suffix}.nii.gz' )
-            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg 
+            img_path = img_paths[i]
+            seg_path = seg_paths[i]
+
+            # Create back up path for non provided segmentations
+            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives')[-1])
+            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
                 status = 0
+            elif os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
+                status = 0
+                seg_path = back_up_seg_path
             else:
+                contrast = fetch_contrast(img_path)
+
+                # Create a new folder
+                os.makedirs(os.path.dirname(back_up_seg_path), exist_ok=True)
+
+                # Create a new segmentation file
                 status, _ = run_proc(['sct_deepseg_sc',
                                         '-i', img_path, 
-                                        '-c', args.contrast,
-                                        '-o', seg_path])
+                                        '-c', SCT_CONTRAST[contrast],
+                                        '-o', back_up_seg_path])
+                seg_path = back_up_seg_path
             if status != 0:
                 print(f'Fail segmentation for {subject_name} cannot project')
             else:
@@ -122,9 +143,9 @@ def test_hourglass(args):
                 
                 # Edit coordinates in txt file
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-                split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name=f'hourglass_{train_contrast}_coords')
+                split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
     else:
-        print(f'Path to skeleton {path_skeleton} does not exist'
+        raise ValueError(f'Path to skeleton {path_skeleton} does not exist'
                 f'Please check if contrasts {train_contrast} was used for training')     
                 
     for num in range(len(split_lines)):
@@ -145,13 +166,23 @@ if __name__ == '__main__':
     
     # All methods
     parser.add_argument('-txt', '--out-txt-file', default='',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
-    parser.add_argument('--suffix-seg', type=str, default='_seg',
-                        help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
-        
+                        type=str, metavar='N',help='Generated txt file path (default="results/files/(CONTRAST)_discs_coords.txt")')
+    parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
+                        help='Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    parser.add_argument('--seg-folder', type=str, default='results',
+                        help='Path to segmentation folder where non existing segmentations will be created. ' 
+                        'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    
+    args = parser_default(parser.parse_args()) # Set default value for out-txt-file
+
     # Init output txt file if does not exist
-    if not os.path.exists(parser.parse_args().out_txt_file):
-        init_txt_file(parser.parse_args())
+    if not os.path.exists(args.out_txt_file):
+        init_txt_file(args, split='TESTING', init_discs=11)
+
+    # Init output txt file if does not exist
+    if not os.path.exists(args.seg_folder):
+        print(f"Creating a new folder for non existing segmentations: {os.path.abspath(args.seg_folder)}")
+        os.makedirs(os.path.abspath(args.seg_folder), exist_ok=True)
     
     # Run Hourglass Network on input data
-    test_hourglass(parser.parse_args())
+    test_hourglass(args)
