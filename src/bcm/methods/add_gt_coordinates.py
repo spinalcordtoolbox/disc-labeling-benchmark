@@ -24,7 +24,7 @@ def add_gt_coordinate_to_txt_file(args):
     # Check if labels are specified else don't compute ground truth
     if config_data['TYPE'] == 'IMAGE':
         print("#####################################################################################################################################")
-        print("#################### Paths to images were specified --> ground truth coordinates won't be added to the benchmark ####################")
+        print("#################### Paths to labels were not specified --> ground truth coordinates won't be added to the benchmark ####################")
         print("#####################################################################################################################################")
     elif config_data['TYPE'] == 'LABEL':
         txt_file = args.out_txt_file
