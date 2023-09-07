@@ -1,8 +1,11 @@
 import os
 import argparse
 import json
+import subprocess
 
-from bcm.utils.utils import CONTRAST, get_img_path_from_label_path, fetch_subject_and_session, fetch_contrast
+from bcm.utils.utils import SCT_CONTRAST, get_img_path_from_label_path, fetch_subject_and_session, fetch_contrast, fetch_img_and_seg_paths
+from bcm.utils.image import Image
+
 
 def init_txt_file(args, split='TESTING', init_discs=11):
     """
@@ -65,6 +68,44 @@ def init_txt_file(args, split='TESTING', init_discs=11):
         print(f"TXT file: {path_out} was created")
 
 
+def init_sc_segmentation(args, split='TESTING'):
+    # Read json file and create a dictionary
+    with open(args.config_data, "r") as file:
+        config_data = json.load(file)
+
+    seg_suffix = args.suffix_seg
+
+    # Get image and segmentation paths
+    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data[split], 
+                                                    path_type=config_data['TYPE'],
+                                                    seg_suffix=seg_suffix
+                                                    )
+    
+    print('Initializing SC segmentation for projection')
+    for img_path, seg_path in zip(img_paths, seg_paths):
+        contrast = fetch_contrast(img_path)
+
+        # Create back up path for non provided segmentations
+        back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives')[-1])
+        if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
+            status = 0
+        elif os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
+            status = 0
+            seg_path = back_up_seg_path
+        else:
+            # Create a new folder
+            os.makedirs(os.path.dirname(back_up_seg_path), exist_ok=True)
+
+            # Create a new segmentation file
+            status, _ = subprocess.check_call(['sct_deepseg_sc',
+                                                '-i', img_path, 
+                                                '-c', SCT_CONTRAST[contrast],
+                                                '-o', back_up_seg_path])
+            seg_path = back_up_seg_path
+        if status != 0:
+            raise ValueError(f'Fail segmentation for image {img_path}')
+
+
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Init text file for benchmark')
 
@@ -75,6 +116,16 @@ if __name__=='__main__':
     parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
                         type=str, metavar='N',help='Generated txt file path (default="results/files/(CONTRAST)_discs_coords.txt")')
     
-    args = parser.parse_args()
-    # Run init_txt_file
-    init_txt_file(args)
+    # All methods
+    parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
+                        help='Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    parser.add_argument('--seg-folder', type=str, default='results',
+                        help='Path to segmentation folder where non existing segmentations will be created. ' 
+                        'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    
+    # Init txt file
+    init_txt_file(parser.parse_args())
+
+    # Init SC segmentation for projection
+    init_sc_segmentation(parser.parse_args())
+
