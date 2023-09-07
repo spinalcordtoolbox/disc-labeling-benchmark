@@ -11,17 +11,18 @@ import cv2
 import re
 import numpy as np
 import torch
-from progress.bar import Bar
-from sklearn.utils.extmath import cartesian
 from torchvision.utils import make_grid
 from pathlib import Path
+import subprocess
+import logging
+import tempfile
+import datetime
+import shutil
 
 from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
+from bcm.utils.image import Image, zeros_like
 
-from spinalcordtoolbox.image import Image, zeros_like
-from spinalcordtoolbox.utils.fs import tmp_create, rmtree
-from spinalcordtoolbox.utils.sys import run_proc
-
+logger = logging.getLogger(__name__)
 
 ## Variables
 CONTRAST = {'t1': ['T1w'],
@@ -349,10 +350,10 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     
     # Compute projection
     out_path = os.path.join(path_tmp, 'proj_labels.nii.gz')
-    status, _ = run_proc(['sct_label_utils',
-                            '-i', fname_seg,
-                            '-project-centerline', discs_path,
-                            '-o', out_path], raise_exception=False)
+    status, _ = subprocess.check_call(['sct_label_utils',
+                                        '-i', fname_seg,
+                                        '-project-centerline', discs_path,
+                                        '-o', out_path])
     if status == 0:
         if disc_num:
             discs_coords = Image(out_path).getNonZeroCoordinates(sorting='value')
@@ -619,3 +620,22 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict['total'][f'DSC_{method_short}'] += DSC_pred/nb_subjects
     
     return result_dict, pred_discs_list
+
+##
+def tmp_create(basename):
+    """Create temporary folder and return its path
+
+    Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
+    """
+    prefix = f"sct_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{basename}_"
+    tmpdir = tempfile.mkdtemp(prefix=prefix)
+    logger.info(f"Creating temporary folder ({tmpdir})")
+    return tmpdir
+
+##
+def rmtree(folder, verbose=1):
+    """Recursively remove folder, almost like shutil.rmtree
+
+    Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
+    """
+    shutil.rmtree(folder, ignore_errors=True)
