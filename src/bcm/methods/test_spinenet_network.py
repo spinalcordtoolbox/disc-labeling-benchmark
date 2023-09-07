@@ -6,14 +6,10 @@ from matplotlib.patches import Polygon, Circle
 import numpy as np
 from scipy.ndimage import zoom
 
-from spinalcordtoolbox.image import Image, get_dimension
-from spinalcordtoolbox.utils.sys import run_proc
-
 from spinenet import SpineNet, io
 
-from bcm.utils.utils import SCT_CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast, fetch_subject_and_session
-from bcm.utils.init_txt_file import init_txt_file
-from bcm.run.extract_discs_coords import parser_default
+from bcm.utils.utils import VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast, fetch_subject_and_session
+from bcm.utils.image import Image, get_dimension
 
 #---------------------------Test spinenet--------------------------
 def test_spinenet(args):
@@ -105,35 +101,24 @@ def test_spinenet(args):
             # Concatenate discs num and coords
             coords = np.concatenate((coords, discs_num), axis=1)
             
-            # Project on spinalcord for 2D comparison
-            # Create back up path for non provided segmentations
+            # Look for segmentation path
             back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives')[-1])
             if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-                status = 0
+                pass
             elif os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
-                status = 0
                 seg_path = back_up_seg_path
             else:
-                # Create a new folder
-                os.makedirs(os.path.dirname(back_up_seg_path), exist_ok=True)
+                raise ValueError(f'Fail segmentation for image {img_path} cannot proceed')
+            
+            # Project on spinalcord for 2D comparison
+            coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
+            
+            # Move y origin to the bottom of the image like Niftii convention
+            coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
 
-                # Create a new segmentation file
-                status, _ = run_proc(['sct_deepseg_sc',
-                                        '-i', img_path, 
-                                        '-c', SCT_CONTRAST[contrast],
-                                        '-o', back_up_seg_path])
-                seg_path = back_up_seg_path
-            if status != 0:
-                print(f'Fail segmentation for {subjectID}')
-            else:
-                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
-                
-                # Move y origin to the bottom of the image like Niftii convention
-                coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
-
-                # Write coordinates in txt file
-                # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-                split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=subjectID, contrast=contrast, method_name='spinenet_coords')
+            # Write coordinates in txt file
+            # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
+            split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=subjectID, contrast=contrast, method_name='spinenet_coords')
         else:
             coords = np.array([]) # Fail
             # Write coordinates in txt file
@@ -152,26 +137,20 @@ if __name__ == '__main__':
 
     ## Parameters
     # All mandatory parameters                         
-    parser.add_argument('--config-data', type=str, metavar='<folder>',
+    parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
-
+    parser.add_argument('-txt', '--out-txt-file', required=True,
+                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
+    
     # All methods
-    parser.add_argument('-txt', '--out-txt-file', default='',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(CONTRAST)_discs_coords.txt")')
     parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
                         help='Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
     parser.add_argument('--seg-folder', type=str, default='results',
                         help='Path to segmentation folder where non existing segmentations will be created. ' 
                         'These segmentations will be used to project labels onto the spinalcord (default="results")')
     
-    args = parser_default(parser.parse_args()) # Set default value for out-txt-file
-
-    # Init output txt file if does not exist
-    if not os.path.exists(args.out_txt_file):
-        init_txt_file(args, split='TESTING', init_discs=11)
-    
     # Run Hourglass Network on input data
-    test_spinenet(args)
+    test_spinenet(parser.parse_args())
     
     # if parser.parse_args().sub != '':
     #     nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
