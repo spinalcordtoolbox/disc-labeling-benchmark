@@ -31,7 +31,7 @@ def init_txt_file(args, split='TESTING', init_discs=11):
     txt_lines = [methods_str]
     
     # Create a dict to keep track of problematique redundant subject/contrasts associations
-    subject_contrast_arr = dict()
+    subject_contrast_association = dict()
     duplicate_sub_cont = []
     if not os.path.exists(path_out):
         os.makedirs(os.path.dirname(path_out), exist_ok=True)
@@ -44,20 +44,21 @@ def init_txt_file(args, split='TESTING', init_discs=11):
                 img_path = get_img_path_from_label_path(path)
             if config_data['TYPE'] == 'IMAGE':
                 img_path = path
-            subjectID, _, _, _ = fetch_subject_and_session(img_path)
+            subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
+            sub_ses = f'{subjectID}_{sessionID}'
             contrast = fetch_contrast(img_path)
 
-            if subject_contrast_arr[subjectID]:
-                if contrast in subject_contrast_arr[subjectID]:
-                    duplicate_sub_cont.append(f'Duplicate {subjectID} with contrast {contrast}')
+            if sub_ses in subject_contrast_association.keys():
+                if contrast in subject_contrast_association[sub_ses]:
+                    duplicate_sub_cont.append(f'Duplicate {sub_ses} with contrast {contrast}')
                 else:
-                    subject_contrast_arr[subjectID].append(contrast)
+                    subject_contrast_association[sub_ses].append(contrast)
                     # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
-                    txt_lines += [subjectID + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+                    txt_lines += [sub_ses + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
             else:
-                subject_contrast_arr[subjectID] = [contrast]
+                subject_contrast_association[sub_ses] = [contrast]
                 # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
-                txt_lines += [subjectID + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+                txt_lines += [sub_ses + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
         
         if duplicate_sub_cont:
             raise ValueError("Duplicate subject/contrast:\n" + '\n'.join(duplicate_sub_cont))
@@ -93,6 +94,7 @@ def init_sc_segmentation(args, split='TESTING'):
             status = 0
             seg_path = back_up_seg_path
         else:
+            print(f'{seg_path} does not exists, creating backup segmentation')
             # Create a new folder
             os.makedirs(os.path.dirname(back_up_seg_path), exist_ok=True)
 

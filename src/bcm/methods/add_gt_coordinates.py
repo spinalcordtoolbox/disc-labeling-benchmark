@@ -42,7 +42,8 @@ def add_gt_coordinate_to_txt_file(args):
         
         print('Adding ground truth coords')
         for img_path, label_path, seg_path in zip(img_paths, label_paths, seg_paths):
-            subjectID, _, _, _ = fetch_subject_and_session(img_path)
+            subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
+            sub_ses = f'{subjectID}_{sessionID}'
             contrast = fetch_contrast(img_path)
 
             # Look for segmentation path
@@ -69,7 +70,7 @@ def add_gt_coordinate_to_txt_file(args):
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-            split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=subjectID, contrast=contrast, method_name='gt_coords')
+            split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name='gt_coords')
         
         for num in range(len(split_lines)):
             split_lines[num] = ' '.join(split_lines[num])

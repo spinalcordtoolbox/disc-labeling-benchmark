@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 from torch.utils.data import DataLoader
 
-from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast
+from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast, fetch_subject_and_session
 from bcm.utils.image import Image
 
 from dlh.models.hourglass import hg
@@ -90,12 +90,11 @@ def test_hourglass(args):
         model.eval()
         
         # Extract discs coordinates from the test set
-        for i, (inputs, subject_name) in enumerate(MRI_test_loader): # subject_name
+        for i, (inputs, subject_name) in enumerate(MRI_test_loader):
             print(f'Running inference on {subject_name[0]}')
             inputs = inputs.to(device)
             output = model(inputs) 
             output = output[-1]
-            subject_name = subject_name[0]
             
             print('Extracting skeleton')
             prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
@@ -110,7 +109,9 @@ def test_hourglass(args):
             img_path = img_paths[i]
             seg_path = seg_paths[i]
 
-            # Fetch contrast
+            # Fetch contrast, subject and session
+            subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
+            sub_ses = f'{subjectID}_{sessionID}'
             contrast = fetch_contrast(img_path)
 
             # Look for segmentation path
@@ -129,7 +130,7 @@ def test_hourglass(args):
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-            split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
+            split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
     else:
         raise ValueError(f'Path to skeleton {path_skeleton} does not exist'
                 f'Please check if contrasts {train_contrast} was used for training')     

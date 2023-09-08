@@ -43,7 +43,8 @@ def test_spinenet(args):
         
     print('Processing with spinenet')
     for img_path, label_path, seg_path in zip(img_paths, label_paths, seg_paths):
-        subjectID, _, _, _ = fetch_subject_and_session(img_path)
+        subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
+        sub_ses = f'{subjectID}_{sessionID}'
         contrast = fetch_contrast(img_path)
 
         # img_niftii --> 3D image: shape = (64, 320, 320)
@@ -118,12 +119,12 @@ def test_spinenet(args):
 
             # Write coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=subjectID, contrast=contrast, method_name='spinenet_coords')
+            split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name='spinenet_coords')
         else:
             coords = np.array([]) # Fail
             # Write coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=subjectID, contrast=contrast, method_name='spinenet_coords')
+            split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name='spinenet_coords')
 
     for num in range(len(split_lines)):
         split_lines[num] = ' '.join(split_lines[num])
