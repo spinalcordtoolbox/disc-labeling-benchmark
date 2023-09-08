@@ -173,3 +173,5 @@ if __name__ == '__main__':
     
     # Run Hourglass Network on input data
     test_hourglass(parser.parse_args())
+
+    print('Hourglass coordinates have been added')

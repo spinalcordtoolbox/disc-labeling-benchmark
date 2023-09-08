@@ -113,3 +113,5 @@ if __name__=='__main__':
     
     # Run add_gt_coordinate_to_txt_file on input data
     add_gt_coordinate_to_txt_file(parser.parse_args())
+
+    print('Ground truth coordinates have been added')

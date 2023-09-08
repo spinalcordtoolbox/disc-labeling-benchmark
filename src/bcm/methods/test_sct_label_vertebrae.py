@@ -110,3 +110,5 @@ if __name__=='__main__':
     
     # Run sct_label_vertebrae on input data
     test_sct_label_vertebrae(parser.parse_args())
+
+    print('sct_label_vertebrae coordinates have been added')

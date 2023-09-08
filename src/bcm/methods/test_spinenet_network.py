@@ -161,6 +161,8 @@ if __name__ == '__main__':
     
     # Run Hourglass Network on input data
     test_spinenet(parser.parse_args())
+
+    print('Spinenet coordinates have been added')
     
     # if parser.parse_args().sub != '':
     #     nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
