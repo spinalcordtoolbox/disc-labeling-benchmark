@@ -97,7 +97,7 @@ def get_seg_path_from_img_path(img_path, seg_suffix='_seg', derivatives_path='/d
     :param derivatives_path: Relative path to derivatives folder where labels are stored (e.i. '/derivatives/labels')
     """
     # Extract information from path
-    subjectID, sessionID, filename, contrast = fetch_subject_and_session(img_path)
+    subjectID, sessionID, filename, contrast, echoID = fetch_subject_and_session(img_path)
 
     # Extract file extension
     path_obj = Path(img_path)
@@ -175,6 +175,8 @@ def fetch_subject_and_session(filename_path):
     :return: subjectID: subject ID (e.g., sub-001)
     :return: sessionID: session ID (e.g., ses-01)
     :return: filename: nii filename (e.g., sub-001_ses-01_T1w.nii.gz)
+    :return: contrast: MRI modality (dwi or anat)
+    :return: echoID: echo ID (e.g., echo-1)
     Copied from https://github.com/spinalcordtoolbox/manual-correction
     """
 
@@ -184,13 +186,16 @@ def fetch_subject_and_session(filename_path):
 
     session = re.search('ses-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
     sessionID = session.group(0)[:-1] if session else ""    # [:-1] removes the last underscore or slash
+
+    echo = re.search('echo-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    echoID = echo.group(0)[:-1] if echo else ""    # [:-1] removes the last underscore or slash
     # REGEX explanation
     # . - match any character (except newline)
     # *? - match the previous element as few times as possible (zero or more times)
 
     contrast = 'dwi' if 'dwi' in filename_path else 'anat'  # Return contrast (dwi or anat)
 
-    return subjectID, sessionID, filename, contrast
+    return subjectID, sessionID, filename, contrast, echoID
 
 ##
 def fetch_contrast(filename_path):
