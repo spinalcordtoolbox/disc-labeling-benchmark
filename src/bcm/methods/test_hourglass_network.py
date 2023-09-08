@@ -112,14 +112,6 @@ def test_hourglass(args):
                 output = model(inputs) 
                 output = output[-1]
                 
-                print('Extracting skeleton')
-                prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
-                
-                # Convert pred_discs_coords to original image size
-                pred_shape = prediction[0,0].shape 
-                original_shape = original_shapes[i] 
-                pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
-
                 # Fetch contrast, subject, session and echo
                 subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
                 sub_name = subjectID
@@ -129,11 +121,23 @@ def test_hourglass(args):
                     sub_name += f'_{echoID}'
                 contrast = fetch_contrast(img_path)
                 
-                pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+                print('Extracting skeleton')
+                try:
+                    prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
+                    
+                    # Convert pred_discs_coords to original image size
+                    pred_shape = prediction[0,0].shape 
+                    original_shape = original_shapes[i] 
+                    pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
+                    
+                    pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+                    
+                    # Swap axis prediction and ground truth
+                    pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
                 
-                # Swap axis prediction and ground truth
-                pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
-                
+                except ValueError:
+                    pred = np.array([]) # Fail
+
                 # Edit coordinates in txt file
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
                 split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
