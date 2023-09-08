@@ -78,7 +78,7 @@ def fetch_img_and_seg_paths(path_list, path_type, seg_suffix='_seg', derivatives
     for str_path in path_list:
         if path_type == 'LABEL':
             img_paths.append(get_img_path_from_label_path(str_path))
-            seg_paths.append(get_seg_path_from_label_path(str_path))
+            seg_paths.append(get_seg_path_from_label_path(str_path, seg_suffix=seg_suffix))
         elif path_type == 'IMAGE':
             img_paths.append(str_path)
             seg_paths.append(get_seg_path_from_img_path(str_path, seg_suffix=seg_suffix, derivatives_path=derivatives_path))
@@ -355,17 +355,14 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     
     # Compute projection
     out_path = os.path.join(path_tmp, 'proj_labels.nii.gz')
-    status, _ = subprocess.check_call(['sct_label_utils',
-                                        '-i', fname_seg,
-                                        '-project-centerline', discs_path,
-                                        '-o', out_path])
-    if status == 0:
-        if disc_num:
-            discs_coords = Image(out_path).getNonZeroCoordinates(sorting='value')
-        else:
-            discs_coords = Image(out_path).getNonZeroCoordinates(sorting='z', reverse_coord=True)
+    subprocess.check_call(['sct_label_utils',
+                        '-i', fname_seg,
+                        '-project-centerline', discs_path,
+                        '-o', out_path])
+    if disc_num:
+        discs_coords = Image(out_path).getNonZeroCoordinates(sorting='value')
     else:
-        print('Fail projection')
+        discs_coords = Image(out_path).getNonZeroCoordinates(sorting='z', reverse_coord=True)
         
     if proj_2d:    
         if disc_num:
