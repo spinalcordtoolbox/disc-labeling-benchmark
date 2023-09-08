@@ -55,13 +55,17 @@ def test_sct_label_vertebrae(args):
             add_subject = True
         
         if add_subject: # A segmentation is available for projection
-            disc_file_path = seg_path.replace('.nii.gz', '_labeled_discs.nii.gz')  # path to the file with disc labels
+            disc_file_path = back_up_seg_path.replace('.nii.gz', '_labeled_discs.nii.gz')  # path to the file with disc labels
             if os.path.exists(disc_file_path):
                 # retrieve all disc coords
                 discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
                 # keep only 2D coordinates
                 discs_coords = discs_coords[:, 1:]
             else:
+                # Check if dirname exists
+                if not os.path.exists(os.path.dirname(disc_file_path)):
+                    os.makedirs(os.path.dirname(disc_file_path))
+
                 status, _ = run_proc(['sct_label_vertebrae',
                                         '-i', img_path,
                                         '-s', seg_path,
