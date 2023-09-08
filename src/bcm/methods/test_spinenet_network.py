@@ -50,84 +50,87 @@ def test_spinenet(args):
             sub_name += f'_{echoID}'
         contrast = fetch_contrast(img_path)
 
-        # img_niftii --> 3D image: shape = (64, 320, 320)
-        img_niftii = Image(img_path).change_orientation("RSP")
-        nx, ny, nz, nt, px, py, pz, pt = get_dimension(img_niftii)
-        pixel_spacing = np.array([py, pz])
-        nb_slice = 12 # Use less slices
-        if abs(px-py) < 0.2 or abs(px-pz) < 0.2: # True if isotropic according to right-left direction
-            skip_slices = 4
-            nx = nx//skip_slices
-            slice_thickness = px*skip_slices
-            #img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-(nb_slice*skip_slices)//2:nx//2+(skip_slices*nb_slice)//2:skip_slices]
-            img = np.moveaxis(zoom(img_niftii.data, (1/skip_slices, 1, 1)), 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2] # Use zoom function to down sample the image to a more non-isotropic image
-        else:
-            slice_thickness = px
-            img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2]
-        scan = io.SpinalScan(img, pixel_spacing, slice_thickness)
-        #img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2]
+        # Look for segmentation path
+        add_subject = False
+        back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
+        if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
+            add_subject = True
+        elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
+            seg_path = back_up_seg_path
+            add_subject = True
 
-        # detect and identify vertebrae in scan. Note that pixel spacing information is required 
-        # so SpineNet knows what size to split patches into.
-        try:
-            vert_dicts_niftii = spnt.detect_vb(img, scan.pixel_spacing[0])
-        except RuntimeError:
-            vert_dicts_niftii = 'Fail'
-
-        if vert_dicts_niftii != 'Fail':
-            # extracting discs coordinates from vertebrae detections
-            discs_coords = {}
-            for vert_dict in vert_dicts_niftii:
-                vert = vert_dict['predicted_label']
-                poly_sum = np.zeros_like(vert_dict['polys'][0])
-                for idx in range(len(vert_dict['polys'])):
-                    poly_sum += np.array(vert_dict['polys'][idx])
-                poly_mean = poly_sum/len(vert_dict['polys'])
-                
-                top_disc = VERT_DISC[vert]
-                if top_disc in discs_coords:
-                    discs_coords[top_disc] = (discs_coords[top_disc] + poly_mean[-1,:])/2 # To improve the accuracy of the positioning, we calculate the average coordinate between the top and the bottom vertebrae
-                else:
-                    discs_coords[top_disc] = poly_mean[-1,:] # Extract the coordinates of the top left corner which is the closest to the top disc (due to RPI orientation)
-                
-                bottom_disc = VERT_DISC[vert]+1
-                if bottom_disc in discs_coords:
-                    discs_coords[bottom_disc] = (discs_coords[bottom_disc] + poly_mean[-2,:])/2 # To improve the accuracy of the positioning, we calculate the average coordinate between the top and the bottom vertebrae
-                else:
-                    discs_coords[bottom_disc] = poly_mean[-2,:] # Extract the coordinates of the bottom left corner which is the closest to the bottom disc (due to RPI orientation)
-            
-            # Convert discs num and coords to numpy array
-            discs_num, coords = np.transpose([np.array(list(discs_coords.keys()))]), np.array(list(discs_coords.values()))
-            
-            # Swap to coords convention [x, y] <--> [lines(y), columns(x)]
-            coords = coord2list(coords=coords)
-            
-            # Concatenate discs num and coords
-            coords = np.concatenate((coords, discs_num), axis=1)
-            
-            # Look for segmentation path
-            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives')[-1])
-            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-                pass
-            elif os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
-                seg_path = back_up_seg_path
+        if add_subject: # A segmentation is available for projection
+            # img_niftii --> 3D image: shape = (64, 320, 320)
+            img_niftii = Image(img_path).change_orientation("RSP")
+            nx, ny, nz, nt, px, py, pz, pt = get_dimension(img_niftii)
+            pixel_spacing = np.array([py, pz])
+            nb_slice = 12 # Use less slices
+            if abs(px-py) < 0.2 or abs(px-pz) < 0.2: # True if isotropic according to right-left direction
+                skip_slices = 4
+                nx = nx//skip_slices
+                slice_thickness = px*skip_slices
+                #img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-(nb_slice*skip_slices)//2:nx//2+(skip_slices*nb_slice)//2:skip_slices]
+                img = np.moveaxis(zoom(img_niftii.data, (1/skip_slices, 1, 1)), 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2] # Use zoom function to down sample the image to a more non-isotropic image
             else:
-                raise ValueError(f'Fail segmentation for image {img_path} cannot proceed')
-            
-            # Project on spinalcord for 2D comparison
-            coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
-            
-            # Move y origin to the bottom of the image like Niftii convention
-            coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
+                slice_thickness = px
+                img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2]
+            scan = io.SpinalScan(img, pixel_spacing, slice_thickness)
+            #img = np.moveaxis(img_niftii.data, 0, -1)[:, :, nx//2-nb_slice//2:nx//2+nb_slice//2]
 
-            # Write coordinates in txt file
-            # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name='spinenet_coords')
+            # detect and identify vertebrae in scan. Note that pixel spacing information is required 
+            # so SpineNet knows what size to split patches into.
+            try:
+                vert_dicts_niftii = spnt.detect_vb(img, scan.pixel_spacing[0])
+            except RuntimeError:
+                vert_dicts_niftii = 'Fail'
+
+            if vert_dicts_niftii != 'Fail':
+                # extracting discs coordinates from vertebrae detections
+                discs_coords = {}
+                for vert_dict in vert_dicts_niftii:
+                    vert = vert_dict['predicted_label']
+                    poly_sum = np.zeros_like(vert_dict['polys'][0])
+                    for idx in range(len(vert_dict['polys'])):
+                        poly_sum += np.array(vert_dict['polys'][idx])
+                    poly_mean = poly_sum/len(vert_dict['polys'])
+                    
+                    top_disc = VERT_DISC[vert]
+                    if top_disc in discs_coords:
+                        discs_coords[top_disc] = (discs_coords[top_disc] + poly_mean[-1,:])/2 # To improve the accuracy of the positioning, we calculate the average coordinate between the top and the bottom vertebrae
+                    else:
+                        discs_coords[top_disc] = poly_mean[-1,:] # Extract the coordinates of the top left corner which is the closest to the top disc (due to RPI orientation)
+                    
+                    bottom_disc = VERT_DISC[vert]+1
+                    if bottom_disc in discs_coords:
+                        discs_coords[bottom_disc] = (discs_coords[bottom_disc] + poly_mean[-2,:])/2 # To improve the accuracy of the positioning, we calculate the average coordinate between the top and the bottom vertebrae
+                    else:
+                        discs_coords[bottom_disc] = poly_mean[-2,:] # Extract the coordinates of the bottom left corner which is the closest to the bottom disc (due to RPI orientation)
+                
+                # Convert discs num and coords to numpy array
+                discs_num, coords = np.transpose([np.array(list(discs_coords.keys()))]), np.array(list(discs_coords.values()))
+                
+                # Swap to coords convention [x, y] <--> [lines(y), columns(x)]
+                coords = coord2list(coords=coords)
+                
+                # Concatenate discs num and coords
+                coords = np.concatenate((coords, discs_num), axis=1)
+                
+                # Project on spinalcord for 2D comparison
+                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
+                
+                # Move y origin to the bottom of the image like Niftii convention
+                coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
+
+                # Write coordinates in txt file
+                # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
+                split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='spinenet_coords')
+            else:
+                coords = np.array([]) # Fail
+                # Write coordinates in txt file
+                # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
+                split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='spinenet_coords')
         else:
-            coords = np.array([]) # Fail
-            # Write coordinates in txt file
-            # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name='spinenet_coords')
+            print(f'No segmentation is available for {img_path}')
 
     for num in range(len(split_lines)):
         split_lines[num] = ' '.join(split_lines[num])
@@ -152,6 +155,9 @@ if __name__ == '__main__':
     parser.add_argument('--seg-folder', type=str, default='results',
                         help='Path to segmentation folder where non existing segmentations will be created. ' 
                         'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    parser.add_argument('--create-seg', type=bool, default=False,
+                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
+                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run Hourglass Network on input data
     test_spinenet(parser.parse_args())

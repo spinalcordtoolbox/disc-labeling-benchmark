@@ -53,30 +53,34 @@ def add_gt_coordinate_to_txt_file(args):
             contrast = fetch_contrast(img_path)
 
             # Look for segmentation path
-            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives')[-1])
+            add_subject = False
+            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
             if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-                pass
-            elif os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
+                add_subject = True
+            elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
                 seg_path = back_up_seg_path
-            else:
-                raise ValueError(f'Fail segmentation for image {img_path} cannot proceed')
+                add_subject = True
+            
+            if add_subject: # A segmentation is available for projection
+                img_shape = get_midNifti(img_path).shape
+                discs_labels = mask2label(label_path)
+                discs_labels = [coord for coord in discs_labels if coord[-1] < 25] # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
+                gt_coord = np.array(discs_labels)
                 
-            img_shape = get_midNifti(img_path).shape
-            discs_labels = mask2label(label_path)
-            gt_coord = np.array(discs_labels)
-            
-            # Project on spinalcord
-            gt_coord = project_on_spinal_cord(coords=gt_coord, seg_path=seg_path, disc_num=True, proj_2d=False)
-            
-            # Remove thinkness coordinate
-            gt_coord = gt_coord[:, 1:]
-            
-            # Swap axis prediction and ground truth
-            gt_coord = swap_y_origin(coords=gt_coord, img_shape=img_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
-            
-            # Edit coordinates in txt file
-            # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-            split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='gt_coords')
+                # Project on spinalcord
+                gt_coord = project_on_spinal_cord(coords=gt_coord, seg_path=seg_path, disc_num=True, proj_2d=False)
+                
+                # Remove thinkness coordinate
+                gt_coord = gt_coord[:, 1:]
+                
+                # Swap axis prediction and ground truth
+                gt_coord = swap_y_origin(coords=gt_coord, img_shape=img_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                
+                # Edit coordinates in txt file
+                # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
+                split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='gt_coords')
+            else:
+                print(f'No segmentation is available for {img_path}')
         
         for num in range(len(split_lines)):
             split_lines[num] = ' '.join(split_lines[num])
@@ -103,6 +107,9 @@ if __name__=='__main__':
     parser.add_argument('--seg-folder', type=str, default='results',
                         help='Path to segmentation folder where non existing segmentations will be created. ' 
                         'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    parser.add_argument('--create-seg', type=bool, default=False,
+                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
+                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run add_gt_coordinate_to_txt_file on input data
     add_gt_coordinate_to_txt_file(parser.parse_args())

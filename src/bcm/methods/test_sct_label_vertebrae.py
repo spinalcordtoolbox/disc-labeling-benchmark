@@ -46,38 +46,40 @@ def test_sct_label_vertebrae(args):
         contrast = fetch_contrast(img_path)
 
         # Look for segmentation path
-        back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives')[-1])
+        add_subject = False
+        back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
         if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-            status = 0
-        elif os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
-            status = 0
+            add_subject = True
+        elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
             seg_path = back_up_seg_path
-        else:
-            raise ValueError(f'Fail segmentation for image {img_path} cannot proceed')
+            add_subject = True
         
-        disc_file_path = seg_path.replace('.nii.gz', '_labeled_discs.nii.gz')  # path to the file with disc labels
-        if os.path.exists(disc_file_path):
-            # retrieve all disc coords
-            discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
-            # keep only 2D coordinates
-            discs_coords = discs_coords[:, 1:]
-        else:
-            status, _ = run_proc(['sct_label_vertebrae',
-                                    '-i', img_path,
-                                    '-s', seg_path,
-                                    '-c', SCT_CONTRAST[contrast],
-                                    '-ofolder', os.path.dirname(disc_file_path)], raise_exception=False)
-            if status == 0:
+        if add_subject: # A segmentation is available for projection
+            disc_file_path = seg_path.replace('.nii.gz', '_labeled_discs.nii.gz')  # path to the file with disc labels
+            if os.path.exists(disc_file_path):
+                # retrieve all disc coords
                 discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
                 # keep only 2D coordinates
-                discs_coords = discs_coords[:, 1:]         
+                discs_coords = discs_coords[:, 1:]
             else:
-                print(f'Fail sct_label_vertebrae for subject {sub_name}')
-                discs_coords = np.array([]) # Fail
-        
-        # Edit coordinates in txt file
-        # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-        split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='sct_discs_coords')
+                status, _ = run_proc(['sct_label_vertebrae',
+                                        '-i', img_path,
+                                        '-s', seg_path,
+                                        '-c', SCT_CONTRAST[contrast],
+                                        '-ofolder', os.path.dirname(disc_file_path)], raise_exception=False)
+                if status == 0:
+                    discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
+                    # keep only 2D coordinates
+                    discs_coords = discs_coords[:, 1:]         
+                else:
+                    print(f'Fail sct_label_vertebrae for subject {sub_name}')
+                    discs_coords = np.array([]) # Fail
+            
+            # Edit coordinates in txt file
+            # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
+            split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='sct_discs_coords')
+        else:
+            print(f'No segmentation is available for {img_path}')
 
     for num in range(len(split_lines)):
         split_lines[num] = ' '.join(split_lines[num])
@@ -102,6 +104,9 @@ if __name__=='__main__':
     parser.add_argument('--seg-folder', type=str, default='results',
                         help='Path to segmentation folder where non existing segmentations will be created. ' 
                         'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    parser.add_argument('--create-seg', type=bool, default=False,
+                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
+                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run sct_label_vertebrae on input data
     test_sct_label_vertebrae(parser.parse_args())

@@ -92,49 +92,53 @@ def test_hourglass(args):
         # Extract discs coordinates from the test set
         for i, (inputs, subject_name) in enumerate(MRI_test_loader):
             print(f'Running inference on {subject_name[0]}')
-            inputs = inputs.to(device)
-            output = model(inputs) 
-            output = output[-1]
-            
-            print('Extracting skeleton')
-            prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
-            
-            # Convert pred_discs_coords to original image size
-            pred_shape = prediction[0,0].shape 
-            original_shape = original_shapes[i] 
-            pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
-            
+
             # Project coordinate onto the spinal cord centerline
             print('Projecting labels onto the centerline')
             img_path = img_paths[i]
             seg_path = seg_paths[i]
 
-            # Fetch contrast, subject, session and echo
-            subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
-            sub_name = subjectID
-            if sessionID:
-                sub_name += f'_{sessionID}'
-            if echoID:
-                sub_name += f'_{echoID}'
-            contrast = fetch_contrast(img_path)
-
             # Look for segmentation path
-            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives')[-1])
+            add_subject = False
+            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
             if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-                pass
-            elif os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
+                add_subject = True
+            elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
                 seg_path = back_up_seg_path
+                add_subject = True
+            
+            if add_subject: # A segmentation is available for projection
+                inputs = inputs.to(device)
+                output = model(inputs) 
+                output = output[-1]
+                
+                print('Extracting skeleton')
+                prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
+                
+                # Convert pred_discs_coords to original image size
+                pred_shape = prediction[0,0].shape 
+                original_shape = original_shapes[i] 
+                pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
+
+                # Fetch contrast, subject, session and echo
+                subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
+                sub_name = subjectID
+                if sessionID:
+                    sub_name += f'_{sessionID}'
+                if echoID:
+                    sub_name += f'_{echoID}'
+                contrast = fetch_contrast(img_path)
+                
+                pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+                
+                # Swap axis prediction and ground truth
+                pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                
+                # Edit coordinates in txt file
+                # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
+                split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
             else:
-                raise ValueError(f'Fail segmentation for image {img_path} cannot proceed')
-            
-            pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
-            
-            # Swap axis prediction and ground truth
-            pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
-            
-            # Edit coordinates in txt file
-            # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-            split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
+                print(f'No segmentation is available for {img_path}')
     else:
         raise ValueError(f'Path to skeleton {path_skeleton} does not exist'
                 f'Please check if contrasts {train_contrast} was used for training')     
@@ -163,6 +167,9 @@ if __name__ == '__main__':
     parser.add_argument('--seg-folder', type=str, default='results',
                         help='Path to segmentation folder where non existing segmentations will be created. ' 
                         'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    parser.add_argument('--create-seg', type=bool, default=False,
+                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
+                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run Hourglass Network on input data
     test_hourglass(parser.parse_args())
