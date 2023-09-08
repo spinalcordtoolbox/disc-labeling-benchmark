@@ -44,21 +44,27 @@ def init_txt_file(args, split='TESTING', init_discs=11):
                 img_path = get_img_path_from_label_path(path)
             if config_data['TYPE'] == 'IMAGE':
                 img_path = path
-            subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
-            sub_ses = f'{subjectID}_{sessionID}'
+            
+            # Fetch contrast, subject, session and echo
+            subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
+            sub_name = subjectID
+            if sessionID:
+                sub_name += f'_{sessionID}'
+            if echoID:
+                sub_name += f'_{echoID}'
             contrast = fetch_contrast(img_path)
 
-            if sub_ses in subject_contrast_association.keys():
-                if contrast in subject_contrast_association[sub_ses]:
-                    duplicate_sub_cont.append(f'Duplicate {sub_ses} with contrast {contrast}')
+            if sub_name in subject_contrast_association.keys():
+                if contrast in subject_contrast_association[sub_name]:
+                    duplicate_sub_cont.append(f'Duplicate {sub_name} with contrast {contrast}')
                 else:
-                    subject_contrast_association[sub_ses].append(contrast)
+                    subject_contrast_association[sub_name].append(contrast)
                     # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
-                    txt_lines += [sub_ses + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+                    txt_lines += [sub_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
             else:
-                subject_contrast_association[sub_ses] = [contrast]
+                subject_contrast_association[sub_name] = [contrast]
                 # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
-                txt_lines += [sub_ses + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+                txt_lines += [sub_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
         
         if duplicate_sub_cont:
             raise ValueError("Duplicate subject/contrast:\n" + '\n'.join(duplicate_sub_cont))

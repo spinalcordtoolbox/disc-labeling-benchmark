@@ -109,9 +109,13 @@ def test_hourglass(args):
             img_path = img_paths[i]
             seg_path = seg_paths[i]
 
-            # Fetch contrast, subject and session
-            subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
-            sub_ses = f'{subjectID}_{sessionID}'
+            # Fetch contrast, subject, session and echo
+            subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
+            sub_name = subjectID
+            if sessionID:
+                sub_name += f'_{sessionID}'
+            if echoID:
+                sub_name += f'_{echoID}'
             contrast = fetch_contrast(img_path)
 
             # Look for segmentation path
@@ -130,7 +134,7 @@ def test_hourglass(args):
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-            split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
+            split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
     else:
         raise ValueError(f'Path to skeleton {path_skeleton} does not exist'
                 f'Please check if contrasts {train_contrast} was used for training')     

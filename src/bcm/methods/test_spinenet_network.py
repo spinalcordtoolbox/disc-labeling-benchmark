@@ -27,11 +27,8 @@ def test_spinenet(args):
     with open(args.config_data, "r") as file:
         config_data = json.load(file)
 
-    # Get label paths
-    label_paths = config_data['TESTING']
-
     # Get image and segmentation paths
-    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=label_paths, 
+    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
                                                    path_type=config_data['TYPE'],
                                                    seg_suffix=seg_suffix,
                                                    derivatives_path='derivatives/labels'
@@ -42,9 +39,15 @@ def test_spinenet(args):
         split_lines = [line.split(' ') for line in file_lines]
         
     print('Processing with spinenet')
-    for img_path, label_path, seg_path in zip(img_paths, label_paths, seg_paths):
-        subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
-        sub_ses = f'{subjectID}_{sessionID}'
+    for img_path, seg_path in zip(img_paths, seg_paths):
+        
+        # Fetch contrast, subject, session and echo
+        subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
+        sub_name = subjectID
+        if sessionID:
+            sub_name += f'_{sessionID}'
+        if echoID:
+            sub_name += f'_{echoID}'
         contrast = fetch_contrast(img_path)
 
         # img_niftii --> 3D image: shape = (64, 320, 320)

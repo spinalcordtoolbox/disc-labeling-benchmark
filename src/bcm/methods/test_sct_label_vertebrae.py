@@ -35,8 +35,14 @@ def test_sct_label_vertebrae(args):
     
     print('Processing with sct_label_vertebrae')
     for img_path, seg_path in zip(img_paths, seg_paths):
-        subjectID, sessionID, _, _ = fetch_subject_and_session(img_path)
-        sub_ses = f'{subjectID}_{sessionID}'
+
+        # Fetch contrast, subject, session and echo
+        subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
+        sub_name = subjectID
+        if sessionID:
+            sub_name += f'_{sessionID}'
+        if echoID:
+            sub_name += f'_{echoID}'
         contrast = fetch_contrast(img_path)
 
         # Look for segmentation path
@@ -66,12 +72,12 @@ def test_sct_label_vertebrae(args):
                 # keep only 2D coordinates
                 discs_coords = discs_coords[:, 1:]         
             else:
-                print(f'Fail sct_label_vertebrae for subject {sub_ses}')
+                print(f'Fail sct_label_vertebrae for subject {sub_name}')
                 discs_coords = np.array([]) # Fail
         
         # Edit coordinates in txt file
         # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-        split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_ses, contrast=contrast, method_name='sct_discs_coords')
+        split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='sct_discs_coords')
 
     for num in range(len(split_lines)):
         split_lines[num] = ' '.join(split_lines[num])
