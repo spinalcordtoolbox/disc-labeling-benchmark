@@ -177,6 +177,7 @@ def fetch_subject_and_session(filename_path):
     :return: filename: nii filename (e.g., sub-001_ses-01_T1w.nii.gz)
     :return: contrast: MRI modality (dwi or anat)
     :return: echoID: echo ID (e.g., echo-1)
+    :return: acquisition: acquisition (e.g., acq_sag)
     Copied from https://github.com/spinalcordtoolbox/manual-correction
     """
 
@@ -187,15 +188,18 @@ def fetch_subject_and_session(filename_path):
     session = re.search('ses-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
     sessionID = session.group(0)[:-1] if session else ""    # [:-1] removes the last underscore or slash
 
-    echo = re.search('echo-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    echo = re.search('echo-(.*?)[_]', filename_path)     # [_/] means either underscore or slash
     echoID = echo.group(0)[:-1] if echo else ""    # [:-1] removes the last underscore or slash
+
+    acq = re.search('acq-(.*?)[_]', filename_path)     # [_/] means either underscore or slash
+    acquisition = acq.group(0)[:-1] if acq else ""    # [:-1] removes the last underscore or slash
     # REGEX explanation
     # . - match any character (except newline)
     # *? - match the previous element as few times as possible (zero or more times)
 
     contrast = 'dwi' if 'dwi' in filename_path else 'anat'  # Return contrast (dwi or anat)
 
-    return subjectID, sessionID, filename, contrast, echoID
+    return subjectID, sessionID, filename, contrast, echoID, acquisition
 
 ##
 def fetch_contrast(filename_path):
@@ -464,10 +468,11 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     gt_method_idx = np.where(methods=='gt_coords')[0][0]
     
     # Extract str coords and convert to numpy array, None stands for fail detections
-    # TODO : Extract lines only corresponding to mentioned contrast
-    discs_list = np.extract(txt_lines[:,subject_idx] == subject_name, txt_lines[:,discs_num_idx]).astype(int)
-    gt_coords_list = str2array(np.extract(txt_lines[:,subject_idx] == subject_name, txt_lines[:, gt_method_idx]))
-    pred_coords_list = str2array(np.extract(txt_lines[:,subject_idx] == subject_name, txt_lines[:,method_idx]))
+    relevant_lines = txt_lines[txt_lines[:,subject_idx] == subject_name]
+    relevant_lines = relevant_lines[relevant_lines[:,contrast_idx] == contrast]
+    discs_list = relevant_lines[:,discs_num_idx].astype(int)
+    gt_coords_list = str2array(relevant_lines[:, gt_method_idx])
+    pred_coords_list = str2array(relevant_lines[:, method_idx])
     
     # Check for missing ground truth (only ground truth detections are considered as real discs)
     _, gt_missing_discs = check_missing_discs(gt_coords_list) # Numpy array of coordinates without missing detections + list of missing discs
