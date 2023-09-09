@@ -94,6 +94,10 @@ def test_spinenet(args):
                         poly_sum += np.array(vert_dict['polys'][idx])
                     poly_mean = poly_sum/len(vert_dict['polys'])
                     
+                    # Deal with coodinates outside of the image
+                    poly_mean[:,0][poly_mean[:,0]>img.shape[1]-1] = img.shape[1]-1
+                    poly_mean[:,1][poly_mean[:,1]>img.shape[0]-1] = img.shape[0]-1
+                   
                     top_disc = VERT_DISC[vert]
                     if top_disc in discs_coords:
                         discs_coords[top_disc] = (discs_coords[top_disc] + poly_mean[-1,:])/2 # To improve the accuracy of the positioning, we calculate the average coordinate between the top and the bottom vertebrae
