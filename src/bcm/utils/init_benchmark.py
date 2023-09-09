@@ -46,8 +46,10 @@ def init_txt_file(args, split='TESTING', init_discs=11):
                 img_path = path
             
             # Fetch contrast, subject, session and echo
-            subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
+            subjectID, sessionID, _, _, echoID, acq = fetch_subject_and_session(img_path)
             sub_name = subjectID
+            if acq:
+                sub_name += f'_{acq}'
             if sessionID:
                 sub_name += f'_{sessionID}'
             if echoID:
@@ -116,7 +118,7 @@ if __name__=='__main__':
 
     ## Parameters
     # All mandatory                          
-    parser.add_argument('--config-data', type=str, metavar='<folder>',
+    parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')  
     parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
                         type=str, metavar='N',help='Generated txt file path (default="results/files/(CONTRAST)_discs_coords.txt")')

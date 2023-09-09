@@ -37,8 +37,10 @@ def test_sct_label_vertebrae(args):
     for img_path, seg_path in zip(img_paths, seg_paths):
 
         # Fetch contrast, subject, session and echo
-        subjectID, sessionID, _, _, echoID = fetch_subject_and_session(img_path)
+        subjectID, sessionID, _, _, echoID, acq = fetch_subject_and_session(img_path)
         sub_name = subjectID
+        if acq:
+            sub_name += f'_{acq}'
         if sessionID:
             sub_name += f'_{sessionID}'
         if echoID:
