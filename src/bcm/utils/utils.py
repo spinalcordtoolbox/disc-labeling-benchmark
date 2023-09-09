@@ -293,7 +293,7 @@ def str2array(coords):
     '''
     output_coords = []
     for coord in coords:
-        if coord not in ['Fail', 'None', 'None\n']:
+        if coord not in ['Fail', 'None', 'None\n', 'Fail\n']:
             coord_split = coord.split(',')
             output_coords.append([float(coord_split[0].split('[')[1]),float(coord_split[1].split(']')[0])])
         else:
@@ -554,14 +554,14 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict[subject_name][f'TPR_{method_short}'] = TPR_pred
     
     # Add false positive rate and FP list
-    result_dict[subject_name][f'FP_list_{method_short}'] = FP_list_pred
+    # result_dict[subject_name][f'FP_list_{method_short}'] = FP_list_pred
     result_dict[subject_name][f'FPR_{method_short}'] = FPR_pred
     
     # Add true negative rate
     result_dict[subject_name][f'TNR_{method_short}'] = TNR_pred
     
     # Add false negative rate and FN list
-    result_dict[subject_name][f'FN_list_{method_short}'] = FN_list_pred
+    # result_dict[subject_name][f'FN_list_{method_short}'] = FN_list_pred
     result_dict[subject_name][f'FNR_{method_short}'] = FNR_pred
     
     # Add dice score
