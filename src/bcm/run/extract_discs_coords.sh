@@ -57,7 +57,7 @@ CONFIG_HG=""
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:f:ov -l data:,contrast:,file:,out:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:f:ov -l data:,file:,out:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
@@ -96,7 +96,7 @@ OUTPUT_DIR=$(realpath "${OUTPUT_DIR}")
 
 # Define default value OUTPUT_TXT
 if [[ -z "$OUTPUT_TXT" ]] ; then
-    OUTPUT_TXT="${OUTPUT_DIR}/files/${CONTRAST}_discs_coords.txt"
+    OUTPUT_TXT="${OUTPUT_DIR}/files/discs_coords.txt"
 fi
 
 # Print the parameters if VERBOSE is enabled.
@@ -117,12 +117,6 @@ fi
 # Ensure the data config exists.
 if [[ ! -f ${CONFIG_DATA} ]]; then
     echo "File not found ${CONFIG_DATA}"
-    exit 1
-fi
-
-# Ensure the HG config exists.
-if [[ ! -f ${CONFIG_HG} ]]; then
-    echo "File not found ${CONFIG_HG}"
     exit 1
 fi
 
@@ -170,6 +164,6 @@ python src/bcm/methods/test_sct_label_vertebrae.py ${args[@]}
 conda deactivate
 
 # Test Spinenet Network with spinenet-venv
-../spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args[@]}"
+/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/code/SpineNet/spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args[@]}"
 
 echo "All the methods have been computed"
