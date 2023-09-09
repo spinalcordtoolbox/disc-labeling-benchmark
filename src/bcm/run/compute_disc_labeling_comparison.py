@@ -3,21 +3,26 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from spinalcordtoolbox.image import Image
 import csv
 import pandas as pd
+import json
 
-from bcm.utils.utils import CONTRAST, visualize_discs, edit_metric_csv
+from bcm.utils.utils import SCT_CONTRAST, visualize_discs, edit_metric_csv, fetch_img_and_seg_paths, fetch_subject_and_session
+from bcm.utils.image import Image
 
 def compare_methods(args):
-    if args.datapath != None:
-        datapath = args.datapath
-    contrast = CONTRAST[args.contrast][0]
+    if args.config_data:
+        config_data = json.load(open(args.config_data, "r"))
+
+    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
+                                                   path_type=config_data['TYPE'],
+                                                   seg_suffix='_seg-manual',
+                                                   derivatives_path='derivatives/labels'
+                                                   )
     txt_file_path = args.input_txt_file
     dataset = os.path.basename(txt_file_path).split('_')[0]
-    output_folder = os.path.join(args.output_folder, f'out_{dataset}_{contrast}')
+    output_folder = os.path.join(args.output_folder, f'out_{dataset}')
     computed_methods = args.computed_methods
-    do_visualize = False
     
     # Create output folder
     if not os.path.exists(output_folder):
@@ -29,58 +34,68 @@ def compare_methods(args):
         split_lines = [line.split(' ') for line in file_lines]
     
     # Extract processed subjects --> subjects with a ground truth
-    # line = subject_name contrast disc_num ground_truth_coord sct_label_vertebrae_coord hourglass_coord spinenet_coord
-    processed_subjects = []
+    # line = subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
+    processed_subjects_dict = dict()
     for line in split_lines[1:]:
-        if (line[0] not in processed_subjects) and (line[1]==contrast): #and (line[8]!='None'): # 3rd colum corresponds to ground truth coordinates
-            processed_subjects.append(line[0])
+        gt_condition = (line[split_lines[0].index('gt_coords')]!='None') or not args.gt_exists # Process subject only if ground truth are available or not args.gt_exists
+        if (line[split_lines[0].index('subject_name')] not in processed_subjects_dict.keys()) and gt_condition:
+            processed_subjects_dict[line[split_lines[0].index('subject_name')]] = [line[split_lines[0].index('contrast')]]
+        elif (line[split_lines[0].index('subject_name')] in processed_subjects_dict.keys()) and gt_condition:
+            if (line[split_lines[0].index('contrast')] not in processed_subjects_dict[line[split_lines[0].index('subject_name')]]):
+                processed_subjects_dict[line[split_lines[0].index('subject_name')]].append(line[split_lines[0].index('contrast')])
     
-    # Initialize metrics
+    # Initialize metrics for each contrast
     methods_results = {}
+    for contrast in processed_subjects_dict.values():
+        methods_results[contrast] = {}
     
-    nb_subjects = len(processed_subjects)
+    nb_subjects = len(processed_subjects_dict.keys())
     for method in computed_methods:
         print(f"Computing method {method}")
-        for subject in processed_subjects:
-            if args.gt_exists: # TODO: Check if relevant to run this script without GT
-                methods_results, pred_discs_list = edit_metric_csv(methods_results, txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
+        for subject, contrasts in processed_subjects_dict.items():
+            for contrast in contrasts:
+                methods_results, pred_discs_list = edit_metric_csv(methods_results[contrast], txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
             
             # Visualize discs on image
-            if args.datapath != None:
-                img_3D = Image(os.path.join(datapath, subject, f'{subject}_{contrast}.nii.gz')).change_orientation('RSP').data
-                shape = img_3D.shape
-                img_2D = img_3D[shape[0]//2, :, :]
-                if pred_discs_list.size != 0: # Check if not empty
-                    visualize_discs(input_img=img_2D, coords_list=pred_discs_list, out_path=os.path.join(output_folder, f'{subject}_{method}.png'))
+            if args.config_data:
+                sub_name = f'{subject}_{contrast}'
+                for img_path in img_paths:
+                    if sub_name in img_path:
+                        img_3D = Image(img_path).change_orientation('RSP').data
+                        shape = img_3D.shape
+                        img_2D = img_3D[shape[0]//2, :, :]
+                        if pred_discs_list.size != 0: # Check if not empty
+                            visualize_discs(input_img=img_2D, coords_list=pred_discs_list, out_path=os.path.join(output_folder, f'{sub_name}_{method}.png'))
             
     
     if args.create_csv:
-        # Get fields for csv conversion    
-        fields = ['subject'] + [key for key in methods_results[subject].keys()]
-        
-        csv_path = txt_file_path.replace('discs_coords.txt', 'computed_metrics.csv')
-        with open(csv_path, "w") as f:
-            w = csv.DictWriter(f, fields)
-            w.writeheader()
-            for k,d in sorted(methods_results.items()):
-                w.writerow(mergedict({'subject': k},d))
+        for contrast in processed_subjects_dict.values():
+            # Get fields for csv conversion    
+            fields = ['subject'] + [key for key in methods_results[contrast][subject].keys()]
+            
+            csv_path = txt_file_path.replace('discs_coords.txt', f'computed_metrics_{contrast}.csv')
+            with open(csv_path, "w") as f:
+                w = csv.DictWriter(f, fields)
+                w.writeheader()
+                for k,d in sorted(methods_results.items()):
+                    w.writerow(mergedict({'subject': k},d))
     
     # Remove unrelevant hourglass contrasts and shorten methods names
-    methods_plot = []
-    for method in computed_methods:
-        if 'hourglass' in method:
-            if args.contrast in method:
+    for contrast in processed_subjects_dict.values():
+        methods_plot = []
+        for method in computed_methods[contrast]:
+            if 'hourglass' in method:
+                if SCT_CONTRAST[contrast] in method:
+                    methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
+            else:
                 methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
-        else:
-            methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
-    save_graphs(output_folder, methods_results, methods_plot)
-    return
+        save_graphs(output_folder, methods_results[contrast], methods_plot, contrast)
 
 def mergedict(a,b):
     a.update(b)
     return a
 
-def save_graphs(output_folder, methods_results, methods_list):
+def save_graphs(output_folder, methods_results, methods_list, contrast):
     # Isolate total dict 
     dict_total = methods_results['total']
     del methods_results['total']
@@ -95,7 +110,7 @@ def save_graphs(output_folder, methods_results, methods_list):
     l2_error = [metrics_values[:,np.where(metrics_name == f'l2_mean_{method}')[0][0]] for method in methods_list]
     l2_mean = [dict_total[f'l2_mean_{method}'] for method in methods_list]
     l2_std = [dict_total[f'l2_std_{method}'] for method in methods_list]
-    out_path = os.path.join(output_folder,'l2_error.png')
+    out_path = os.path.join(output_folder,f'l2_error_{contrast}.png')
     #save_bar(methods=methods_list, mean=l2_mean, std=l2_std, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
     save_violin(methods=methods_list, values=l2_error, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
     
@@ -183,19 +198,17 @@ def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='L2_erro
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')
     
-    parser.add_argument('--datapath', type=str, metavar='N', default=None,
-                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')
     parser.add_argument('-txt', '--input-txt-file', type=str, metavar='<file>', required=True,
                         help='Path to txt file generated using src/bcm/run/extract_disc_cords.py Example: ~/<your_dataset>/vertebral_data (Required)')
-    parser.add_argument('-c', '--contrast', type=str, required=True,
-                        help='MRI contrast: choices=["t1", "t2"] (Required)')
+    parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
+                        help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')
     
     parser.add_argument('-o', '--output-folder', type=str, metavar='N', default='results',
                         help='Output folder where created graphs and images will be stored (default="results")') 
     parser.add_argument('-csv', '--create-csv', type=bool, default=True,
                         help='If "True" generate a csv file with the computed metrics within the txt file folder (default=True)') 
     parser.add_argument('--gt-exists', type=bool, default=True,
-                        help='If "True" metrics will be computed (default=True)') 
+                        help='If "True" compute metrics only if GT exists (default=True)') 
     parser.add_argument('--computed-methods', 
                         default=['sct_discs_coords', 
                                  'spinenet_coords', 
@@ -203,7 +216,7 @@ if __name__=='__main__':
                                  'hourglass_t2_coords', 
                                  'hourglass_t1_t2_coords'],
                         help='Methods on which metrics will be computed'
-                        '["sct_discs_coords", "spinenet_coords", "hourglass_t1_coords", "hourglass_t2_coords", "hourglass_t1_t2_coords"]') 
+                        '["sct_discs_coords", "spinenet_coords", "hourglass_t1_coords", "hourglass_t2_coords", "hourglass_t1_t2_coords"]')
     
     
     compare_methods(parser.parse_args())
