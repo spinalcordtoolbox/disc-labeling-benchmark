@@ -46,7 +46,7 @@ def compare_methods(args):
     
     # Initialize metrics for each contrast
     methods_results = {}
-    for contrast in processed_subjects_dict.values():
+    for contrast in np.unique(list(processed_subjects_dict.values())):
         methods_results[contrast] = {}
     
     nb_subjects = len(processed_subjects_dict.keys())
@@ -54,7 +54,7 @@ def compare_methods(args):
         print(f"Computing method {method}")
         for subject, contrasts in processed_subjects_dict.items():
             for contrast in contrasts:
-                methods_results, pred_discs_list = edit_metric_csv(methods_results[contrast], txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
+                methods_results[contrast], pred_discs_list = edit_metric_csv(methods_results[contrast], txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
             
             # Visualize discs on image
             if args.config_data:
@@ -69,21 +69,22 @@ def compare_methods(args):
             
     
     if args.create_csv:
-        for contrast in processed_subjects_dict.values():
-            # Get fields for csv conversion    
-            fields = ['subject'] + [key for key in methods_results[contrast][subject].keys()]
+        for contrast in np.unique(list(processed_subjects_dict.values())):
+            # Get fields for csv conversion
+            sub_list = [sub for sub in methods_results[contrast].keys() if sub.startswith('sub')]
+            fields = ['subject'] + [key for key in methods_results[contrast][sub_list[0]].keys()]
             
             csv_path = txt_file_path.replace('discs_coords.txt', f'computed_metrics_{contrast}.csv')
             with open(csv_path, "w") as f:
                 w = csv.DictWriter(f, fields)
                 w.writeheader()
-                for k,d in sorted(methods_results.items()):
+                for k,d in sorted(methods_results[contrast].items()):
                     w.writerow(mergedict({'subject': k},d))
     
     # Remove unrelevant hourglass contrasts and shorten methods names
-    for contrast in processed_subjects_dict.values():
+    for contrast in np.unique(list(processed_subjects_dict.values())):
         methods_plot = []
-        for method in computed_methods[contrast]:
+        for method in computed_methods:
             if 'hourglass' in method:
                 if SCT_CONTRAST[contrast] in method:
                     methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
@@ -220,3 +221,5 @@ if __name__=='__main__':
     
     
     compare_methods(parser.parse_args())
+
+    print('All metrics have been computed')
