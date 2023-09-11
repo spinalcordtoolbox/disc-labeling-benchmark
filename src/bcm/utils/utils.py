@@ -8,23 +8,29 @@
 
 import os
 import cv2
+import re
 import numpy as np
 import torch
-from progress.bar import Bar
-from sklearn.utils.extmath import cartesian
 from torchvision.utils import make_grid
+from pathlib import Path
+import subprocess
+import logging
+import tempfile
+import datetime
+import shutil
 
 from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
+from bcm.utils.image import Image, zeros_like
 
-from spinalcordtoolbox.image import Image, zeros_like
-from spinalcordtoolbox.utils.fs import tmp_create, rmtree
-from spinalcordtoolbox.utils.sys import run_proc
-
+logger = logging.getLogger(__name__)
 
 ## Variables
 CONTRAST = {'t1': ['T1w'],
             't2': ['T2w'],
             't1_t2': ['T1w', 'T2w']}
+
+SCT_CONTRAST = {'T1w': 't1',
+                'T2w': 't2'}
 
 # Association between a vertebrae and the disc right above
 VERT_DISC = {
@@ -57,6 +63,156 @@ VERT_DISC = {
 
 
 ## Functions
+def fetch_img_and_seg_paths(path_list, path_type, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
+    """
+    :param path_list: List of path in a BIDS compliant dataset
+    :param path_type: Type of files specified (LABEL or IMAGE)
+    :param seg_suffix: Suffix used for segmentation files
+    :param derivatives_path: Path to derivatives folder (only if path to images are specified)
+
+    :return img_paths: List of paths to images
+            seg_paths: List of paths to the corresponding spinal cord segmentations
+    """
+    img_paths = []
+    seg_paths = []
+    for str_path in path_list:
+        if path_type == 'LABEL':
+            img_paths.append(get_img_path_from_label_path(str_path))
+            seg_paths.append(get_seg_path_from_label_path(str_path, seg_suffix=seg_suffix))
+        elif path_type == 'IMAGE':
+            img_paths.append(str_path)
+            seg_paths.append(get_seg_path_from_img_path(str_path, seg_suffix=seg_suffix, derivatives_path=derivatives_path))
+        else:
+            raise ValueError(f"invalid image type in data config: {path_type}")
+    return img_paths, seg_paths
+    
+
+##
+def get_seg_path_from_img_path(img_path, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
+    """
+    This function returns the segmentaion path from an image path. Images need to be stored in a BIDS compliant dataset.
+
+    :param img_path: String path to niftii image
+    :param seg_suffix: Segmentation suffix
+    :param derivatives_path: Relative path to derivatives folder where labels are stored (e.i. '/derivatives/labels')
+    """
+    # Extract information from path
+    subjectID, sessionID, filename, contrast, echoID = fetch_subject_and_session(img_path)
+
+    # Extract file extension
+    path_obj = Path(img_path)
+    ext = ''.join(path_obj.suffixes)
+
+    # Create segmentation name
+    seg_name = path_obj.name.split('.')[0] + seg_suffix + ext
+
+    # Split path using "/" (TODO: check if it works for windows users)
+    path_list = img_path.split('/')
+
+    # Extract subject folder index
+    sub_folder_idx = path_list.index(subjectID)
+
+    # Reconstruct seg_path
+    seg_path = os.path.join('/'.join(path_list[:sub_folder_idx]), derivatives_path, path_list[sub_folder_idx:-1], seg_name)
+    return seg_path
+
+##
+def get_img_path_from_label_path(str_path):
+    """
+    This function does 2 things: ⚠️ Files need to be stored in a BIDS compliant dataset
+        - Step 1: Remove label suffix (e.g. "_labels-disc-manual"). The suffix is always between the MRI contrast and the file extension.
+        - Step 2: Remove derivatives path (e.g. derivatives/labels/). The first folders is always called derivatives but the second may vary (e.g. labels_soft)
+
+    :param path: absolute path to the label img. Example: /<path_to_BIDS_data>/derivatives/labels/sub-amuALT/anat/sub-amuALT_T1w_labels-disc-manual.nii.gz
+    :return: img path. Example: /<path_to_BIDS_data>/sub-amuALT/anat/sub-amuALT_T1w.nii.gz
+
+    Copied from https://github.com/spinalcordtoolbox/disc-labeling-hourglass
+
+    """
+    # Load path
+    path = Path(str_path)
+
+    # Extract file extension
+    ext = ''.join(path.suffixes)
+
+    # Get img name
+    img_name = '_'.join(path.name.split('_')[:-1]) + ext
+    
+    # Create a list of the directories
+    dir_list = str(path.parent).split('/')
+
+    # Remove "derivatives" and "labels" folders
+    derivatives_idx = dir_list.index('derivatives')
+    dir_path = '/'.join(dir_list[0:derivatives_idx] + dir_list[derivatives_idx+2:])
+
+    # Recreate img path
+    img_path = os.path.join(dir_path, img_name)
+
+    return img_path
+
+##
+def get_seg_path_from_label_path(label_path, seg_suffix='_seg'):
+    """
+    This function remove the label suffix to add the segmentation suffix
+    """
+    # Load path
+    path = Path(label_path)
+
+    # Extract file extension
+    ext = ''.join(path.suffixes)
+
+    # Get img name
+    seg_path = '_'.join(label_path.split('_')[:-1]) + seg_suffix + ext
+    return seg_path
+
+##
+def fetch_subject_and_session(filename_path):
+    """
+    Get subject ID, session ID and filename from the input BIDS-compatible filename or file path
+    The function works both on absolute file path as well as filename
+    :param filename_path: input nifti filename (e.g., sub-001_ses-01_T1w.nii.gz) or file path
+    (e.g., /home/user/MRI/bids/derivatives/labels/sub-001/ses-01/anat/sub-001_ses-01_T1w.nii.gz
+    :return: subjectID: subject ID (e.g., sub-001)
+    :return: sessionID: session ID (e.g., ses-01)
+    :return: filename: nii filename (e.g., sub-001_ses-01_T1w.nii.gz)
+    :return: contrast: MRI modality (dwi or anat)
+    :return: echoID: echo ID (e.g., echo-1)
+    :return: acquisition: acquisition (e.g., acq_sag)
+    Copied from https://github.com/spinalcordtoolbox/manual-correction
+    """
+
+    _, filename = os.path.split(filename_path)              # Get just the filename (i.e., remove the path)
+    subject = re.search('sub-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    subjectID = subject.group(0)[:-1] if subject else ""    # [:-1] removes the last underscore or slash
+
+    session = re.search('ses-(.*?)[_/]', filename_path)     # [_/] means either underscore or slash
+    sessionID = session.group(0)[:-1] if session else ""    # [:-1] removes the last underscore or slash
+
+    echo = re.search('echo-(.*?)[_]', filename_path)     # [_/] means either underscore or slash
+    echoID = echo.group(0)[:-1] if echo else ""    # [:-1] removes the last underscore or slash
+
+    acq = re.search('acq-(.*?)[_]', filename_path)     # [_/] means either underscore or slash
+    acquisition = acq.group(0)[:-1] if acq else ""    # [:-1] removes the last underscore or slash
+    # REGEX explanation
+    # . - match any character (except newline)
+    # *? - match the previous element as few times as possible (zero or more times)
+
+    contrast = 'dwi' if 'dwi' in filename_path else 'anat'  # Return contrast (dwi or anat)
+
+    return subjectID, sessionID, filename, contrast, echoID, acquisition
+
+##
+def fetch_contrast(filename_path):
+    '''
+    Extract MRI contrast from a BIDS-compatible filename/filepath
+    The function handles images only.
+    :param filename_path: image file path or file name. (e.g sub-001_ses-01_T1w.nii.gz)
+
+    Copied from https://github.com/spinalcordtoolbox/disc-labeling-hourglass
+    '''
+    return filename_path.rstrip(''.join(Path(filename_path).suffixes)).split('_')[-1]
+
+##
 def swap_y_origin(coords, img_shape, y_pos=1):
     '''
     This function returns a list of coords where the y origin coords was moved from top and bottom
@@ -137,7 +293,7 @@ def str2array(coords):
     '''
     output_coords = []
     for coord in coords:
-        if coord not in ['Fail', 'None', 'None\n']:
+        if coord not in ['Fail', 'None', 'None\n', 'Fail\n']:
             coord_split = coord.split(',')
             output_coords.append([float(coord_split[0].split('[')[1]),float(coord_split[1].split(']')[0])])
         else:
@@ -203,17 +359,14 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     
     # Compute projection
     out_path = os.path.join(path_tmp, 'proj_labels.nii.gz')
-    status, _ = run_proc(['sct_label_utils',
-                            '-i', fname_seg,
-                            '-project-centerline', discs_path,
-                            '-o', out_path], raise_exception=False)
-    if status == 0:
-        if disc_num:
-            discs_coords = Image(out_path).getNonZeroCoordinates(sorting='value')
-        else:
-            discs_coords = Image(out_path).getNonZeroCoordinates(sorting='z', reverse_coord=True)
+    subprocess.check_call(['sct_label_utils',
+                        '-i', fname_seg,
+                        '-project-centerline', discs_path,
+                        '-o', out_path])
+    if disc_num:
+        discs_coords = Image(out_path).getNonZeroCoordinates(sorting='value')
     else:
-        print('Fail projection')
+        discs_coords = Image(out_path).getNonZeroCoordinates(sorting='z', reverse_coord=True)
         
     if proj_2d:    
         if disc_num:
@@ -315,10 +468,11 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     gt_method_idx = np.where(methods=='gt_coords')[0][0]
     
     # Extract str coords and convert to numpy array, None stands for fail detections
-    # TODO : Extract lines only corresponding to mentioned contrast
-    discs_list = np.extract(txt_lines[:,subject_idx] == subject_name, txt_lines[:,discs_num_idx]).astype(int)
-    gt_coords_list = str2array(np.extract(txt_lines[:,subject_idx] == subject_name, txt_lines[:, gt_method_idx]))
-    pred_coords_list = str2array(np.extract(txt_lines[:,subject_idx] == subject_name, txt_lines[:,method_idx]))
+    relevant_lines = txt_lines[txt_lines[:,subject_idx] == subject_name]
+    relevant_lines = relevant_lines[relevant_lines[:,contrast_idx] == contrast]
+    discs_list = relevant_lines[:,discs_num_idx].astype(int)
+    gt_coords_list = str2array(relevant_lines[:, gt_method_idx])
+    pred_coords_list = str2array(relevant_lines[:, method_idx])
     
     # Check for missing ground truth (only ground truth detections are considered as real discs)
     _, gt_missing_discs = check_missing_discs(gt_coords_list) # Numpy array of coordinates without missing detections + list of missing discs
@@ -400,14 +554,14 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict[subject_name][f'TPR_{method_short}'] = TPR_pred
     
     # Add false positive rate and FP list
-    result_dict[subject_name][f'FP_list_{method_short}'] = FP_list_pred
+    # result_dict[subject_name][f'FP_list_{method_short}'] = FP_list_pred
     result_dict[subject_name][f'FPR_{method_short}'] = FPR_pred
     
     # Add true negative rate
     result_dict[subject_name][f'TNR_{method_short}'] = TNR_pred
     
     # Add false negative rate and FN list
-    result_dict[subject_name][f'FN_list_{method_short}'] = FN_list_pred
+    # result_dict[subject_name][f'FN_list_{method_short}'] = FN_list_pred
     result_dict[subject_name][f'FNR_{method_short}'] = FNR_pred
     
     # Add dice score
@@ -473,3 +627,22 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict['total'][f'DSC_{method_short}'] += DSC_pred/nb_subjects
     
     return result_dict, pred_discs_list
+
+##
+def tmp_create(basename):
+    """Create temporary folder and return its path
+
+    Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
+    """
+    prefix = f"sct_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{basename}_"
+    tmpdir = tempfile.mkdtemp(prefix=prefix)
+    logger.info(f"Creating temporary folder ({tmpdir})")
+    return tmpdir
+
+##
+def rmtree(folder, verbose=1):
+    """Recursively remove folder, almost like shutil.rmtree
+
+    Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
+    """
+    shutil.rmtree(folder, ignore_errors=True)

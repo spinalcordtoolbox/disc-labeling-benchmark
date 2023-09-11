@@ -1,52 +1,59 @@
 import os
 import sys
+import json
 import torch
 import argparse
 import numpy as np
 from torch.utils.data import DataLoader
 
-from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file
-from bcm.utils.init_txt_file import init_txt_file
-
-from spinalcordtoolbox.utils.sys import run_proc
-from spinalcordtoolbox.image import Image
+from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast, fetch_subject_and_session
+from bcm.utils.image import Image
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
 from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import extract_skeleton, load_img_only, load_niftii_split
+from dlh.utils.test_utils import extract_skeleton, load_img_only
 from dlh.utils.config2parser import config2parser
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    origin_data = args.datapath
-    contrast = CONTRAST[args.contrast]
     txt_file = args.out_txt_file
-    img_suffix = args.suffix_img
     seg_suffix = args.suffix_seg
-    
+
     # Get hourglass training parameters
-    config_parser = config2parser(args.config_hg)
-    train_contrast = config_parser.contrasts
-    ndiscs = config_parser.ndiscs
-    att = config_parser.att
-    stacks = config_parser.stacks
-    blocks = config_parser.blocks
-    skeleton_dir = config_parser.skeleton_folder
-    weights_dir = config_parser.weight_folder
+    config_hg = config2parser(args.config_hg)
+    train_contrast = config_hg.train_contrast
+    ndiscs = config_hg.ndiscs
+    att = config_hg.att
+    stacks = config_hg.stacks
+    blocks = config_hg.blocks
+    skeleton_dir = config_hg.skeleton_folder
+    weights_dir = config_hg.weight_folder
+
+    # Read json file and create a dictionary
+    with open(args.config_data, "r") as file:
+        config_data = json.load(file)
     
-    # Error if multiple contrasts for DATA selected
-    if len(contrast) > 1:
-        print(f'Only one test contrast may be selected with args.contrast, {len(contrast)} were selected')
-        sys.exit(1)
+    # Fetch contrast info from config data
+    data_contrast = CONTRAST[config_data['CONTRASTS']] # contrast_str is a unique string representing all the contrasts
     
-    # Loading image paths
+    # Error if data contrast not in training
+    for cont in data_contrast:
+        if cont not in CONTRAST[train_contrast]:
+            raise ValueError(f"Data contrast {cont} not used for training.")
+    
+    # Load images
     print('loading images...')
-    imgs_test, subjects_test, original_shapes = load_img_only(datapath=origin_data, 
-                                                            contrasts=contrast,
-                                                            img_suffix=img_suffix)
+    imgs_test, subjects_test, original_shapes = load_img_only(config_data=config_data,
+                                                              split='TESTING')
     
+    # Get image and segmentation paths
+    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
+                                                   path_type=config_data['TYPE'], 
+                                                   seg_suffix=seg_suffix, 
+                                                   derivatives_path='derivatives/labels')
+
     # Load disc_coords txt file
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
@@ -83,45 +90,63 @@ def test_hourglass(args):
         model.eval()
         
         # Extract discs coordinates from the test set
-        for i, (inputs, subject_name) in enumerate(MRI_test_loader): # subject_name
+        for i, (inputs, subject_name) in enumerate(MRI_test_loader):
             print(f'Running inference on {subject_name[0]}')
-            inputs = inputs.to(device)
-            output = model(inputs) 
-            output = output[-1]
-            subject_name = subject_name[0]
-            
-            print('Extracting skeleton')
-            prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
-            
-            # Convert pred_discs_coords to original image size
-            pred_shape = prediction[0,0].shape 
-            original_shape = original_shapes[i] 
-            pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
-            
+
             # Project coordinate onto the spinal cord centerline
             print('Projecting labels onto the centerline')
-            img_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}.nii.gz' )
-            seg_path = os.path.join(origin_data, subject_name, f'{subject_name}{img_suffix}_{contrast[0]}{seg_suffix}.nii.gz' )
-            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg 
-                status = 0
-            else:
-                status, _ = run_proc(['sct_deepseg_sc',
-                                        '-i', img_path, 
-                                        '-c', args.contrast,
-                                        '-o', seg_path])
-            if status != 0:
-                print(f'Fail segmentation for {subject_name} cannot project')
-            else:
-                pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+            img_path = img_paths[i]
+            seg_path = seg_paths[i]
+
+            # Look for segmentation path
+            add_subject = False
+            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
+            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
+                add_subject = True
+            elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
+                seg_path = back_up_seg_path
+                add_subject = True
+            
+            if add_subject: # A segmentation is available for projection
+                inputs = inputs.to(device)
+                output = model(inputs) 
+                output = output[-1]
                 
-                # Swap axis prediction and ground truth
-                pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                # Fetch contrast, subject, session and echo
+                subjectID, sessionID, _, _, echoID, acq = fetch_subject_and_session(img_path)
+                sub_name = subjectID
+                if acq:
+                    sub_name += f'_{acq}'
+                if sessionID:
+                    sub_name += f'_{sessionID}'
+                if echoID:
+                    sub_name += f'_{echoID}'
+                contrast = fetch_contrast(img_path)
                 
+                print('Extracting skeleton')
+                try:
+                    prediction, pred_discs_coords = extract_skeleton(inputs=inputs, outputs=output, norm_mean_skeleton=norm_mean_skeleton, Flag_save=True)
+                    
+                    # Convert pred_discs_coords to original image size
+                    pred_shape = prediction[0,0].shape 
+                    original_shape = original_shapes[i] 
+                    pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
+                    
+                    pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+                    
+                    # Swap axis prediction and ground truth
+                    pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                
+                except ValueError:
+                    pred = np.array([]) # Fail
+
                 # Edit coordinates in txt file
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-                split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=subject_name, contrast=contrast[0], method_name=f'hourglass_{train_contrast}_coords')
+                split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
+            else:
+                print(f'No segmentation is available for {img_path}')
     else:
-        print(f'Path to skeleton {path_skeleton} does not exist'
+        raise ValueError(f'Path to skeleton {path_skeleton} does not exist'
                 f'Please check if contrasts {train_contrast} was used for training')     
                 
     for num in range(len(split_lines)):
@@ -134,28 +159,25 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Add Hourglass Network coordinates to text file')
 
     ## Parameters
-    # All mandatory                          
-    parser.add_argument('--datapath', type=str, metavar='<folder>',
-                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
-    parser.add_argument('-c', '--contrast', type=str, required=True,
-                        help='MRI contrast: choices=["t1", "t2"] (Required)')
+    # All mandatory parameters                         
+    parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
+                        help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
     parser.add_argument('--config-hg', type=str, required=True,
                         help='Config file where hourglass training parameters are stored Example: Example: ~/<your_path>/config.json (Required)')  # Hourglass config file
+    parser.add_argument('-txt', '--out-txt-file', required=True,
+                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
     
     # All methods
-    parser.add_argument('-txt', '--out-txt-file', default='',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
-    parser.add_argument('--suffix-img', type=str, default='',
-                        help='Specify img suffix example: sub-250791(IMG_SUFFIX)_T2w.nii.gz (default= "")')
-    parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
-                        help='Specify label suffix example: sub-250791(IMG_SUFFIX)_T2w(DISC_LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")')
-    parser.add_argument('--suffix-seg', type=str, default='_seg',
-                        help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
-    
-        
-    # Init output txt file if does not exist
-    if not os.path.exists(parser.parse_args().out_txt_file):
-        init_txt_file(parser.parse_args())
+    parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
+                        help='Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    parser.add_argument('--seg-folder', type=str, default='results',
+                        help='Path to segmentation folder where non existing segmentations will be created. ' 
+                        'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    parser.add_argument('--create-seg', type=bool, default=False,
+                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
+                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run Hourglass Network on input data
     test_hourglass(parser.parse_args())
+
+    print('Hourglass coordinates have been added')

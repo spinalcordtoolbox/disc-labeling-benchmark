@@ -1,50 +1,67 @@
 import os
+import json
 import matplotlib.pyplot as plt
 import argparse
 from matplotlib.patches import Polygon, Circle 
 import numpy as np
 from scipy.ndimage import zoom
 
-from spinalcordtoolbox.image import Image, get_dimension
-from spinalcordtoolbox.utils.sys import run_proc
-
 from spinenet import SpineNet, io
 
-from bcm.utils.utils import CONTRAST, VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file 
-from bcm.utils.init_txt_file import init_txt_file
+from bcm.utils.utils import VERT_DISC, swap_y_origin, coord2list, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast, fetch_subject_and_session
+from bcm.utils.image import Image, get_dimension
 
 #---------------------------Test spinenet--------------------------
-def test_spinenet(args, test_mode=False):
+def test_spinenet(args):
     '''
     Use spinenet to find the vertebrae discs coordinates and append them
     to a txt file
     '''
-    
-    datapath = os.path.abspath(args.datapath)
-    contrast = CONTRAST[args.contrast][0]
-    img_suffix = args.suffix_img
     seg_suffix = args.suffix_seg
-    
+    txt_file = args.out_txt_file
+
     # load in spinenet
     spnt = SpineNet(device='cuda:0', verbose=True, scan_type='whole')
     
-    # Extract txt file lines
-    if not test_mode:
-        txt_file = args.out_txt_file
-        prefix = 'sub'
-        with open(txt_file,"r") as f:
-            file_lines = f.readlines()
-            split_lines = [line.split(' ') for line in file_lines]
-    else:
-        prefix = args.sub
+    # Read json file and create a dictionary
+    with open(args.config_data, "r") as file:
+        config_data = json.load(file)
+
+    # Get image and segmentation paths
+    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
+                                                   path_type=config_data['TYPE'],
+                                                   seg_suffix=seg_suffix,
+                                                   derivatives_path='derivatives/labels'
+                                                   )
+
+    with open(txt_file,"r") as f:
+        file_lines = f.readlines()
+        split_lines = [line.split(' ') for line in file_lines]
         
     print('Processing with spinenet')
-    for dir_name in os.listdir(datapath):
-        if dir_name.startswith(prefix):
-            subject_name = dir_name
-            file_name = subject_name + img_suffix + '_' + contrast + '.nii.gz'
-            img_path = os.path.join(datapath, dir_name, file_name)  # path to the original image
-            
+    for img_path, seg_path in zip(img_paths, seg_paths):
+        
+        # Fetch contrast, subject, session and echo
+        subjectID, sessionID, _, _, echoID, acq = fetch_subject_and_session(img_path)
+        sub_name = subjectID
+        if acq:
+            sub_name += f'_{acq}'
+        if sessionID:
+            sub_name += f'_{sessionID}'
+        if echoID:
+            sub_name += f'_{echoID}'
+        contrast = fetch_contrast(img_path)
+
+        # Look for segmentation path
+        add_subject = False
+        back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
+        if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
+            add_subject = True
+        elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
+            seg_path = back_up_seg_path
+            add_subject = True
+
+        if add_subject: # A segmentation is available for projection
             # img_niftii --> 3D image: shape = (64, 320, 320)
             img_niftii = Image(img_path).change_orientation("RSP")
             nx, ny, nz, nt, px, py, pz, pt = get_dimension(img_niftii)
@@ -79,6 +96,10 @@ def test_spinenet(args, test_mode=False):
                         poly_sum += np.array(vert_dict['polys'][idx])
                     poly_mean = poly_sum/len(vert_dict['polys'])
                     
+                    # Deal with coodinates outside of the image
+                    poly_mean[:,0][poly_mean[:,0]>img.shape[1]-1] = img.shape[1]-1
+                    poly_mean[:,1][poly_mean[:,1]>img.shape[0]-1] = img.shape[0]-1
+                   
                     top_disc = VERT_DISC[vert]
                     if top_disc in discs_coords:
                         discs_coords[top_disc] = (discs_coords[top_disc] + poly_mean[-1,:])/2 # To improve the accuracy of the positioning, we calculate the average coordinate between the top and the bottom vertebrae
@@ -101,87 +122,72 @@ def test_spinenet(args, test_mode=False):
                 coords = np.concatenate((coords, discs_num), axis=1)
                 
                 # Project on spinalcord for 2D comparison
-                seg_path = os.path.join(datapath, subject_name, f'{subject_name}{img_suffix}_{contrast}{seg_suffix}.nii.gz' )
-                if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==img_niftii.data.shape:  # Check if seg_shape == img_shape or create new seg 
-                    status = 0
-                else:
-                    status, _ = run_proc(['sct_deepseg_sc',
-                                            '-i', img_path, 
-                                            '-c', args.contrast,
-                                            '-o', seg_path])
-                if status != 0:
-                    print(f'Fail segmentation for {subject_name} cannot project')
-                else:
-                    coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
-                    
-                    # Move y origin to the bottom of the image like Niftii convention
-                    coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
-            else:
-                coords = np.array([]) # Fail
+                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
+                
+                # Move y origin to the bottom of the image like Niftii convention
+                coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
 
-            if not test_mode: 
                 # Write coordinates in txt file
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-                split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=subject_name, contrast=contrast, method_name='spinenet_coords')
+                split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='spinenet_coords')
+            else:
+                coords = np.array([]) # Fail
+                # Write coordinates in txt file
+                # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
+                split_lines = edit_subject_lines_txt_file(coords=coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='spinenet_coords')
+        else:
+            print(f'No segmentation is available for {img_path}')
 
-    if not test_mode:
-        for num in range(len(split_lines)):
-            split_lines[num] = ' '.join(split_lines[num])
-            
-        with open(txt_file,"w") as f:
-            f.writelines(split_lines)
-    else:            
-        return nb_slice, img, discs_coords, vert_dicts_niftii
+    for num in range(len(split_lines)):
+        split_lines[num] = ' '.join(split_lines[num])
+        
+    with open(txt_file,"w") as f:
+        f.writelines(split_lines)
 
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Run test on spinenet')
 
     ## Parameters
-    # All mandatory                          
-    parser.add_argument('--datapath', type=str, metavar='<folder>',
-                        help='Path to data folder generated using src/bcm/utils/gather_data.py Example: ~/<your_dataset>/vertebral_data (Required)')                               
-    parser.add_argument('-c', '--contrast', type=str, required=True,
-                        help='MRI contrast: choices=["t1", "t2"] (Required)')
-    parser.add_argument('-txt', '--out-txt-file', default='',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(datapath_basename)_(CONTRAST)_discs_coords.txt")')
+    # All mandatory parameters                         
+    parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
+                        help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
+    parser.add_argument('-txt', '--out-txt-file', required=True,
+                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
     
     # All methods
-    parser.add_argument('--suffix-img', type=str, default='',
-                        help='Specify img suffix example: sub-250791(IMG_SUFFIX)_T2w.nii.gz (default= "")')
-    parser.add_argument('--suffix-label-disc', type=str, default='_labels-disc-manual',
-                        help='Specify label suffix example: sub-250791(IMG_SUFFIX)_T2w(DISC_LABEL_SUFFIX).nii.gz (default= "_labels-disc-manual")')
-    parser.add_argument('--suffix-seg', type=str, default='_seg',
-                        help='Specify segmentation label suffix example: sub-296085(IMG_SUFFIX)_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
+                        help='Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+    parser.add_argument('--seg-folder', type=str, default='results',
+                        help='Path to segmentation folder where non existing segmentations will be created. ' 
+                        'These segmentations will be used to project labels onto the spinalcord (default="results")')
+    parser.add_argument('--create-seg', type=bool, default=False,
+                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
+                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
-    # Test mode only --> no txt file
-    parser.add_argument('-sub', default= '',
-                        type=str, metavar='N',help='Generated txt file') # 'sub-juntendo750w06'
-    
-    if parser.parse_args() != '':
-        nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
-        fig = plt.figure(figsize=(40,40))
-        for slice_idx in range(nb_slice):
-            ax = fig.add_subplot(4,4,slice_idx+1)
-            ax.imshow(img[:,:,slice_idx], cmap='gray')
-            ax.set_title(f'Slice {slice_idx+1}', fontsize=60)
-            ax.axis('off')
-            for disc, coord in discs_coords.items():
-                ax.add_patch(Circle(coord, radius=1, ec='r'))
-                ax.text(coord[0]-15, coord[1], disc, color='r', fontsize=15)
-            for vert_dict in vert_dicts_niftii:
-                if slice_idx in vert_dict['slice_nos']:
-                    poly_idx = int(vert_dict['slice_nos'].index(slice_idx))
-                    poly = np.array(vert_dict['polys'][poly_idx])
-                    ax.add_patch(Polygon(poly, ec='y',fc='none'))
-                    ax.text(np.mean(poly[:,0]), np.mean(poly[:,1]), vert_dict['predicted_label'],c='y', ha='center',va='center', fontsize=15)
+    # Run Hourglass Network on input data
+    test_spinenet(parser.parse_args())
 
-        fig.suptitle('Detected Vertebrae (all slices)', fontsize=100)
-        fig.savefig('test/visualize/test_spinenet.png')
-    else:
-        # Init output txt file if does not exist
-        if not os.path.exists(parser.parse_args().out_txt_file):
-            init_txt_file(parser.parse_args())
-        
-        # Run Hourglass Network on input data
-        test_spinenet(parser.parse_args())
+    print('Spinenet coordinates have been added')
+    
+    # if parser.parse_args().sub != '':
+    #     nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
+    #     fig = plt.figure(figsize=(40,40))
+    #     for slice_idx in range(nb_slice):
+    #         ax = fig.add_subplot(4,4,slice_idx+1)
+    #         ax.imshow(img[:,:,slice_idx], cmap='gray')
+    #         ax.set_title(f'Slice {slice_idx+1}', fontsize=60)
+    #         ax.axis('off')
+    #         for disc, coord in discs_coords.items():
+    #             ax.add_patch(Circle(coord, radius=1, ec='r'))
+    #             ax.text(coord[0]-15, coord[1], disc, color='r', fontsize=15)
+    #         for vert_dict in vert_dicts_niftii:
+    #             if slice_idx in vert_dict['slice_nos']:
+    #                 poly_idx = int(vert_dict['slice_nos'].index(slice_idx))
+    #                 poly = np.array(vert_dict['polys'][poly_idx])
+    #                 ax.add_patch(Polygon(poly, ec='y',fc='none'))
+    #                 ax.text(np.mean(poly[:,0]), np.mean(poly[:,1]), vert_dict['predicted_label'],c='y', ha='center',va='center', fontsize=15)
+
+    #     fig.suptitle('Detected Vertebrae (all slices)', fontsize=100)
+    #     fig.savefig('test/visualize/test_spinenet.png')
+    # else:

@@ -3,19 +3,17 @@
 # Check for -h option
 if [ "$1" = "-h" ]; then
     echo "This script is designed to compute disc labeling technics on an input dataset "
-    echo "The data is expected to be gathered using the src/bcm/utils/gather_data.py script. "
-    echo "The main steps of this script include: "
+    echo "The data path used for testing should be gathered into a JSON file using the src/bcm/utils/init_data_config.py script. "
+    echo "The script includes 2 main steps: "
     echo ""
-    echo "1. Creating and initializing a text file were all the coordinates for each method"
-    echo " where all the coordinates of the discs will be gathered "
-    echo "2. Running the scripts of the wanted methods available in this benchmark "
-    echo "3. Computing the metrics and creating the graphs and images to compare the different "
-    echo "approaches"
+    echo "1. Creating a text file where all the coordinates of every discs for each method will be gathered"
+    echo ""
+    echo "2. Computing the metrics and creating the graphs and images to compare the different approaches"
     echo ""
     echo "The script takes several command-line arguments for customization:"
-    echo "--datapath: path to the input dataset"
+    echo ""
 
-    echo "Data organization - using the script gather_data.py:"
+    echo "Path specified need to follow BIDS compatibility:"
     echo " data"
     echo " ├── sub-errsm37"
     echo " │   ├── sub-errsm37_T2w_labels-disc-manual.nii.gz"
@@ -47,13 +45,10 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 # SET DEFAULT VALUES FOR PARAMETERS.
 # ----------------------------------------------------------------------------------------------------------------------
 # General parameters
-DATA_DIR=""
-CONTRAST=""
-OUTPUT_DIR="results/files/"
+CONFIG_DATA=""
+OUTPUT_DIR="results/"
 OUTPUT_TXT=""
-SUFFIX_IMG="_acq-sagittal"
-SUFFIX_LABEL_DISC="_labels-manual"
-SUFFIX_SEG="_seg"
+SUFFIX_SEG="_seg-manual"
 VERBOSE=1
 
 # Hourglass config file
@@ -62,18 +57,14 @@ CONFIG_HG=""
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:c:f:ov -l datapath:,contrast:,file:,out:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:f:ov -l data:,file:,out:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
 do
     case "$1" in
-        -d|--datapath)
-            DATA_DIR="$2"
-            shift 2
-            ;;
-        -c|--contrast)
-            CONTRAST="$2"
+        -d|--data)
+            CONFIG_DATA="$2"
             shift 2
             ;;
         -f|--file)
@@ -100,12 +91,12 @@ do
 done
 
 # Get full path for all parameters.
-DATA_DIR=$(realpath "${DATA_DIR}")
+CONFIG_DATA=$(realpath "${CONFIG_DATA}")
 OUTPUT_DIR=$(realpath "${OUTPUT_DIR}")
 
 # Define default value OUTPUT_TXT
 if [[ -z "$OUTPUT_TXT" ]] ; then
-    OUTPUT_TXT="${OUTPUT_DIR}/$(basename -- $DATA_DIR)_${CONTRAST}_discs_coords.txt"
+    OUTPUT_TXT="${OUTPUT_DIR}/files/discs_coords.txt"
 fi
 
 # Print the parameters if VERBOSE is enabled.
@@ -113,8 +104,7 @@ fi
 if [[ ${VERBOSE} == 1 ]]; then
     echo ""
     echo "Running with the following parameters:"
-    echo "DATA_DIR=${DATA_DIR}"
-    echo "CONTRAST=${CONTRAST}"
+    echo "CONFIG_DATA=${CONFIG_DATA}"
     echo "CONFIG_HG=${CONFIG_HG}"
     echo "OUTPUT_TXT=${OUTPUT_TXT}"
     echo "VERBOSE=${VERBOSE}"
@@ -124,9 +114,9 @@ fi
 # Validate the given parameters.
 # ----------------------------------------------------------------------------------------------------------------------
 
-# Ensure the data directory exists.
-if [[ ! -d ${DATA_DIR} ]]; then
-    echo "Folder not found ${DATA_DIR}"
+# Ensure the data config exists.
+if [[ ! -f ${CONFIG_DATA} ]]; then
+    echo "File not found ${CONFIG_DATA}"
     exit 1
 fi
 
@@ -141,41 +131,39 @@ fi
 # ======================================================================================================================
 
 # Mandatory args
-args=( --datapath "$DATA_DIR" --contrast "$CONTRAST" --out-txt-file "$OUTPUT_TXT")
-
-# Methods args
-args_m=${args[*]}
-if [ ! -z "$SUFFIX_IMG" ]; then args_m+=( --suffix-img "$SUFFIX_IMG" );fi
-if [ ! -z "$SUFFIX_LABEL_DISC" ]; then args_m+=( --suffix-label-disc "$SUFFIX_LABEL_DISC" );fi
-if [ ! -z "$SUFFIX_SEG" ]; then args_m+=( --suffix-seg "$SUFFIX_SEG" );fi
+args=( --config-data "$CONFIG_DATA" --out-txt-file "$OUTPUT_TXT" --suffix-seg "$SUFFIX_SEG" --seg-folder "$OUTPUT_DIR" )
 
 ## Activate env HOURGLASS + SCT
 source /usr/local/miniforge3/etc/profile.d/conda.sh
-conda activate sct_hg_env
+conda activate hg_env
 
 # Init text file
-python src/bcm/utils/init_txt_file.py ${args[@]}
+python src/bcm/utils/init_benchmark.py ${args[@]}
 
 # Add ground truth discs coordinates
-python src/bcm/methods/add_gt_coordinates.py ${args_m[@]}
-
-# Test sct_label_vertebrae
-python src/bcm/methods/test_sct_label_vertebrae.py ${args_m[@]}
+python src/bcm/methods/add_gt_coordinates.py ${args[@]}
 
 # Test Hourglass Network
 # Add config file parameter for hourglass
 for file in $CONFIG_HG
     do
         file=$(realpath "${file}")
-        args_hg=${args_m[*]}
+        args_hg=${args[*]}
         args_hg+=" --config-hg $file " # why quotes ?? and not parentheses
         python src/bcm/methods/test_hourglass_network.py ${args_hg[@]}
     done
+
+## Change env
+conda deactivate
+conda activate sct_env
+
+# Test sct_label_vertebrae
+python src/bcm/methods/test_sct_label_vertebrae.py ${args[@]}
 
 ## Deactivate env
 conda deactivate
 
 # Test Spinenet Network with spinenet-venv
-../spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args_m[@]}"
+/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/code/SpineNet/spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args[@]}"
 
 echo "All the methods have been computed"
