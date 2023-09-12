@@ -153,10 +153,6 @@ for file in $CONFIG_HG
         python src/bcm/methods/test_hourglass_network.py ${args_hg[@]}
     done
 
-## Change env
-conda deactivate
-conda activate sct_env
-
 # Test sct_label_vertebrae
 python src/bcm/methods/test_sct_label_vertebrae.py ${args[@]}
 
