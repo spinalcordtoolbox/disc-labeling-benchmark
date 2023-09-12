@@ -2,8 +2,7 @@ import os
 import json
 import argparse
 import numpy as np
-
-from spinalcordtoolbox.utils.sys import run_proc
+import subprocess
 
 from bcm.utils.utils import SCT_CONTRAST, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_subject_and_session, fetch_contrast
 from bcm.utils.image import Image
@@ -68,12 +67,13 @@ def test_sct_label_vertebrae(args):
                 if not os.path.exists(os.path.dirname(disc_file_path)):
                     os.makedirs(os.path.dirname(disc_file_path))
 
-                status, _ = run_proc(['sct_label_vertebrae',
+           
+                out=subprocess.run(['sct_label_vertebrae',
                                         '-i', img_path,
                                         '-s', seg_path,
                                         '-c', SCT_CONTRAST[contrast],
                                         '-ofolder', os.path.dirname(disc_file_path)], raise_exception=False)
-                if status == 0:
+                if out.returncode == 0:
                     discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
                     # keep only 2D coordinates
                     discs_coords = discs_coords[:, 1:]         
