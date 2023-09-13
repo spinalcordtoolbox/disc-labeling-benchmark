@@ -30,27 +30,33 @@ each environment as follows:
 First, create a new virtual environment using python3.8 and activate it:
 <details>
 <summary>Conda</summary>
+  
 ```Bash
 conda create -n HG_env python=3.8
 conda activate HG_env
 ```
+
 </details>
 <details>
 <summary>Venv</summary>
 Be sure to run python 3.8
+  
 ```Bash
 python -m venv HG_env
 source HG_env/bin/activate
 ```
+
 </details>
 Then, install the packages by running these commands:
+
 ```Bash
 git clone https://github.com/spinalcordtoolbox/disc-labeling-hourglass.git
 cd disc-labeling-hourglass
 pip install -r requirements.txt
 pip install -e .
 cd ..
-``` 
+```
+
 </details>
 
 <details>
@@ -72,10 +78,13 @@ cd ..
 ```
 
 Before running, add the root directory to your PYTHONPATH:
+
 ```Bash
 export PYTHONPATH=$PYTHONPATH:/path/to/SpineNet
 ```
+
 Finally, download spinenet's weight using this command
+
 ```Bash
 spinenet.download_weights(verbose=True)
 ```
@@ -85,6 +94,7 @@ spinenet.download_weights(verbose=True)
 <summary>Spinalcordtoolbox installation</summary>
 <br>
 In this benchmark, few features including the function sct_label_vertebrae from the [spinalcordtoolbox](https://github.com/spinalcordtoolbox/spinalcordtoolbox) are needed. Instructions regarding the installation follows:
+  
 ```Bash
 git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
 cd spinalcordtoolbox
@@ -96,11 +106,13 @@ cd spinalcordtoolbox
 > Note : the script `init_data_config.py` is also available within this repository in `src/bcm/utils/init_data_config.py`
 
 4. Extract the coordinates of the discs for each image in the `CONFIG_DATA_JSON` and create a `TXT_FILE` in results/
+   
 ```Bash
 src/bcm/run/extract_discs_coords.sh --data CONFIG_DATA_JSON --file CONFIG_HG
 ```
 
 5. Compute metrics and plot graphs for each methods based on the `TXT_FILE`. A `CSV_FILE` is also generated for more evaluation
+   
 ```Bash
 python src/bcm/run/compute_disc_labeling_comparison.py --config-data CONFIG_DATA_JSON -txt results/files/spinegeneric_vert_T1w_hg15_discs_coords.txt
 ```
