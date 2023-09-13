@@ -10,9 +10,7 @@ Accurate identification and labeling of intervertebral discs are crucial in medi
 
 The repository is organized as follows:
 
-- **Evaluation** (in development): This directory contains evaluation scripts and metrics to compare and quantify the performance of different labeling methods. It provides tools to assess accuracy, precision, recall, and other relevant measures.
-
-- **Results** (in development): After running the evaluation scripts, the obtained results will be stored in this directory. It includes performance metrics, visualizations, and comparisons of the different methods.
+- **Results** : After running the evaluation scripts, the obtained results will be stored in this directory. It includes performance metrics, visualizations, and comparisons of the different methods.
 
 ## Getting Started
 
@@ -23,23 +21,88 @@ To get started with this repository, follow the steps below:
 git clone https://github.com/spinalcordtoolbox/disc-labeling-benchmark.git
 ```
 
-2. Set up the required environment and dependencies. 
+2. Set up the required environments and dependencies. This repository contains several methods with independant environments, please install
+each environment as follows:
 
-(in development) --> see https://github.com/spinalcordtoolbox/disc-labeling-benchmark/issues/2
-
-3. Gather only the relevant data for comparison (The input dataset needs to be in [BIDS](https://bids.neuroimaging.io/) format): the `DATAPATH` corresponds to the path to the input BIDS compliant dataset and `VERTEBRAL_DATA` corresponds to the path to the output folder. The free multi-center spinegeneric dataset is available in https://github.com/spine-generic/data-multi-subject.
+<details>
+<summary>Hourglass network</summary>
+<br>
+First, create a new virtual environment using python3.8 and activate it:
+<details>
+<summary>- Conda</summary>
 ```Bash
-python src/bcm/utils/gather_data.py --datapath DATAPATH -o VERTEBRAL_DATA --suffix-img SUFFIX_IMG --suffix-label SUFFIX_LABEL
+conda create -n HG_env python=3.8
+conda activate HG_env
+```
+</details>
+<details>
+<summary>- Venv</summary>
+Be sure to run python 3.8
+```Bash
+python -m venv HG_env
+source HG_env/bin/activate
+```
+</details>
+Then, install the packages by running these commands:
+```Bash
+git clone https://github.com/spinalcordtoolbox/disc-labeling-hourglass.git
+cd disc-labeling-hourglass
+pip install -r requirements.txt
+pip install -e .
+cd ..
+``` 
+</details>
+
+<details>
+<summary>Spinenet network</summary>
+<br>
+First, create a new virtual environment activate it, you can also follow [spinenet installation](https://github.com/rwindsor1/SpineNet#install-enviroments):
+
+```Bash
+python -m venv spinenet-venv
+source spinenet-venv/bin/activate
 ```
 
-4. Extract the coordinates of the discs for each image in the `VERTEBRAL_DATA` and create a `TXT_FILE` in results/
+Then, install the packages by running these commands:
 ```Bash
-python src/bcm/run/extract_disc_cords.py --datapath VERTEBRAL_DATA -c t2
+git clone https://github.com/rwindsor1/SpineNet.git
+cd SpineNet
+pip install -r requirements.txt
+cd ..
+```
+
+Before running, add the root directory to your PYTHONPATH:
+```Bash
+export PYTHONPATH=$PYTHONPATH:/path/to/SpineNet
+```
+Finally, download spinenet's weight using this command
+```Bash
+spinenet.download_weights(verbose=True)
+```
+</details>
+
+<details>
+<summary>Spinalcordtoolbox installation</summary>
+<br>
+In this benchmark, few features including the function sct_label_vertebrae from the [spinalcordtoolbox](https://github.com/spinalcordtoolbox/spinalcordtoolbox) are needed. Instructions regarding the installation follows:
+```Bash
+git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
+cd spinalcordtoolbox
+./install_sct
+``` 
+</details>
+
+3. Gather only the relevant data for comparison in a json file `CONFIG_DATA_JSON` (The input data needs to be stored in a [BIDS](https://bids.neuroimaging.io/) compliant dataset): all the `labels`' path need to be stored in this `json` file before running any script in the benchmark. The different steps are described [here](https://github.com/spinalcordtoolbox/disc-labeling-hourglass/issues/25#issuecomment-1695818382).
+> Note : the script `init_data_config.py` is also available within this repository in `src/bcm/utils/init_data_config.py`
+
+4. Extract the coordinates of the discs for each image in the `CONFIG_DATA_JSON` and create a `TXT_FILE` in results/
+```Bash
+src/bcm/run/extract_discs_coords.sh --data CONFIG_DATA_JSON --file CONFIG_HG
 ```
 
 5. Compute metrics and plot graphs for each methods based on the `TXT_FILE`. A `CSV_FILE` is also generated for more evaluation
 ```Bash
-python src/bcm/run/compute_disc_labeling_comparison.py --datapath VERTEBRAL_DATA -txt results/files/spinegeneric_vert_T1w_hg15_discs_coords.txt -c t2
+python src/bcm/run/compute_disc_labeling_comparison.py --config-data CONFIG_DATA_JSON -txt results/files/spinegeneric_vert_T1w_hg15_discs_coords.txt
 ```
 
 ## See also
