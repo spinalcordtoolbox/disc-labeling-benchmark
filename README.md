@@ -62,7 +62,7 @@ cd ..
 <details>
 <summary>Spinenet network</summary>
 <br>
-First, create a new virtual environment activate it, you can also follow [spinenet installation](https://github.com/rwindsor1/SpineNet#install-enviroments):
+First, create a new virtual environment activate it, you can also follow spinenet [installation](https://github.com/rwindsor1/SpineNet#install-enviroments/):
 
 ```Bash
 python -m venv spinenet-venv
@@ -93,7 +93,7 @@ spinenet.download_weights(verbose=True)
 <details>
 <summary>Spinalcordtoolbox installation</summary>
 <br>
-In this benchmark, few features including the function sct_label_vertebrae from the [spinalcordtoolbox](https://github.com/spinalcordtoolbox/spinalcordtoolbox) are needed. Instructions regarding the installation follows:
+In this benchmark, few features including the function sct_label_vertebrae from the [spinalcordtoolbox](https://github.com/spinalcordtoolbox/spinalcordtoolbox/) are needed. Instructions regarding the installation follows:
   
 ```Bash
 git clone https://github.com/spinalcordtoolbox/spinalcordtoolbox.git
