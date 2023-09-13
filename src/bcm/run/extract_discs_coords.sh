@@ -2,28 +2,46 @@
 
 # Check for -h option
 if [ "$1" = "-h" ]; then
-    echo "This script is designed to compute disc labeling technics on an input dataset "
-    echo "The data path used for testing should be gathered into a JSON file using the src/bcm/utils/init_data_config.py script. "
-    echo "The script includes 2 main steps: "
+    echo "This script is designed to compute each disc labeling technics from the benchmark on a testing set. "
+    echo "The results for each testing image for each method will be gathered inside an OUTPUT_TXT file "
+    echo "The paths to the testing data need to be gathered into a CONFIG_DATA_JSON file using the src/bcm/utils/init_data_config.py script. "
     echo ""
-    echo "1. Creating a text file where all the coordinates of every discs for each method will be gathered"
-    echo ""
-    echo "2. Computing the metrics and creating the graphs and images to compare the different approaches"
-    echo ""
-    echo "The script takes several command-line arguments for customization:"
-    echo ""
-
-    echo "Path specified need to follow BIDS compatibility:"
-    echo " data"
+    echo "Path specified in the CONFIG_DATA_JSON need to follow BIDS compatibility:"
+    echo " data-BIDS"
+    echo " ├── derivatives"
+    echo " │    └── labels"
+    echo " │        ├── sub-errsm37"
+    echo " │        │    └── anat"
+    echo " │        │         ├── sub-errsm37_T1w_seg.nii.gz"
+    echo " │        │         ├── sub-errsm37_T2w_seg.nii.gz"
+    echo " │        │         ├── sub-errsm37_T1w_labels-disc.nii.gz"
+    echo " │        │         └── sub-errsm37_T2w_labels-disc.nii.gz"
+    echo " │        └── sub-errsm38"
+    echo " │             └── anat"
+    echo " │                  ├── sub-errsm38_T1w_seg.nii.gz"
+    echo " │                  ├── sub-errsm38_T2w_seg.nii.gz"
+    echo " │                  ├── sub-errsm38_T1w_labels-disc-manual.nii.gz"
+    echo " │                  └── sub-errsm38_T2w_labels-disc-manual.nii.gz"
     echo " ├── sub-errsm37"
-    echo " │   ├── sub-errsm37_T2w_labels-disc-manual.nii.gz"
-    echo " │   ├── sub-errsm37_T2w.nii.gz"
-    echo " │   ├── sub-errsm37_T1w_labels-disc-manual.nii.gz"
-    echo " │   └── sub-errsm37_T1w.nii.gz"
+    echo " │    └── anat"
+    echo " │         ├── sub-errsm37_T1w.nii.gz"
+    echo " │         └── sub-errsm37_T2w.nii.gz"
     echo " └── sub-errsm38"
-    echo "     ├── sub-errsm38_T1w_seg-manual.nii.gz"
-    echo "     └── sub-errsm38_T1w.nii.gz"
-
+    echo "      └── anat"
+    echo "           ├── sub-errsm38_T1w.nii.gz"
+    echo "           └── sub-errsm38_T2w.nii.gz"
+    echo ""
+    echo "Function arguments:"
+    echo "   -h            show this help message and exit"
+    echo "   -d, --data <folder>"
+    echo "              Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)"
+    echo "   -f, --file <path/to/file.json>"
+    echo "              Config JSON file where every hourglass parameter is stored ~/<your_path>/config_hg.json (Required)"
+    echo "              Note: Multiple files corresponding to different training may be specified by calling the same flag multiple times."
+    echo "   -o, --out <path/to/file.txt>"
+    echo "              Generated txt file path (default: "results/files/discs_coords.txt")"
+    echo "   -s, --suffix <str>"
+    echo "              Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")"
     exit 0
 fi
 
@@ -57,7 +75,7 @@ CONFIG_HG=""
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:f:ov -l data:,file:,out:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:f:osv -l data:,file:,out:,suffix:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
@@ -73,6 +91,10 @@ do
             ;;
         -o|--out)
             OUTPUT_TXT="$2"
+            shift 2
+            ;;
+        -s|--suffix)
+            SUFFIX_SEG="$2"
             shift 2
             ;;
         -v|--verbose)
