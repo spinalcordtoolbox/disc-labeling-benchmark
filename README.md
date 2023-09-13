@@ -29,14 +29,14 @@ each environment as follows:
 <br>
 First, create a new virtual environment using python3.8 and activate it:
 <details>
-<summary>- Conda</summary>
+<summary>Conda</summary>
 ```Bash
 conda create -n HG_env python=3.8
 conda activate HG_env
 ```
 </details>
 <details>
-<summary>- Venv</summary>
+<summary>Venv</summary>
 Be sure to run python 3.8
 ```Bash
 python -m venv HG_env
