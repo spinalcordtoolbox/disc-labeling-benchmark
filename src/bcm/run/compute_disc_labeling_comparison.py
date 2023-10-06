@@ -201,10 +201,10 @@ if __name__=='__main__':
     
     parser.add_argument('-txt', '--input-txt-file', type=str, metavar='<file>', required=True,
                         help='Path to txt file generated using src/bcm/run/extract_disc_cords.py Example: ~/<your_dataset>/vertebral_data (Required)')
-    parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
+    parser.add_argument('--config-data', type=str, metavar='<folder>', default='',
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')
     
-    parser.add_argument('-o', '--output-folder', type=str, metavar='N', default='results',
+    parser.add_argument('-o', '--output-folder', type=str, metavar='<folder>', default='results',
                         help='Output folder where created graphs and images will be stored (default="results")') 
     parser.add_argument('-csv', '--create-csv', type=bool, default=True,
                         help='If "True" generate a csv file with the computed metrics within the txt file folder (default=True)') 
