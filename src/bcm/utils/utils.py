@@ -251,8 +251,8 @@ def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
     x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
     for i in range(3):
         x_3ch[:, :, i] = x[:, :]
-
-    img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
+    x_3ch[y_colored>0] = 0
+    img_mix = np.uint8(x_3ch + y_colored)
     clr_vis_Y.append(img_mix)
             
     t = np.array(clr_vis_Y)
