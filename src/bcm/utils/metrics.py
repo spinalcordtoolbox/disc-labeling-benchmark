@@ -9,6 +9,8 @@
 # Metrics computation
 import numpy as np
 
+from scipy.spatial.distance import directed_hausdorff
+from sklearn.metrics import mean_squared_error
 
 # looks for the closest points between real and predicted
 def closest_node(node, nodes):
@@ -92,3 +94,53 @@ def compute_TN_and_FN(missing_gt, missing_pred):
     return TN, FN, np.array(false_neg_list)
 
 
+
+
+
+######## ajout ci-bas___ Morane
+
+
+#Compute contour error using Euclidean distance
+def compute_contour_error(seg_pred, seg_gt): #utilise seg_pred = imread(seg_path)? seg_gt=imread(seg_gt_path)?
+    contour_error = np.mean(np.sqrt((seg_pred - seg_gt) ** 2))
+    # Compute percentage error % (par rapport à la taille de l'image)
+    height, width = seg_pred.shape
+    total_pixels = height * width
+    percentage_contour_error = (contour_error / total_pixels) * 100.0
+#    contour_errors.append(percentage_contour_error)
+#    print("Contour Error (%):", percentage_contour_error)
+    return percentage_contour_error
+    
+
+#Compute MSE
+def compute_MSE(pred_mask,gt_mask)
+    "Calcule l'erreur quadratique moyenne entre la segmentation prédite et la vérité terrain"
+    mse = mean_squared_error(pre_mask, gt_mask)
+#    mse_scores.append(mse)
+#    print("MSE:", mse)
+    return mse
+
+#Compute Hausdorff distance
+def hausdorff_distance(set_pred, set_gt):
+    """
+    Calcule la distance de Hausdorff entre deux ensembles.
+
+    Args:
+    set_pred (numpy.ndarray): Le premier ensemble est un tableau 3D (masque binaire_pred)
+    set_gt (numpy.ndarray): Le deuxième ensemble est un tableau 3D (masque binaire_gt).
+
+    Returns:
+    float: La distance de Hausdorff entre les deux ensembles.
+    """
+    # Trouver les coordonnées des points dans chaque ensemble
+    points_set_pred = np.array(np.where(set_pred)).T
+    points_set_gt = np.array(np.where(set_gt)).T
+
+    # Calculer la distance de Hausdorff des deux ensembles
+    hausdorff_pred_to_gt = directed_hausdorff(points_set_pred, points_set_gt)[0]
+    hausdorff_gt_to_pred = directed_hausdorff(points_set_gt, points_set_pred)[0]
+
+    # La distance de Hausdorff est la plus grande des deux distances
+    hausdorff_distance = max(hausdorff_pred_to_gt, hausdorff_gt_to_pred)
+
+    return hausdorff_distance
