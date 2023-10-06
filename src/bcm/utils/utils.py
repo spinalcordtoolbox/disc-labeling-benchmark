@@ -18,6 +18,7 @@ import logging
 import tempfile
 import datetime
 import shutil
+import cc3d
 
 from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
 from bcm.utils.image import Image, zeros_like
@@ -646,3 +647,13 @@ def rmtree(folder, verbose=1):
     Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
     """
     shutil.rmtree(folder, ignore_errors=True)
+
+
+def extract_centroids_3D(arr):
+    '''
+    Extract centroids from a 3D numpy array
+    :param arr: 3D numpy array
+    '''
+    centroids = cc3d.statistics(cc3d.connected_components(arr))['centroids'][1:] # Remove backgroud <0>
+    centroids_sorted = centroids[np.argsort(centroids[:,1])] # Sort according to the vertical axis
+    return centroids_sorted.astype(int)
