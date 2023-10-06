@@ -8,7 +8,7 @@
 
 # Metrics computation
 import numpy as np
-
+#from sklearn.metrics import mean_squared_error
 
 # looks for the closest points between real and predicted
 def closest_node(node, nodes):
@@ -90,5 +90,28 @@ def compute_TN_and_FN(missing_gt, missing_pred):
         else:
            TN += 1 
     return TN, FN, np.array(false_neg_list)
+
+
+######## ajout ci-bas___ Morane
+
+#Compute MSE
+def compute_MSE(pred,gt):
+    #mse = mean_squared_error(pred_mask, gt_mask) #Les arguments d'entrée doivent être des tableaux
+    '''
+    Compute Mean Squared Error (MSE) between ground truth and predicted coordinates.
+    
+    gt: numpy array with the ground truth coords of the discs
+    pred: numpy array with the prediction coords of the discs
+    
+    Returns: MSE value
+    '''
+    # Calculate L2 errors
+    l2_errors = np.array([np.linalg.norm(gt[i] - pred[i]) for i in range(gt.shape[0])])
+    
+    # Calculate MSE
+    mse = np.mean(l2_errors**2)
+    return mse
+   
+
 
 
