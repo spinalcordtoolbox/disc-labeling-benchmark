@@ -634,7 +634,7 @@ def tmp_create(basename):
 
     Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
     """
-    prefix = f"sct_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{basename}_"
+    prefix = f"benchmark_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{basename}_"
     tmpdir = tempfile.mkdtemp(prefix=prefix)
     logger.info(f"Creating temporary folder ({tmpdir})")
     return tmpdir
