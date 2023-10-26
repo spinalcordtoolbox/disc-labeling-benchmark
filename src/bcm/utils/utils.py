@@ -7,7 +7,7 @@
 #===================================================
 
 import os
-import cv2
+# import cv2
 import re
 import numpy as np
 import torch
@@ -19,7 +19,8 @@ import tempfile
 import datetime
 import shutil
 
-from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
+from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN, compute_contour_error, hausdorff_distance
+#compute_MSE,
 from bcm.utils.image import Image, zeros_like
 
 logger = logging.getLogger(__name__)
@@ -221,60 +222,60 @@ def swap_y_origin(coords, img_shape, y_pos=1):
     coords[:,y_pos] = y_shape - coords[:,y_pos]
     return coords
 
-##
-def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
-    clr_vis_Y = []
-    hues = np.linspace(0, 179, discs_images.shape[0], dtype=np.uint8)
-    blank_ch = 255*np.ones_like(discs_images[0], dtype=np.uint8)
+# ##
+# def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
+#     clr_vis_Y = []
+#     hues = np.linspace(0, 179, discs_images.shape[0], dtype=np.uint8)
+#     blank_ch = 255*np.ones_like(discs_images[0], dtype=np.uint8)
 
-    y_colored = np.zeros([discs_images.shape[1], discs_images.shape[2], 3], dtype=np.uint8)
-    y_all = np.zeros([discs_images.shape[1], discs_images.shape[2]], dtype=np.uint8)
+#     y_colored = np.zeros([discs_images.shape[1], discs_images.shape[2], 3], dtype=np.uint8)
+#     y_all = np.zeros([discs_images.shape[1], discs_images.shape[2]], dtype=np.uint8)
     
-    for ych, hue_i in zip(discs_images, hues):
-        ych = ych/np.max(np.max(ych))
+#     for ych, hue_i in zip(discs_images, hues):
+#         ych = ych/np.max(np.max(ych))
 
-        ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
-        ych = np.uint8(255*ych/np.max(ych))
+#         ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
+#         ych = np.uint8(255*ych/np.max(ych))
 
-        colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
-        colored_ych[:, :, 0] = ych_hue
-        colored_ych[:, :, 1] = blank_ch
-        colored_ych[:, :, 2] = ych
-        colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
+#         colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
+#         colored_ych[:, :, 0] = ych_hue
+#         colored_ych[:, :, 1] = blank_ch
+#         colored_ych[:, :, 2] = ych
+#         colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
 
-        y_colored += colored_y
-        y_all += ych
+#         y_colored += colored_y
+#         y_all += ych
 
-    # Normalised image between [0,255] as integer
-    x = (255*(input_img - np.min(input_img))/np.ptp(input_img)).astype(int)
+#     # Normalised image between [0,255] as integer
+#     x = (255*(input_img - np.min(input_img))/np.ptp(input_img)).astype(int)
 
-    x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
-    for i in range(3):
-        x_3ch[:, :, i] = x[:, :]
+#     x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
+#     for i in range(3):
+#         x_3ch[:, :, i] = x[:, :]
 
-    img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
-    clr_vis_Y.append(img_mix)
+#     img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
+#     clr_vis_Y.append(img_mix)
             
-    t = np.array(clr_vis_Y)
-    t = np.transpose(t, [0, 3, 1, 2])
-    trgts = make_grid(torch.Tensor(t), nrow=4)
+#     t = np.array(clr_vis_Y)
+#     t = np.transpose(t, [0, 3, 1, 2])
+#     trgts = make_grid(torch.Tensor(t), nrow=4)
 
-    res = np.transpose(trgts.numpy(), (1,2,0))
-    cv2.imwrite(out_path, res)
+#     res = np.transpose(trgts.numpy(), (1,2,0))
+#     cv2.imwrite(out_path, res)
 
 ##
-def visualize_discs(input_img, coords_list, out_path):
-    coords_list = swap_y_origin(coords=coords_list, img_shape=input_img.shape, y_pos=0).tolist() # The y origin is at the top of the image
-    discs_images = []
-    for coord in coords_list:
-        coord = [int(c) for c in coord]
-        disc_img = np.zeros_like(input_img[:,:])
-        disc_img[coord[0]-1:coord[0]+2, coord[1]-1:coord[1]+2] = [255, 255, 255]
-        disc_img[:, :] = cv2.GaussianBlur(disc_img[:, :],(5,5),cv2.BORDER_DEFAULT)
-        disc_img[:, :] = disc_img[:, :]/disc_img[:, :].max()*255
-        discs_images.append(disc_img)
-    discs_images = np.array(discs_images)
-    save_discs_image(input_img, discs_images, out_path)
+# def visualize_discs(input_img, coords_list, out_path):
+#     coords_list = swap_y_origin(coords=coords_list, img_shape=input_img.shape, y_pos=0).tolist() # The y origin is at the top of the image
+#     discs_images = []
+#     for coord in coords_list:
+#         coord = [int(c) for c in coord]
+#         disc_img = np.zeros_like(input_img[:,:])
+#         disc_img[coord[0]-1:coord[0]+2, coord[1]-1:coord[1]+2] = [255, 255, 255]
+#         disc_img[:, :] = cv2.GaussianBlur(disc_img[:, :],(5,5),cv2.BORDER_DEFAULT)
+#         disc_img[:, :] = disc_img[:, :]/disc_img[:, :].max()*255
+#         discs_images.append(disc_img)
+#     discs_images = np.array(discs_images)
+#     save_discs_image(input_img, discs_images, out_path)
 
 ##
 def coord2list(coords):
@@ -445,6 +446,57 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
                     max_ref_disc = disc_num
     return txt_lines
 
+################################################################################################
+
+
+#Création de masque binaire pour calcul des métriques -- MORANE
+# Créeation de deux listes pour stocker les masques binaires
+#binary_masks_pred = []
+#binary_masks_gt = []
+
+# Chargement de l'image en utilisant OpenCV
+
+#image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)  #pour être sûre d'avoir l'image en niveau de gris
+
+# Obtention des dimensions de l'image
+#h, l = image.shape[:2]
+
+# h contient la hauteur de l'image
+# l contient la largeur de l'image
+
+# Obtention de la taille totale en pixels
+#taille_totale = h * l 
+#print(f'taille_totale')si besoin de vérifier les dimension
+
+# Créeation d'une image vide avec la même taille que notre image d'origine
+
+#image_size = (l, h)  
+#empty_image = np.zeros(image_size, dtype=np.uint8)
+
+# Convertion de pred_coords_list en masque binaire
+#pred_mask = empty_image.copy()
+#pred_coords_array = np.array(pred_coords_list)
+#x_coords = pred_coords_array[:, 0]
+#y_coords = pred_coords_array[:, 1]
+
+# Appliquez un seuil pour créer un masque binaire (ici 255)
+#_, pred_mask = cv2.threshold(pred_mask, 1, 255, cv2.THRESH_BINARY)
+
+# Convertissez gt_coords_list en masque binaire avec cv2.threshold
+#gt_mask = empty_image.copy()
+#gt_coords_array = np.array(gt_coords_list)
+#x_coords = gt_coords_array[:, 0]
+#y_coords = gt_coords_array[:, 1]
+
+# Appliquez un seuil pour créer un masque binaire
+#_, gt_mask = cv2.threshold(gt_mask, 1, 255, cv2.THRESH_BINARY)
+
+# Ajoutez-les à la liste
+#binary_masks_pred.append(pred_mask)
+#binary_masks_gt.append(gt_mask)
+################################################################################################
+
+
 ##
 def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name, nb_subjects):
     '''
@@ -538,6 +590,27 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     #-------------------------------------------#
     DSC_pred = 2*TP_pred/(2*TP_pred+FP_pred+FN_pred)
     
+
+
+        
+    #----------------------------------------------------#
+    # Compute MSE #### MORANE
+    #----------------------------------------------------#
+    mse_pred = compute_MSE(pred_mask=pred_mask, gt_mask=gt_mask)
+
+    #----------------------------------------------------#
+    # Compute contour error (CE) #### MORANE
+    #----------------------------------------------------#
+    #CE_pred = compute_contour_error(seg_pred=pred_coords_list, seg_gt=gt_coords_list)
+
+    #----------------------------------------------------#
+    # Compute Hausdorff distance (HD) #### MORANE
+    #----------------------------------------------------#
+
+    #HD_pred = hausdorff_distance(set_pred= pred_coords_list, set_gt=gt_coords_list)
+
+
+
     ###################################
     # Add computed metrics to subject #
     ###################################
@@ -570,7 +643,17 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     # Add total number of discs
     result_dict[subject_name]['tot_discs'] = total_discs
     result_dict[subject_name][f'tot_pred_{method_short}'] = total_pred
+
+    ##############################################################################################################################################################
     
+    # Add MSE
+    #result_dict[subject_name][f'MSE_{method_short}'] = MSE_pred
+
+     ##############################################################################################################################################################
+
+
+
+
     ######################################
     # Add total mean of computed metrics #
     ######################################

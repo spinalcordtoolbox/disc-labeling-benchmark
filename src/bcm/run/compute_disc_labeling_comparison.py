@@ -7,32 +7,56 @@ import csv
 import pandas as pd
 import json
 
-from bcm.utils.utils import SCT_CONTRAST, visualize_discs, edit_metric_csv, fetch_img_and_seg_paths, fetch_subject_and_session
+from bcm.utils.utils import SCT_CONTRAST, edit_metric_csv, fetch_img_and_seg_paths, fetch_subject_and_session
 from bcm.utils.image import Image
+
 
 def compare_methods(args):
     if args.config_data:
         config_data = json.load(open(args.config_data, "r"))
 
-    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                   path_type=config_data['TYPE'],
-                                                   seg_suffix='_seg-manual',
-                                                   derivatives_path='derivatives/labels'
-                                                   )
+        img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
+                                                    path_type=config_data['TYPE'],
+                                                    seg_suffix='_seg-manual',
+                                                    derivatives_path='derivatives/labels'
+                                                    )
     txt_file_path = args.input_txt_file
     dataset = os.path.basename(txt_file_path).split('_')[0]
     output_folder = os.path.join(args.output_folder, f'out_{dataset}')
     computed_methods = args.computed_methods
     
+
+
     # Create output folder
     if not os.path.exists(output_folder):
-        os.mkdir(output_folder)
+        os.makedirs(output_folder)
     
     # Load disc_coords txt file
     with open(txt_file_path,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
     
+    ################################################################################################################################################################################################
+    #Permet d'afficher l'intérieur du fichier pour vérifier que toutes les colonnes sont affichées
+    #if split_lines:
+    #    print("Première ligne du fichier :", split_lines[0])
+    ################################################################################################################################################################################################
+    
+    ################################################################################################################################################################################################
+    
+    # Morane --- boucle qui va comparer avec les arguements et points de références (premiere ligne du fichier txt) ci-bas
+    ################################################################################################################################################################################################
+
+
+    # Vérifier que la longueur de gt_coords_list correspond au nombre de lignes dans split_lines
+    #split_lines[0].append('gt_coords') #ajouter le titre de la colonne 
+    #for line in enumerate(split_lines[1:]):
+        #Ajoutez la colonne gt_coords à chaque ligne
+        #gt_coords = gt_coords_list[i]  
+        #split_lines[i].append(f"{gt_coords[0]},{gt_coords[1]}")  
+        #Maintenant, split_lines contient normalement la colonne "gt_coords" mise à jour
+
+
     # Extract processed subjects --> subjects with a ground truth
     # line = subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
     processed_subjects_dict = dict()
@@ -43,11 +67,25 @@ def compare_methods(args):
         elif (line[split_lines[0].index('subject_name')] in processed_subjects_dict.keys()) and gt_condition:
             if (line[split_lines[0].index('contrast')] not in processed_subjects_dict[line[split_lines[0].index('subject_name')]]):
                 processed_subjects_dict[line[split_lines[0].index('subject_name')]].append(line[split_lines[0].index('contrast')])
-    
+    #processed_subjects_dict = {subject1 : [T1w, T2w],
+    #                           subject2 : [T2w],
+    #                           subject3 : [T1w, T2w]}
+
+
+
+    ################################################################################################################################################################################################
+    #Morane --- method - resul qui est le dictionnaire qui compte toutes les metrics de chaque methode -- à modifier quand on ajoute une methode
+    # Morane -- contraste = T1w/T2w /// lignes d'en haut possible erreur
+    ################################################################################################################################################################################################
+
+
+
     # Initialize metrics for each contrast
     methods_results = {}
-    for contrast in np.unique(list(processed_subjects_dict.values())):
-        methods_results[contrast] = {}
+    for contrasts in list(processed_subjects_dict.values()):
+        for c in contrasts:
+            if c not in methods_results.keys():
+                methods_results[c] = {}
     
     nb_subjects = len(processed_subjects_dict.keys())
     for method in computed_methods:
@@ -55,7 +93,45 @@ def compare_methods(args):
         for subject, contrasts in processed_subjects_dict.items():
             for contrast in contrasts:
                 methods_results[contrast], pred_discs_list = edit_metric_csv(methods_results[contrast], txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
-            
+
+#             def create_binary_mask(coord_list, image_shape):
+#                 # Initialize an empty binary mask
+#                 binary_mask = np.zeros(image_shape, dtype=bool)
+    
+#                  # Set the pixels within the coordinate list to True
+#                 for coord in coord_list:
+#                     binary_mask[coord[0], coord[1]] = True
+#             return binary_mask
+#             ground_truth_mask = create_binary_mask(ground_truth_coords, image_shape)
+#             predicted_mask = create_binary_mask(pred_discs_list, image_shape)
+
+
+
+# for score in dice_scores:
+#     print("Coefficient de Dice :", score)
+#             print("Dice Score:", dice)
+
+#             #Calculate MSE
+#             mse = mean_squared_error(predicted_mask, ground_truth_mask)
+#             mse_scores.append(mse)
+#             print("MSE:", mse)
+
+#             #Calculate contour error
+#             contour_error = calculate_contour_error(predicted_mask, ground_truth_mask)
+#             contour_errors.append(contour_error)
+#             print("Contour Error:", contour_error)
+
+#             #Calculate Hausdorff distance
+#             hausdorff_distance = directed_hausdorff(predicted_mask, ground_truth_mask)[0]
+#             hausdorff_distances.append(hausdorff_distance)
+#             print("Hausdorff Distance:", hausdorff_distance)
+
+#             with open('results.txt', 'w') as file:
+#             file.write(f"Dice Score: {dice}\n")
+#             file.write(f"MSE: {mse}\n")
+#             file.write(f"Contour Error: {contour_error}\n")
+#             file.write(f"Hausdorff Distance: {hausdorff_distance}\n")
+
             # Visualize discs on image
             if args.config_data:
                 sub_name = f'{subject}_{contrast}'
@@ -64,12 +140,12 @@ def compare_methods(args):
                         img_3D = Image(img_path).change_orientation('RSP').data
                         shape = img_3D.shape
                         img_2D = img_3D[shape[0]//2, :, :]
-                        if pred_discs_list.size != 0: # Check if not empty
-                            visualize_discs(input_img=img_2D, coords_list=pred_discs_list, out_path=os.path.join(output_folder, f'{sub_name}_{method}.png'))
+                        #if pred_discs_list.size != 0: # Check if not empty
+                            #visualize_discs(input_img=img_2D, coords_list=pred_discs_list, out_path=os.path.join(output_folder, f'{sub_name}_{method}.png'))
             
     
     if args.create_csv:
-        for contrast in np.unique(list(processed_subjects_dict.values())):
+        for contrast in methods_results.keys():
             # Get fields for csv conversion
             sub_list = [sub for sub in methods_results[contrast].keys() if sub.startswith('sub')]
             fields = ['subject'] + [key for key in methods_results[contrast][sub_list[0]].keys()]
@@ -82,7 +158,7 @@ def compare_methods(args):
                     w.writerow(mergedict({'subject': k},d))
     
     # Remove unrelevant hourglass contrasts and shorten methods names
-    for contrast in np.unique(list(processed_subjects_dict.values())):
+    for contrast in methods_results.keys():
         methods_plot = []
         for method in computed_methods:
             if 'hourglass' in method:
@@ -95,6 +171,7 @@ def compare_methods(args):
 def mergedict(a,b):
     a.update(b)
     return a
+
 
 def save_graphs(output_folder, methods_results, methods_list, contrast):
     # Isolate total dict 
@@ -114,7 +191,12 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     out_path = os.path.join(output_folder,f'l2_error_{contrast}.png')
     #save_bar(methods=methods_list, mean=l2_mean, std=l2_std, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
     save_violin(methods=methods_list, values=l2_error, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
-    
+
+#save_graph(dice_scores, "Dice_Score", output_folder, contrast)
+#save_graph(mse_scores, "MSE", output_folder, contrast)
+#save_graph(contour_errors, "Contour_Error", output_folder, contrast)
+#save_graph(hausdorff_distances, "Hausdorff_Distance", output_folder, contrast)
+
     # # Save total Dice score DSC
     # DSC_hg = dict_total['DSC_hg']
     # DSC_sct = dict_total['DSC_sct']
@@ -195,7 +277,9 @@ def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='L2_erro
     # Save plot
     plot.figure.savefig(output_path)
 
- 
+def hello():
+    print('hello')
+
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')
     

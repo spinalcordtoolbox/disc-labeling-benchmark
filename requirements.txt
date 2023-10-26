@@ -3,7 +3,6 @@ numpy
 progress
 torch
 torchvision
-opencv-python
 scikit-image
 transforms3d
 progress
