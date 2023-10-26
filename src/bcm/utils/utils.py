@@ -19,8 +19,7 @@ import tempfile
 import datetime
 import shutil
 
-from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN, compute_contour_error, hausdorff_distance
-#compute_MSE,
+from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN, compute_MSE
 from bcm.utils.image import Image, zeros_like
 
 logger = logging.getLogger(__name__)
@@ -438,7 +437,10 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
                             intermediate_line = new_line[:]
                             max_ref_disc += 1
                             intermediate_line[2] = str(max_ref_disc)
-                            txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
+                            txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines -- 
+                            #mais si le disque intermédiaire n'est pas détecté ça ajoute une valeur biaisée?
+
+
                     idx = np.where(coords[:,-1] == disc_num)[0][0]
                     new_line[method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
                     last_index += 1
@@ -590,25 +592,10 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     #-------------------------------------------#
     DSC_pred = 2*TP_pred/(2*TP_pred+FP_pred+FN_pred)
     
-
-
-        
     #----------------------------------------------------#
     # Compute MSE #### MORANE
     #----------------------------------------------------#
-    mse_pred = compute_MSE(pred_mask=pred_mask, gt_mask=gt_mask)
-
-    #----------------------------------------------------#
-    # Compute contour error (CE) #### MORANE
-    #----------------------------------------------------#
-    #CE_pred = compute_contour_error(seg_pred=pred_coords_list, seg_gt=gt_coords_list)
-
-    #----------------------------------------------------#
-    # Compute Hausdorff distance (HD) #### MORANE
-    #----------------------------------------------------#
-
-    #HD_pred = hausdorff_distance(set_pred= pred_coords_list, set_gt=gt_coords_list)
-
+    mse_pred = compute_MSE(gt=gt_coords_list, pred=pred_coords_list)
 
 
     ###################################
@@ -644,14 +631,8 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict[subject_name]['tot_discs'] = total_discs
     result_dict[subject_name][f'tot_pred_{method_short}'] = total_pred
 
-    ##############################################################################################################################################################
-    
     # Add MSE
-    #result_dict[subject_name][f'MSE_{method_short}'] = MSE_pred
-
-     ##############################################################################################################################################################
-
-
+    result_dict[subject_name][f'MSE_{method_short}'] = mse_pred
 
 
     ######################################
@@ -685,6 +666,9 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
         
         # Init dice score
         result_dict['total'][f'DSC_{method_short}'] = 0
+
+        #Init MSE
+        result_dict['total'][f'MSE_{method_short}'] = 0
     
     # Add L2 error
     result_dict['total'][f'l2_mean_{method_short}'] += l2_pred_mean/nb_subjects
@@ -708,6 +692,9 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     
     # Add dice score
     result_dict['total'][f'DSC_{method_short}'] += DSC_pred/nb_subjects
+
+    #Add MSE 
+    result_dict['total'][f'MSE_{method_short}'] += mse_pred/nb_subjects
     
     return result_dict, pred_discs_list
 

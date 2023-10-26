@@ -41,20 +41,6 @@ def compare_methods(args):
     #if split_lines:
     #    print("Première ligne du fichier :", split_lines[0])
     ################################################################################################################################################################################################
-    
-    ################################################################################################################################################################################################
-    
-    # Morane --- boucle qui va comparer avec les arguements et points de références (premiere ligne du fichier txt) ci-bas
-    ################################################################################################################################################################################################
-
-
-    # Vérifier que la longueur de gt_coords_list correspond au nombre de lignes dans split_lines
-    #split_lines[0].append('gt_coords') #ajouter le titre de la colonne 
-    #for line in enumerate(split_lines[1:]):
-        #Ajoutez la colonne gt_coords à chaque ligne
-        #gt_coords = gt_coords_list[i]  
-        #split_lines[i].append(f"{gt_coords[0]},{gt_coords[1]}")  
-        #Maintenant, split_lines contient normalement la colonne "gt_coords" mise à jour
 
 
     # Extract processed subjects --> subjects with a ground truth
@@ -104,33 +90,6 @@ def compare_methods(args):
 #             return binary_mask
 #             ground_truth_mask = create_binary_mask(ground_truth_coords, image_shape)
 #             predicted_mask = create_binary_mask(pred_discs_list, image_shape)
-
-
-
-# for score in dice_scores:
-#     print("Coefficient de Dice :", score)
-#             print("Dice Score:", dice)
-
-#             #Calculate MSE
-#             mse = mean_squared_error(predicted_mask, ground_truth_mask)
-#             mse_scores.append(mse)
-#             print("MSE:", mse)
-
-#             #Calculate contour error
-#             contour_error = calculate_contour_error(predicted_mask, ground_truth_mask)
-#             contour_errors.append(contour_error)
-#             print("Contour Error:", contour_error)
-
-#             #Calculate Hausdorff distance
-#             hausdorff_distance = directed_hausdorff(predicted_mask, ground_truth_mask)[0]
-#             hausdorff_distances.append(hausdorff_distance)
-#             print("Hausdorff Distance:", hausdorff_distance)
-
-#             with open('results.txt', 'w') as file:
-#             file.write(f"Dice Score: {dice}\n")
-#             file.write(f"MSE: {mse}\n")
-#             file.write(f"Contour Error: {contour_error}\n")
-#             file.write(f"Hausdorff Distance: {hausdorff_distance}\n")
 
             # Visualize discs on image
             if args.config_data:
@@ -183,19 +142,32 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     metrics_name = np.array(list(subject_metrics[0].keys()))
     metrics_values = np.array([list(sub_metrics.values()) for sub_metrics in subject_metrics])
     
+    ###############
+    for metric_name in metrics_name:
+        # Plot violin graph for each metric
+        metric_data = [metrics_values[:, np.where(metrics_name == metric_name)[0][0]] for method in methods_list]
+        
+        # Check if mean and std are available for the metric
+        if f'{metric_name}_mean' in dict_total and f'{metric_name}_std' in dict_total:
+            metric_mean = [dict_total[f'{metric_name}_mean_{method}'] for method in methods_list]
+            metric_std = [dict_total[f'{metric_name}_std_{method}'] for method in methods_list]
+        else:
+            # If not available, use empty lists
+            metric_mean = []
+            metric_std = []
+        
+        out_path = os.path.join(output_folder, f'{metric_name}_{contrast}.png')
+        save_violin(methods=methods_list, values=metric_data, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
+    ###############
     # Plot total graph
     # L2 error
-    l2_error = [metrics_values[:,np.where(metrics_name == f'l2_mean_{method}')[0][0]] for method in methods_list]
-    l2_mean = [dict_total[f'l2_mean_{method}'] for method in methods_list]
-    l2_std = [dict_total[f'l2_std_{method}'] for method in methods_list]
-    out_path = os.path.join(output_folder,f'l2_error_{contrast}.png')
+    #l2_error = [metrics_values[:,np.where(metrics_name == f'l2_mean_{method}')[0][0]] for method in methods_list]
+    #l2_mean = [dict_total[f'l2_mean_{method}'] for method in methods_list]
+    #l2_std = [dict_total[f'l2_std_{method}'] for method in methods_list]
+    #out_path = os.path.join(output_folder,f'l2_error_{contrast}.png')
     #save_bar(methods=methods_list, mean=l2_mean, std=l2_std, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
-    save_violin(methods=methods_list, values=l2_error, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
+    #save_violin(methods=methods_list, values=l2_error, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
 
-#save_graph(dice_scores, "Dice_Score", output_folder, contrast)
-#save_graph(mse_scores, "MSE", output_folder, contrast)
-#save_graph(contour_errors, "Contour_Error", output_folder, contrast)
-#save_graph(hausdorff_distances, "Hausdorff_Distance", output_folder, contrast)
 
     # # Save total Dice score DSC
     # DSC_hg = dict_total['DSC_hg']
@@ -215,7 +187,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     #          )
 
     
-def save_bar(methods, mean, std, output_path, x_axis='Subjects', y_axis='L2_error (pixels)'):
+"""def save_bar(methods, mean, std, output_path, x_axis='Subjects', y_axis='L2_error (pixels)'):
     '''
     Create a bar graph
     :param methods: String list of the methods name
@@ -247,9 +219,9 @@ def save_bar(methods, mean, std, output_path, x_axis='Subjects', y_axis='L2_erro
     # Save plot
     plt.legend()
     plt.savefig(output_path)
+"""
 
-
-def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='L2_error (pixels)'):
+def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='Metric name'):
     '''
     Create a bar graph
     :param methods: String list of the methods name
@@ -269,16 +241,18 @@ def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='L2_erro
 
     # Make the plot 
     plot = sns.violinplot(data=result_df)  
-    plot.set(xlabel='methods', ylabel='L2 error (pixels)')
+    plot.set(xlabel='methods', ylabel='metric name (pixels)')
     plot.set(title='Position error (pixels)')
+    #plot.set(xlabel='methods', ylabel='L2 error (pixels)')
+    #plot.set(title='Position error (pixels)')
     #plot.set_ylim(-10,60)
     # Create axis and adding Xticks
     
     # Save plot
     plot.figure.savefig(output_path)
 
-def hello():
-    print('hello')
+#def hello():
+#    print('hello')
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')

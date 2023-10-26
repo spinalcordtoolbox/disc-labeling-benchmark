@@ -8,8 +8,7 @@
 
 # Metrics computation
 import numpy as np
-from scipy.spatial.distance import directed_hausdorff
-from sklearn.metrics import mean_squared_error
+#from sklearn.metrics import mean_squared_error
 
 # looks for the closest points between real and predicted
 def closest_node(node, nodes):
@@ -93,57 +92,26 @@ def compute_TN_and_FN(missing_gt, missing_pred):
     return TN, FN, np.array(false_neg_list)
 
 
-
-
-
 ######## ajout ci-bas___ Morane
 
-
-#Compute contour error 
-#def compute_contour_error(seg_pred, seg_gt):
-    # Be sure that seg_pred and seg_gt have the same shape
-#    if seg_pred.shape != seg_gt.shape:
-#        raise ValueError("seg_pred and seg_gt must have the same shape.")
-    #Compute contour error using Euclidean distance
-#    squared_error = (seg_pred - seg_gt) ** 2
-#    euclidean_distance = np.sqrt(squared_error)
-    #The Euclidean distance is an image representing the Euclidean distances between pixels
-#    contour_error = np.mean(euclidean_distance)
-#    # Compute percentage error % (par rapport à la taille de l'image)
-#    height, width = seg_pred.shape
-#    total_pixels = height * width
-#    percentage_contour_error = (contour_error / total_pixels) * 100.0
-#    return percentage_contour_error
-
 #Compute MSE
-def compute_MSE(pred_mask,gt_mask):
-    "Calcule l'erreur quadratique moyenne entre la segmentation prédite et la vérité terrain"
-    mse = mean_squared_error(pred_mask, gt_mask)
-    mse_scores.append(mse)
-    print("MSE:", mse)
+def compute_MSE(pred,gt):
+    #mse = mean_squared_error(pred_mask, gt_mask) #Les arguments d'entrée doivent être des tableaux
+    '''
+    Compute Mean Squared Error (MSE) between ground truth and predicted coordinates.
+    
+    gt: numpy array with the ground truth coords of the discs
+    pred: numpy array with the prediction coords of the discs
+    
+    Returns: MSE value
+    '''
+    # Calculate L2 errors
+    l2_errors = np.array([np.linalg.norm(gt[i] - pred[i]) for i in range(gt.shape[0])])
+    
+    # Calculate MSE
+    mse = np.mean(l2_errors**2)
     return mse
+   
 
-#À annuler --- Compute Hausdorff distance
-#def hausdorff_distance(set_pred, set_gt):
-#    """
-#    Calcule la distance de Hausdorff entre deux ensembles.
 
-#    Args:
-#    set_pred (numpy.ndarray): Le premier ensemble est un tableau 3D (masque binaire_pred)
-#    set_gt (numpy.ndarray): Le deuxième ensemble est un tableau 3D (masque binaire_gt).
 
-#    Returns:
-#    float: La distance de Hausdorff entre les deux ensembles.
-#    """
-    # Trouver les coordonnées des points dans chaque ensemble
-#    points_set_pred = np.array(np.where(set_pred)).T
-#    points_set_gt = np.array(np.where(set_gt)).T
-
-    # Calculer la distance de Hausdorff des deux ensembles
-#   hausdorff_pred_to_gt = directed_hausdorff(points_set_pred, points_set_gt)[0]
-#    hausdorff_gt_to_pred = directed_hausdorff(points_set_gt, points_set_pred)[0]
-
-    # La distance de Hausdorff est la plus grande des deux distances
-#    hausdorff_distance = max(hausdorff_pred_to_gt, hausdorff_gt_to_pred)
-
-#    return hausdorff_distance
