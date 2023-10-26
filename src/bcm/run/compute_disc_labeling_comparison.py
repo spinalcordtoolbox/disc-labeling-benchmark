@@ -145,8 +145,8 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     ###############
     for metric_name in metrics_name:
         # Plot violin graph for each metric
+        #metric_data = [metrics_values[:, np.where(metrics_name == f'metric_name{method}')[0][0]] for method in methods_list]
         metric_data = [metrics_values[:, np.where(metrics_name == metric_name)[0][0]] for method in methods_list]
-        
         # Check if mean and std are available for the metric
         if f'{metric_name}_mean' in dict_total and f'{metric_name}_std' in dict_total:
             metric_mean = [dict_total[f'{metric_name}_mean_{method}'] for method in methods_list]
