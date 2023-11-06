@@ -4,6 +4,7 @@ progress
 torch
 torchvision
 opencv-python
+connected-components-3d
 scikit-image
 transforms3d
 progress
