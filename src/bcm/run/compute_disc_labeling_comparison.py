@@ -92,6 +92,7 @@ def compare_methods(args):
 #             predicted_mask = create_binary_mask(pred_discs_list, image_shape)
 
             # Visualize discs on image
+            """
             if args.config_data:
                 sub_name = f'{subject}_{contrast}'
                 for img_path in img_paths:
@@ -101,7 +102,7 @@ def compare_methods(args):
                         img_2D = img_3D[shape[0]//2, :, :]
                         #if pred_discs_list.size != 0: # Check if not empty
                             #visualize_discs(input_img=img_2D, coords_list=pred_discs_list, out_path=os.path.join(output_folder, f'{sub_name}_{method}.png'))
-            
+            """
     
     if args.create_csv:
         for contrast in methods_results.keys():
@@ -194,7 +195,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     #save_violin(methods=methods_list, values=l2_error, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
 
 
-    # # Save total Dice score DSC
+    # Save total Dice score DSC
     # DSC_hg = dict_total['DSC_hg']
     # DSC_sct = dict_total['DSC_sct']
     # DSC_spn = dict_total['DSC_spn']
@@ -246,7 +247,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     plt.savefig(output_path)
 """
 
-def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='Metric name'):
+def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric name'):
     '''
     Create a bar graph
     :param methods: String list of the methods name
@@ -255,29 +256,35 @@ def save_violin(methods, values, output_path, x_axis='Subjects', y_axis='Metric 
     :param x_axis: x-axis name
     :param y_axis: y-axis name
     '''
-    
     # set width of bar
-        
     # Set position of bar on X axis
-    result_dict = {}
+    result_dict = {'methods' : [], 'values' : []}
+    """for i, method in enumerate(methods):
+        if len(values[i]) > 0:
+            result_dict['values'] += values[i]
+            for j in range(len(values[i])):
+                result_dict['methods'] += [method]"""
+
     for i, method in enumerate(methods):
-        result_dict[method]=values[i]
+        result_dict['values'] += values[i]
+        #result_dict['values'].extend(values[i])
+        #result_dict['methods'].extend([method] * len(values[i]))
+        for j in range(len(values[i])):
+            result_dict['methods'] += [method]
+
     result_df = pd.DataFrame(data=result_dict)
 
     # Make the plot 
-    plot = sns.violinplot(data=result_df)  
-    plot.set(xlabel='methods', ylabel='metric name (pixels)')
-    plot.set(title='Position error (pixels)')
-    #plot.set(xlabel='methods', ylabel='L2 error (pixels)')
-    #plot.set(title='Position error (pixels)')
-    #plot.set_ylim(-10,60)
-    # Create axis and adding Xticks
+    plt.figure()
+    sns.violinplot(x = "methods", y = "values", data= result_df)
+    plt.xlabel(x_axis)
+    plt.ylabel(y_axis)
+    plt.title(y_axis)
     
     # Save plot
-    plot.figure.savefig(output_path)
+    plt.savefig(output_path)
 
-#def hello():
-#    print('hello')
+
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')

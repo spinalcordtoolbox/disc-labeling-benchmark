@@ -438,7 +438,7 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
                             max_ref_disc += 1
                             intermediate_line[2] = str(max_ref_disc)
                             txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines -- 
-                            #mais si le disque intermédiaire n'est pas détecté ça ajoute une valeur biaisée?
+                    
 
 
                     idx = np.where(coords[:,-1] == disc_num)[0][0]
@@ -448,55 +448,7 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
                     max_ref_disc = disc_num
     return txt_lines
 
-################################################################################################
 
-
-#Création de masque binaire pour calcul des métriques -- MORANE
-# Créeation de deux listes pour stocker les masques binaires
-#binary_masks_pred = []
-#binary_masks_gt = []
-
-# Chargement de l'image en utilisant OpenCV
-
-#image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)  #pour être sûre d'avoir l'image en niveau de gris
-
-# Obtention des dimensions de l'image
-#h, l = image.shape[:2]
-
-# h contient la hauteur de l'image
-# l contient la largeur de l'image
-
-# Obtention de la taille totale en pixels
-#taille_totale = h * l 
-#print(f'taille_totale')si besoin de vérifier les dimension
-
-# Créeation d'une image vide avec la même taille que notre image d'origine
-
-#image_size = (l, h)  
-#empty_image = np.zeros(image_size, dtype=np.uint8)
-
-# Convertion de pred_coords_list en masque binaire
-#pred_mask = empty_image.copy()
-#pred_coords_array = np.array(pred_coords_list)
-#x_coords = pred_coords_array[:, 0]
-#y_coords = pred_coords_array[:, 1]
-
-# Appliquez un seuil pour créer un masque binaire (ici 255)
-#_, pred_mask = cv2.threshold(pred_mask, 1, 255, cv2.THRESH_BINARY)
-
-# Convertissez gt_coords_list en masque binaire avec cv2.threshold
-#gt_mask = empty_image.copy()
-#gt_coords_array = np.array(gt_coords_list)
-#x_coords = gt_coords_array[:, 0]
-#y_coords = gt_coords_array[:, 1]
-
-# Appliquez un seuil pour créer un masque binaire
-#_, gt_mask = cv2.threshold(gt_mask, 1, 255, cv2.THRESH_BINARY)
-
-# Ajoutez-les à la liste
-#binary_masks_pred.append(pred_mask)
-#binary_masks_gt.append(gt_mask)
-################################################################################################
 
 
 ##
