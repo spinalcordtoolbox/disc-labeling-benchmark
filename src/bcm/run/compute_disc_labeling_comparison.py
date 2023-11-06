@@ -139,25 +139,50 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             
     # Extract subjects and metrics
     subjects, subject_metrics = np.array(list(methods_results.keys())), list(methods_results.values())
-    metrics_name = np.array(list(subject_metrics[0].keys()))
+    metrics_name = np.array(list(subject_metrics[0].keys())) # enlever cette partie et creer un dictionnaire qui contient le nom
+    #des metriques présentent dans metric de maniere automatique"
     metrics_values = np.array([list(sub_metrics.values()) for sub_metrics in subject_metrics])
-    
-    ###############
+    #tableau 2D Numpy, où chaque ligne correspond à un sujet et chaque colonne correspond à une métrique.
+    matching_indices = []
+    metric_name_only_list = []
+
     for metric_name in metrics_name:
-        # Plot violin graph for each metric
-        #metric_data = [metrics_values[:, np.where(metrics_name == f'metric_name{method}')[0][0]] for method in methods_list]
-        metric_data = [metrics_values[:, np.where(metrics_name == metric_name)[0][0]] for method in methods_list]
-        # Check if mean and std are available for the metric
-        if f'{metric_name}_mean' in dict_total and f'{metric_name}_std' in dict_total:
-            metric_mean = [dict_total[f'{metric_name}_mean_{method}'] for method in methods_list]
-            metric_std = [dict_total[f'{metric_name}_std_{method}'] for method in methods_list]
-        else:
-            # If not available, use empty lists
-            metric_mean = []
-            metric_std = []
+         # Recherche du dernier "_mean" dans le nom de la métrique
+        last_mean_index = metric_name.rfind("_mean")
+        # Recherche du dernier "_std" dans le nom de la métrique
+        last_std_index = metric_name.rfind("_std")
+        metric_name_parts = metric_name.split("_", 1)
+
+        if last_mean_index != -1:
+            metric_name_only = metric_name[:last_mean_index] + "_mean"
+            method_name = metric_name[last_mean_index + 6:]
+        elif last_std_index != -1:
+            metric_name_only = metric_name[:last_std_index] + "_std"
+            method_name = metric_name[last_std_index + 5:]
+        elif len(metric_name_parts) == 2:
+            metric_name_only, method_name = metric_name_parts
         
+        if not metric_name_only in metric_name_only_list:
+            metric_name_only_list.append(metric_name_only)
+        
+        print("Nom de métrique:", metric_name_only)
+        print("Nom de méthode:", method_name)
+
+    for metric_name in metric_name_only_list:
+        metric_values_list = []
+        for method_name in methods_list:
+            method_values = []
+
+        # Parcourez les sujets et cherchez l'association
+            for sub_metrics in enumerate(subject_metrics):
+                for k,v in sub_metrics.items():
+                    if k == f"{metric_name}_{method_name}":
+                        method_values.append(v)
+            
+            metric_values_list.append(method_values)
+
         out_path = os.path.join(output_folder, f'{metric_name}_{contrast}.png')
-        save_violin(methods=methods_list, values=metric_data, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
+        save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
     ###############
     # Plot total graph
     # L2 error
