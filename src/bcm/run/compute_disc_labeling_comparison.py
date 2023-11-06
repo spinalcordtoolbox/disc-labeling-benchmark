@@ -46,8 +46,10 @@ def compare_methods(args):
     
     # Initialize metrics for each contrast
     methods_results = {}
-    for contrast in np.unique(list(processed_subjects_dict.values())):
-        methods_results[contrast] = {}
+    for contrasts in list(processed_subjects_dict.values()):
+        for c in contrasts:
+            if c not in methods_results.keys():
+                methods_results[c] = {}
     
     nb_subjects = len(processed_subjects_dict.keys())
     for method in computed_methods:
@@ -69,7 +71,7 @@ def compare_methods(args):
             
     
     if args.create_csv:
-        for contrast in np.unique(list(processed_subjects_dict.values())):
+        for contrast in methods_results.keys():
             # Get fields for csv conversion
             sub_list = [sub for sub in methods_results[contrast].keys() if sub.startswith('sub')]
             fields = ['subject'] + [key for key in methods_results[contrast][sub_list[0]].keys()]
@@ -82,7 +84,7 @@ def compare_methods(args):
                     w.writerow(mergedict({'subject': k},d))
     
     # Remove unrelevant hourglass contrasts and shorten methods names
-    for contrast in np.unique(list(processed_subjects_dict.values())):
+    for contrast in methods_results.keys():
         methods_plot = []
         for method in computed_methods:
             if 'hourglass' in method:
