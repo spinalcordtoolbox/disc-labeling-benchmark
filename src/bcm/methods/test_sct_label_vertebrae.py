@@ -72,7 +72,7 @@ def test_sct_label_vertebrae(args):
                                         '-i', img_path,
                                         '-s', seg_path,
                                         '-c', SCT_CONTRAST[contrast],
-                                        '-ofolder', os.path.dirname(disc_file_path)], raise_exception=False)
+                                        '-ofolder', os.path.dirname(disc_file_path)])
                 if out.returncode == 0:
                     discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
                     # keep only 2D coordinates
