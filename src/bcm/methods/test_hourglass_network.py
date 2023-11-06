@@ -8,12 +8,12 @@ from torch.utils.data import DataLoader
 
 from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast, fetch_subject_and_session
 from bcm.utils.image import Image
+from bcm.utils.config2parser import config2parser
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
 from dlh.utils.train_utils import image_Dataset
 from dlh.utils.test_utils import extract_skeleton, load_img_only
-from dlh.utils.config2parser import config2parser
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
