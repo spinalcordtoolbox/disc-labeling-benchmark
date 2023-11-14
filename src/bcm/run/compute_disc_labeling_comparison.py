@@ -140,42 +140,115 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             
     # Extract subjects and metrics
     subjects, subject_metrics = np.array(list(methods_results.keys())), list(methods_results.values())
-    metrics_name = np.array(list(subject_metrics[0].keys())) # enlever cette partie et creer un dictionnaire qui contient le nom
-    #des metriques présentent dans metric de maniere automatique"
-    metrics_values = np.array([list(sub_metrics.values()) for sub_metrics in subject_metrics])
-    #tableau 2D Numpy, où chaque ligne correspond à un sujet et chaque colonne correspond à une métrique.
-    matching_indices = []
-    metric_name_only_list = []
+    metrics_name = np.array(list(subject_metrics[0].keys())) 
 
+    # Find the position of "tot" in metrics_name
+    position_tot = [i for i, name in enumerate(metrics_name) if "tot" in name]
+    # Remove values from metrics_name at the found positions
+    metrics_name = [name for i, name in enumerate(metrics_name) if i not in position_tot]
+    # metrics_name contains only the remaining names
+    metrics_values = np.array([list(sub_metrics.values()) for sub_metrics in subject_metrics])
+    # 2D Numpy array, where each row corresponds to a subject, and each column corresponds to a metric.
+
+    # Delete columns corresponding to a name with "tot" in each row of the array
+    metrics_values = np.delete(metrics_values, position_tot,axis=1)
+
+    metrics_mean_list=[]
+    metrics_std_list=[]
+    metrics_list_bar= [] 
+    metric_name_only_list = []
+    
     for metric_name in metrics_name:
-         # Recherche du dernier "_mean" dans le nom de la métrique
+         # Find the last "_mean" in the metric name
         last_mean_index = metric_name.rfind("_mean")
-        # Recherche du dernier "_std" dans le nom de la métrique
+        # Find the last "_std" in the metric name
         last_std_index = metric_name.rfind("_std")
         metric_name_parts = metric_name.split("_", 1)
+        metric_std = ''
+        metric_mean=''
 
         if last_mean_index != -1:
             metric_name_only = metric_name[:last_mean_index] + "_mean"
             method_name = metric_name[last_mean_index + 6:]
+            metric_mean = metric_name_only 
         elif last_std_index != -1:
             metric_name_only = metric_name[:last_std_index] + "_std"
             method_name = metric_name[last_std_index + 5:]
+            metric_std = metric_name_only
         elif len(metric_name_parts) == 2:
             metric_name_only, method_name = metric_name_parts
         
         if not metric_name_only in metric_name_only_list:
             metric_name_only_list.append(metric_name_only)
+
+        if metric_mean :
+            metric_mean_name, mean = metric_mean.split("_", 1)
+            if not metric_mean_name in metrics_mean_list:
+                metrics_mean_list.append(metric_mean_name)
         
-        print("Nom de métrique:", metric_name_only)
-        print("Nom de méthode:", method_name)
+        if metric_std :
+            metric_std_name, std = metric_std.split("_", 1)
+            if not metric_std_name in metrics_std_list:
+                metrics_std_list.append(metric_std_name)
+        
+        metrics_list_bar = metrics_mean_list 
+
+        print("Metric name:", metric_name_only)
+        print("Method name:", method_name)
+
+   
+    for name in metrics_list_bar:
+        metric_values_list_bar = []
+        for method in methods_list:
+            method_mean_values = [] # cette ligne stock les moyennes
+            method_std_values = []  # cette ligne stock les écart-types
+
+            # Iterate through the subjects and look for the association
+            for sub_metrics in subject_metrics:
+                for k, v in sub_metrics.items():
+                    if k == f"{name}_mean_{method}":
+                        method_mean_values.append(v)
+                    elif k == f"{name}_std_{method}":
+                        method_std_values.append(v)  # Ajout de cette condition
+
+            # Création d'une paire (mean, std) pour chaque méthode
+            method_values_bar = (method_mean_values, method_std_values)
+            metric_values_list_bar.append(method_values_bar)
+    
+   
+    #for metric_mean in metrics_mean_list:
+    #    mean_values = []
+    #    for sub_metrics in subject_metrics:
+    #        for k, v in sub_metrics.items():
+    #            if k == f"{metric_mean}_mean_{method_name}":
+    #                mean_values.append(v)
+    #    mean_list.append(mean_values)
+
+    # Boucle pour les valeurs d'écart type (_std)
+    #for metric_std in metrics_std_list:
+    #    std_values_list = []
+    #    mean_values_list=[]
+    #    for method_name in methods_list:
+    #        std_values=[]
+    #        mean_values=[]
+    #    for sub_metrics in subject_metrics:
+    #            for k, v in sub_metrics.items():
+    #                if k == f"{metric_std}_std_{method_name}":
+    #                    std_values.append(v)
+    #            for k2, v2 in sub_metrics.items():
+    #                if k2 == f"{metric_mean}_mean_{method_name}":
+    #                    mean_values.append(v2)
+    #        std_values_list.append(std_values)
+    #        mean_values_list.append(mean_values)
+
 
     for metric_name in metric_name_only_list:
         metric_values_list = []
         for method_name in methods_list:
             method_values = []
 
-        # Parcourez les sujets et cherchez l'association
-            for sub_metrics in enumerate(subject_metrics):
+        # Iterate through the subjects and look for the association
+            for sub_metrics in subject_metrics:
                 for k,v in sub_metrics.items():
                     if k == f"{metric_name}_{method_name}":
                         method_values.append(v)
@@ -184,17 +257,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
 
         out_path = os.path.join(output_folder, f'{metric_name}_{contrast}.png')
         save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
-    ###############
-    # Plot total graph
-    # L2 error
-    #l2_error = [metrics_values[:,np.where(metrics_name == f'l2_mean_{method}')[0][0]] for method in methods_list]
-    #l2_mean = [dict_total[f'l2_mean_{method}'] for method in methods_list]
-    #l2_std = [dict_total[f'l2_std_{method}'] for method in methods_list]
-    #out_path = os.path.join(output_folder,f'l2_error_{contrast}.png')
-    #save_bar(methods=methods_list, mean=l2_mean, std=l2_std, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
-    #save_violin(methods=methods_list, values=l2_error, output_path=out_path, x_axis='Methods', y_axis='L2_error (pixels)')
-
-
+        save_bar(methods=methods_list, values=metric_values_list_bar, output_path=out_path, x_axis='Methods', y_axis= f'{metric_name_only} (pixels)')
     # Save total Dice score DSC
     # DSC_hg = dict_total['DSC_hg']
     # DSC_sct = dict_total['DSC_sct']
@@ -212,7 +275,50 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     #          label3 ='spinenetv2_label_vertebrae'
     #          )
 
+def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric name (pixels)'):
+    '''
+    Create a bar graph
+    :param methods: String list of the methods name
+    :param values: List of tuples where each tuple contains (mean, std) corresponding to the methods name
+    :param output_path: Path to output folder where figures will be stored
+    :param x_axis: x-axis name
+    :param y_axis: y-axis name
+    '''
     
+    # set width of bar
+    barWidth = 0.25
+    plt.figure(figsize =(len(methods), 10))
+    #plt.subplots_adjust(bottom=0.2, top=0.9, left=0.05, right=0.95)
+        
+    # Set position of bar on X axis
+    #br1 = np.arange(len(methods))
+
+    mean_values, std_values = zip(*values)  # Séparation de la liste en deux listes distinctes avec les valeurs mean et std
+    mean_values = list(mean_values)
+    std_values = list(std_values) 
+    br1 = np.arange(len(mean_values[0]))
+
+    # Make the plot 
+    fig, ax = plt.subplots()  
+    # Create the bar plots for each method
+    for i, method in enumerate(methods):
+        ax.bar(br1 + i * barWidth, mean_values[i], yerr=std_values[i], width=barWidth, label=method)
+   
+    #ax.bar(br1, mean_values, yerr=std_values, align='center', color='b', width = barWidth, edgecolor ='grey')
+    plt.title(f"bar plot of {y_axis}" , fontweight ='bold', fontsize = 20)
+    
+    # Create axis and adding Xticks
+    plt.xlabel(x_axis, fontweight ='bold', fontsize = 15)
+    plt.ylabel(y_axis, fontweight ='bold', fontsize = 15)
+    plt.xticks([r + barWidth * 1.5 for r in br1], [f"{i + 1}" for i in range(len(mean_values[0]))])
+    #plt.xticks([r for r in range(len(methods))], methods)
+    
+    # Save plot
+    plt.legend()
+    plt.savefig(output_path)
+
+
+
 """def save_bar(methods, mean, std, output_path, x_axis='Subjects', y_axis='L2_error (pixels)'):
     '''
     Create a bar graph
