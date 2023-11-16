@@ -18,6 +18,7 @@ import logging
 import tempfile
 import datetime
 import shutil
+import cc3d
 
 from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
 from bcm.utils.image import Image, zeros_like
@@ -27,10 +28,18 @@ logger = logging.getLogger(__name__)
 ## Variables
 CONTRAST = {'t1': ['T1w'],
             't2': ['T2w'],
-            't1_t2': ['T1w', 'T2w']}
+            't2s':['T2star'],
+            't1_t2': ['T1w', 'T2w'],
+            'psir': ['PSIR'],
+            'stir': ['STIR'],
+            'psir_stir': ['PSIR', 'STIR'],
+            't1_t2_psir_stir': ['T1w', 'T2w', 'PSIR', 'STIR']
+            }
 
 SCT_CONTRAST = {'T1w': 't1',
-                'T2w': 't2'}
+                'T2w': 't2',
+                'PSIR': 'psir',
+                'STIR': 'stir'}
 
 # Association between a vertebrae and the disc right above
 VERT_DISC = {
@@ -251,8 +260,8 @@ def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
     x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
     for i in range(3):
         x_3ch[:, :, i] = x[:, :]
-
-    img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
+    x_3ch[y_colored>0] = 0
+    img_mix = np.uint8(x_3ch + y_colored)
     clr_vis_Y.append(img_mix)
             
     t = np.array(clr_vis_Y)
@@ -634,7 +643,7 @@ def tmp_create(basename):
 
     Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
     """
-    prefix = f"sct_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{basename}_"
+    prefix = f"benchmark_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_{basename}_"
     tmpdir = tempfile.mkdtemp(prefix=prefix)
     logger.info(f"Creating temporary folder ({tmpdir})")
     return tmpdir
@@ -646,3 +655,13 @@ def rmtree(folder, verbose=1):
     Copied from https://github.com/spinalcordtoolbox/spinalcordtoolbox/
     """
     shutil.rmtree(folder, ignore_errors=True)
+
+
+def extract_centroids_3D(arr):
+    '''
+    Extract centroids from a 3D numpy array
+    :param arr: 3D numpy array
+    '''
+    centroids = cc3d.statistics(cc3d.connected_components(arr))['centroids'][1:] # Remove backgroud <0>
+    centroids_sorted = centroids[np.argsort(centroids[:,1])] # Sort according to the vertical axis
+    return centroids_sorted.astype(int)

@@ -41,7 +41,7 @@ if [ "$1" = "-h" ]; then
     echo "   -o, --out <path/to/file.txt>"
     echo "              Generated txt file path (default: "results/files/discs_coords.txt")"
     echo "   -s, --suffix <str>"
-    echo "              Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")"
+    echo "              Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg-manual")"
     exit 0
 fi
 
