@@ -28,10 +28,18 @@ logger = logging.getLogger(__name__)
 ## Variables
 CONTRAST = {'t1': ['T1w'],
             't2': ['T2w'],
-            't1_t2': ['T1w', 'T2w']}
+            't2s':['T2star'],
+            't1_t2': ['T1w', 'T2w'],
+            'psir': ['PSIR'],
+            'stir': ['STIR'],
+            'psir_stir': ['PSIR', 'STIR'],
+            't1_t2_psir_stir': ['T1w', 'T2w', 'PSIR', 'STIR']
+            }
 
 SCT_CONTRAST = {'T1w': 't1',
-                'T2w': 't2'}
+                'T2w': 't2',
+                'PSIR': 'psir',
+                'STIR': 'stir'}
 
 # Association between a vertebrae and the disc right above
 VERT_DISC = {
