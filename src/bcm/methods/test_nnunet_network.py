@@ -5,9 +5,10 @@ import shutil
 import time
 import glob
 import torch
-import cv2
+import numpy as np
+import cc3d
 
-from bcm.utils.utils import edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_subject_and_session, fetch_contrast, tmp_create
+from bcm.utils.utils import edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_subject_and_session, fetch_contrast, tmp_create, project_on_spinal_cord, swap_y_origin
 from bcm.utils.image import Image
 from bcm.utils.config2parser import config2parser
 
@@ -56,7 +57,7 @@ def test_nnunet(args):
             sub_name += f'_{echoID}'
         contrast = fetch_contrast(img_path)
 
-        # Look for segmentation path
+        # Look for segmentation path to project output coordinates
         add_subject = False
         back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
         if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
@@ -65,14 +66,11 @@ def test_nnunet(args):
             seg_path = back_up_seg_path
             add_subject = True
 
-        if subjectID=='sub-rennesMS062': #and add_subject: # A segmentation is available for projection
+        if add_subject: # A segmentation is available for projection
             # This inference is based on https://github.com/ivadomed/model_seg_sci/blob/main/packaging/run_inference_single_subject.py
-            fname_file_out = back_up_seg_path.replace(f'{seg_suffix}.nii.gz', '_label-nnunet.nii.gz')  # path to the file with disc labels
+            fname_file_out = back_up_seg_path.replace(f'{seg_suffix}.nii.gz', f'_label-nnunet-{str(config_nn.config_num)}.nii.gz')  # path to the file with disc labels
             
-            if os.path.exists(fname_file_out):
-                # Extract discs coordinates
-                discs_coords = extract_discs_coordinates(fname_file_out)
-            else:
+            if not os.path.exists(fname_file_out):
                 # Create temporary directory in the temp to store the reoriented images
                 tmpdir = tmp_create(basename='nnunet')            
 
@@ -121,7 +119,7 @@ def test_nnunet(args):
                 end = time.time()
                 total_time = end - start
 
-                # Copy .nii.gz file from tmpdir_nnunet to derivative folder with results
+                # Copy .nii.gz file from tmpdir_nnunet to derivative folder with results to improve futur computation time
                 os.makedirs(os.path.dirname(fname_file_out), exist_ok=True)
                 pred_file = glob.glob(os.path.join(tmpdir_nnunet, '*.nii.gz'))[0]
                 shutil.copyfile(pred_file, fname_file_out)
@@ -130,13 +128,19 @@ def test_nnunet(args):
                 # Delete the temporary folder
                 shutil.rmtree(tmpdir)
 
-                # Extract discs coordinates
-                discs_coords = extract_discs_coordinates(fname_file_out)
+            # Extract discs coordinates
+            pred = Image(fname_file_out).change_orientation('RIP').data
+            discs_coords = extract_discs_coordinates(pred)
 
+            # Project coordinates onto the spinalcord
+            proj_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, disc_num=True, proj_2d=False)
+
+            # Remove left-right coordinate
+            proj_coords = proj_coords[:, 1:].astype(int)
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='nnunet_coords')
+            split_lines = edit_subject_lines_txt_file(coords=proj_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='nnunet_coords')
         else:
             print(f'No segmentation is available for {img_path}')
 
@@ -146,16 +150,23 @@ def test_nnunet(args):
     with open(txt_file,"w") as f:
         f.writelines(split_lines)
 
-def extract_discs_coordinates(label_path):
-    '''
-    Extract discs coordinates from label_mask
-    '''
-    # Open label mask
-    label_mask = Image(label_path).data
 
-    num_labels, labels_im, states, centers = cv2.connectedComponentsWithStats(label_mask)
-
-    return centers
+def extract_discs_coordinates(arr):
+    '''
+    Extract discs coordinates from arr
+    :param arr: numpy array
+    '''
+    discs_coords = []
+    if np.max(arr) > 1:
+        for disc_num in range(1, np.max(arr)+1):
+            discs_arr = np.where(arr==disc_num)
+            if len(discs_arr[0]):
+                discs_coords.append([int(discs_arr[0].mean()), int(discs_arr[1].mean()), int(discs_arr[2].mean()), disc_num])
+    elif np.max(arr) == 1:
+        centroids = cc3d.statistics(cc3d.connected_components(arr))['centroids'][1:] # Remove backgroud <0>
+        centroids_sorted = centroids[np.argsort(-centroids[:,1])].astype(int) # Sort according to the vertical axis
+        discs_coords = np.concatenate((centroids_sorted, np.expand_dims(np.arange(1, len(centroids_sorted)+1), axis=1)), axis=1) # Add discs numbers
+    return discs_coords
 
 
 
