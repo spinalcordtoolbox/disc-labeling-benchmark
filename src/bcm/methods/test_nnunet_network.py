@@ -130,7 +130,10 @@ def test_nnunet(args):
 
             # Extract discs coordinates
             pred = Image(fname_file_out).change_orientation('RIP').data
-            discs_coords = extract_discs_coordinates(pred)
+            if config_nn.start_disc:
+                discs_coords = extract_discs_coordinates(pred, start_idx=config_nn.start_disc)
+            else:
+                discs_coords = extract_discs_coordinates(pred)
 
             # Project coordinates onto the spinalcord
             proj_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, disc_num=True, proj_2d=False)
@@ -151,7 +154,7 @@ def test_nnunet(args):
         f.writelines(split_lines)
 
 
-def extract_discs_coordinates(arr):
+def extract_discs_coordinates(arr, start_idx=1):
     '''
     Extract discs coordinates from arr
     :param arr: numpy array
@@ -165,7 +168,7 @@ def extract_discs_coordinates(arr):
     elif np.max(arr) == 1:
         centroids = cc3d.statistics(cc3d.connected_components(arr))['centroids'][1:] # Remove backgroud <0>
         centroids_sorted = centroids[np.argsort(-centroids[:,1])].astype(int) # Sort according to the vertical axis
-        discs_coords = np.concatenate((centroids_sorted, np.expand_dims(np.arange(1, len(centroids_sorted)+1), axis=1)), axis=1) # Add discs numbers
+        discs_coords = np.concatenate((centroids_sorted, np.expand_dims(np.arange(start_idx, len(centroids_sorted)+start_idx), axis=1)), axis=1) # Add discs numbers
     return discs_coords
 
 
