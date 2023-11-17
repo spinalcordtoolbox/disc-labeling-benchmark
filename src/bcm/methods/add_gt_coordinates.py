@@ -6,8 +6,6 @@ import json
 from bcm.utils.utils import swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_subject_and_session, fetch_contrast
 from bcm.utils.image import Image
 
-from dlh.utils.data2array import mask2label, get_midNifti
-
 def add_gt_coordinate_to_txt_file(args):
     '''
     Add ground truth coordinates to text file
@@ -64,20 +62,15 @@ def add_gt_coordinate_to_txt_file(args):
                 add_subject = True
             
             if add_subject: # A segmentation is available for projection
-                img_shape = get_midNifti(img_path).shape
-                discs_labels = mask2label(label_path)
-                discs_labels = [coord for coord in discs_labels if coord[-1] < 25] # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
-                gt_coord = np.array(discs_labels)
+                img_gt = Image(label_path).change_orientation('RIP')
+                gt_coord = np.array([list(coord) for coord in img_gt.getNonZeroCoordinates(sorting='value') if coord[-1] < 25]).astype(int) # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
                 
                 # Project on spinalcord
                 gt_coord = project_on_spinal_cord(coords=gt_coord, seg_path=seg_path, disc_num=True, proj_2d=False)
                 
                 # Remove thinkness coordinate
-                gt_coord = gt_coord[:, 1:]
-                
-                # Swap axis prediction and ground truth
-                gt_coord = swap_y_origin(coords=gt_coord, img_shape=img_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
-                
+                gt_coord = gt_coord[:, 1:].astype(int)
+                            
                 # Edit coordinates in txt file
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
                 split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='gt_coords')
