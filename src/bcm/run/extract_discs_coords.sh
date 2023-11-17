@@ -36,7 +36,10 @@ if [ "$1" = "-h" ]; then
     echo "   -d, --data <folder>"
     echo "              Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)"
     echo "   -f, --file <path/to/file.json>"
-    echo "              Config JSON file where every hourglass parameter is stored ~/<your_path>/config_hg.json (Required)"
+    echo "              Config JSON file where every hourglass parameters are stored ~/<your_path>/config_hg.json (Required)"
+    echo "              Note: Multiple files corresponding to different training may be specified by calling the same flag multiple times."
+    echo "   -fnn, --filenn <path/to/file.json>"
+    echo "              Config JSON file where every nnUNet parameters are stored ~/<your_path>/config_nn.json (Required)"
     echo "              Note: Multiple files corresponding to different training may be specified by calling the same flag multiple times."
     echo "   -o, --out <path/to/file.txt>"
     echo "              Generated txt file path (default: "results/files/discs_coords.txt")"
@@ -72,10 +75,13 @@ VERBOSE=1
 # Hourglass config file
 CONFIG_HG=""
 
+# nnUNet config file
+CONFIG_NN=""
+
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:f:osv -l data:,file:,out:,suffix:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:f:fnn:osv -l data:,file:,filenn:,out:,suffix:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
@@ -87,6 +93,10 @@ do
             ;;
         -f|--file)
             CONFIG_HG+=" $2"
+            shift 2
+            ;;
+        -fnn|--filenn)
+            CONFIG_NN+=" $2"
             shift 2
             ;;
         -o|--out)
@@ -180,6 +190,18 @@ python src/bcm/methods/test_sct_label_vertebrae.py ${args[@]}
 
 ## Deactivate env
 conda deactivate
+
+# Activate nnunet env
+conda activate nnunet_env
+
+# Test nnUNet networks
+for file in $CONFIG_NN
+    do
+        file=$(realpath "${file}")
+        args_nn=${args[*]}
+        args_nn+=" --config-nnunet $file " # why quotes ?? and not parentheses
+        python src/bcm/methods/test_nnunet_network.py ${args_hg[@]}
+    done
 
 # Test Spinenet Network with spinenet-venv
 /home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/code/SpineNet/spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args[@]}"
