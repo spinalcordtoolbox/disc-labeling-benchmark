@@ -130,7 +130,7 @@ def test_nnunet(args):
 
             # Extract discs coordinates
             pred = Image(fname_file_out).change_orientation('RIP').data
-            if config_nn.start_disc:
+            if 'start_disc' in vars(config_nn).keys():
                 discs_coords = extract_discs_coordinates(pred, start_idx=config_nn.start_disc)
             else:
                 discs_coords = extract_discs_coordinates(pred)
