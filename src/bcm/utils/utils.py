@@ -72,7 +72,7 @@ VERT_DISC = {
 
 
 ## Functions
-def fetch_img_and_seg_paths(path_list, path_type, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
+def fetch_img_and_seg_paths(path_list, path_type, datasets_path='', seg_suffix='_seg', derivatives_path='derivatives/labels'):
     """
     :param path_list: List of path in a BIDS compliant dataset
     :param path_type: Type of files specified (LABEL or IMAGE)
@@ -85,6 +85,8 @@ def fetch_img_and_seg_paths(path_list, path_type, seg_suffix='_seg', derivatives
     img_paths = []
     seg_paths = []
     for str_path in path_list:
+        if datasets_path:
+            str_path = os.path.join(datasets_path, str_path)
         if path_type == 'LABEL':
             img_paths.append(get_img_path_from_label_path(str_path))
             seg_paths.append(get_seg_path_from_label_path(str_path, seg_suffix=seg_suffix))

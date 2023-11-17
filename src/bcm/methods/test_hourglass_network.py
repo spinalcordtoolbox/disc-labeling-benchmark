@@ -50,7 +50,8 @@ def test_hourglass(args):
     
     # Get image and segmentation paths
     img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                   path_type=config_data['TYPE'], 
+                                                   path_type=config_data['TYPE'],
+                                                   datasets_path=config_data['DATASETS_PATH'],
                                                    seg_suffix=seg_suffix, 
                                                    derivatives_path='derivatives/labels')
 
