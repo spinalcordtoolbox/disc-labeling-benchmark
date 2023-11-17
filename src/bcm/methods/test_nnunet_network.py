@@ -135,7 +135,7 @@ def test_nnunet(args):
             else:
                 discs_coords = extract_discs_coordinates(pred)
 
-            if discs_coords:
+            if discs_coords.size:
                 # Project coordinates onto the spinalcord
                 discs_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, disc_num=True, proj_2d=False)
 
