@@ -27,7 +27,7 @@ def init_txt_file(args, split='TESTING', init_discs=11):
     path_out = args.out_txt_file
     
     # Initialize txt file lines with method list
-    methods_str = 'subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords nnunet_coords_101 nnunet_coords_102 nnunet_coords_201 hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords hourglass_t1_t2_psir_stir_coords\n'
+    methods_str = 'subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords nnunet_coords_101 nnunet_coords_102 nnunet_coords_200 nnunet_coords_201 hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords hourglass_t1_t2_psir_stir_coords\n'
     txt_lines = [methods_str]
     
     # Create a dict to keep track of problematique redundant subject/contrasts associations
