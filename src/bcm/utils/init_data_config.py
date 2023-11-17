@@ -1,4 +1,4 @@
-# Copied from https://github.com/spinalcordtoolbox/disc-labeling-hourglass
+# Copied from https://github.com/ivadomed/utilities
 
 import os
 import argparse
@@ -6,8 +6,8 @@ import random
 import json
 import itertools
 
-from dlh.data_management.utils import get_img_path_from_label_path, fetch_contrast, fetch_subject_and_session
-from dlh.utils.test_utils import CONTRAST
+from bcm.utils.utils import CONTRAST, get_img_path_from_label_path, fetch_contrast
+
 
 CONTRAST_LOOKUP = {tuple(sorted(value)): key for key, value in CONTRAST.items()}
 
@@ -76,8 +76,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Create config JSON from a TXT file which contains list of paths')
     
     ## Parameters
-    parser.add_argument('--txt',
-                        help='Path to TXT file that contains only image paths. (Required)')
+    parser.add_argument('--txt', required=True,
+                        help='Path to TXT file that contains only image or label paths. (Required)')
     parser.add_argument('--type', choices=('LABEL', 'IMAGE'),
                         help='Type of paths specified. Choices "LABEL" or "IMAGE". (Required)')
     parser.add_argument('--split-validation', type=float, default=0.1,
