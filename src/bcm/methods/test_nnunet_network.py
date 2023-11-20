@@ -138,7 +138,7 @@ def test_nnunet(args):
 
             if discs_coords.size:
                 # Project coordinates onto the spinalcord
-                discs_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, disc_num=True, proj_2d=False)
+                discs_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, orientation='RIP', disc_num=True, proj_2d=False)
 
                 # Remove left-right coordinate
                 discs_coords = discs_coords[:, 1:].astype(int)

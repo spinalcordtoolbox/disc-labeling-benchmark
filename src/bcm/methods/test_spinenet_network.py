@@ -122,7 +122,7 @@ def test_spinenet(args):
                 coords = np.concatenate((coords, discs_num), axis=1)
                 
                 # Project on spinalcord for 2D comparison
-                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
+                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, orientation='RSP', disc_num=True, proj_2d=True)
                 
                 # Move y origin to the bottom of the image like Niftii convention
                 coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)

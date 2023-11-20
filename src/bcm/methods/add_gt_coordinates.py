@@ -67,7 +67,7 @@ def add_gt_coordinate_to_txt_file(args):
                 gt_coord = np.array([list(coord) for coord in img_gt.getNonZeroCoordinates(sorting='value') if coord[-1] < 25]).astype(int) # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
                 
                 # Project on spinalcord
-                gt_coord = project_on_spinal_cord(coords=gt_coord, seg_path=seg_path, disc_num=True, proj_2d=False)
+                gt_coord = project_on_spinal_cord(coords=gt_coord, seg_path=seg_path, orientation='RIP', disc_num=True, proj_2d=False)
                 
                 # Remove thinkness coordinate
                 gt_coord = gt_coord[:, 1:].astype(int)

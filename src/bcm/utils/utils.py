@@ -329,7 +329,7 @@ def check_missing_discs(coords):
     return np.array(output_coords), np.array(missing_discs)
             
 ##
-def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
+def project_on_spinal_cord(coords, seg_path, orientation, disc_num=True, proj_2d=False):
     '''
     This function projects discs coordinates onto the centerline using sct_label_utils
     
@@ -338,7 +338,7 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     '''
     # Get segmentation
     fname_seg = os.path.abspath(seg_path)
-    seg = Image(fname_seg).change_orientation('RSP')
+    seg = Image(fname_seg).change_orientation(orientation)
     
     # Create temp folder
     path_tmp = tmp_create(basename="label-vertebrae-project")
