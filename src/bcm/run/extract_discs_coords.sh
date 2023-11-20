@@ -81,7 +81,7 @@ CONFIG_NN=""
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:f:fnn:osv -l data:,file:,filenn:,out:,suffix:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:f:n:osv -l data:,file:,finn:,out:,suffix:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
@@ -95,7 +95,7 @@ do
             CONFIG_HG+=" $2"
             shift 2
             ;;
-        -fnn|--filenn)
+        -n|--finn)
             CONFIG_NN+=" $2"
             shift 2
             ;;
@@ -138,6 +138,7 @@ if [[ ${VERBOSE} == 1 ]]; then
     echo "Running with the following parameters:"
     echo "CONFIG_DATA=${CONFIG_DATA}"
     echo "CONFIG_HG=${CONFIG_HG}"
+    echo "CONFIG_NN=${CONFIG_NN}"
     echo "OUTPUT_TXT=${OUTPUT_TXT}"
     echo "VERBOSE=${VERBOSE}"
     echo ""
@@ -200,7 +201,7 @@ for file in $CONFIG_NN
         file=$(realpath "${file}")
         args_nn=${args[*]}
         args_nn+=" --config-nnunet $file " # why quotes ?? and not parentheses
-        python src/bcm/methods/test_nnunet_network.py ${args_hg[@]}
+        python src/bcm/methods/test_nnunet_network.py ${args_nn[@]}
     done
 
 # Test Spinenet Network with spinenet-venv
