@@ -36,7 +36,10 @@ if [ "$1" = "-h" ]; then
     echo "   -d, --data <folder>"
     echo "              Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)"
     echo "   -f, --file <path/to/file.json>"
-    echo "              Config JSON file where every hourglass parameter is stored ~/<your_path>/config_hg.json (Required)"
+    echo "              Config JSON file where every hourglass parameters are stored ~/<your_path>/config_hg.json (Required)"
+    echo "              Note: Multiple files corresponding to different training may be specified by calling the same flag multiple times."
+    echo "   -n, --nnfile <path/to/file.json>"
+    echo "              Config JSON file where every nnUNet parameters are stored ~/<your_path>/config_nn.json (Required)"
     echo "              Note: Multiple files corresponding to different training may be specified by calling the same flag multiple times."
     echo "   -o, --out <path/to/file.txt>"
     echo "              Generated txt file path (default: "results/files/discs_coords.txt")"
@@ -70,12 +73,15 @@ SUFFIX_SEG="_seg-manual"
 VERBOSE=1
 
 # Hourglass config file
-CONFIG_HG=""
+CONFIG_HG=()
+
+# nnUNet config file
+CONFIG_NN=()
 
 
 # Get command-line parameters to override default values.
 # ----------------------------------------------------------------------------------------------------------------------
-params="$(getopt -o d:f:osv -l data:,file:,out:,suffix:,verbose --name "$0" -- "$@")"
+params="$(getopt -o d:f:n:o:s:v -l data:,file:,nnfile:,out:,suffix:,verbose --name "$0" -- "$@")"
 eval set -- "$params"
 
 while true
@@ -86,7 +92,11 @@ do
             shift 2
             ;;
         -f|--file)
-            CONFIG_HG+=" $2"
+            CONFIG_HG+=("$2")
+            shift 2
+            ;;
+        -n|--nnfile)
+            CONFIG_NN+=("$2")
             shift 2
             ;;
         -o|--out)
@@ -127,7 +137,8 @@ if [[ ${VERBOSE} == 1 ]]; then
     echo ""
     echo "Running with the following parameters:"
     echo "CONFIG_DATA=${CONFIG_DATA}"
-    echo "CONFIG_HG=${CONFIG_HG}"
+    echo "CONFIG_HG=${CONFIG_HG[*]}"
+    echo "CONFIG_NN=${CONFIG_NN[*]}"
     echo "OUTPUT_TXT=${OUTPUT_TXT}"
     echo "VERBOSE=${VERBOSE}"
     echo ""
@@ -153,33 +164,45 @@ fi
 # ======================================================================================================================
 
 # Mandatory args
-args=( --config-data "$CONFIG_DATA" --out-txt-file "$OUTPUT_TXT" --suffix-seg "$SUFFIX_SEG" --seg-folder "$OUTPUT_DIR" )
+args=(--config-data "$CONFIG_DATA" --out-txt-file "$OUTPUT_TXT" --suffix-seg "$SUFFIX_SEG" --seg-folder "$OUTPUT_DIR")
 
 ## Activate env HOURGLASS + SCT
 source /usr/local/miniforge3/etc/profile.d/conda.sh
 conda activate hg_env
 
 # Init text file
-python src/bcm/utils/init_benchmark.py ${args[@]}
+python src/bcm/utils/init_benchmark.py "${args[@]}"
 
 # Add ground truth discs coordinates
-python src/bcm/methods/add_gt_coordinates.py ${args[@]}
+python src/bcm/methods/add_gt_coordinates.py "${args[@]}"
 
 # Test Hourglass Network
 # Add config file parameter for hourglass
-for file in $CONFIG_HG
+for file in "${CONFIG_HG[@]}"
     do
         file=$(realpath "${file}")
-        args_hg=${args[*]}
-        args_hg+=" --config-hg $file " # why quotes ?? and not parentheses
-        python src/bcm/methods/test_hourglass_network.py ${args_hg[@]}
+        args_hg=("${args[@]}")
+        args_hg+=(--config-hg "$file")
+        python src/bcm/methods/test_hourglass_network.py "${args_hg[@]}"
     done
 
 # Test sct_label_vertebrae
-python src/bcm/methods/test_sct_label_vertebrae.py ${args[@]}
+python src/bcm/methods/test_sct_label_vertebrae.py "${args[@]}"
 
 ## Deactivate env
 conda deactivate
+
+# Activate nnunet env
+conda activate nnunet_env
+
+# Test nnUNet networks
+for file in "${CONFIG_NN[@]}"
+    do
+        file=$(realpath "${file}")
+        args_nn=("${args[@]}")
+        args_nn+=(--config-nnunet "$file")
+        python src/bcm/methods/test_nnunet_network.py "${args_nn[@]}"
+    done
 
 # Test Spinenet Network with spinenet-venv
 /home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/code/SpineNet/spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args[@]}"

@@ -34,7 +34,8 @@ def test_nnunet(args):
 
     # Get image and segmentation paths
     img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                   path_type=config_data['TYPE'], 
+                                                   path_type=config_data['TYPE'],
+                                                   datasets_path=config_data['DATASETS_PATH'],
                                                    seg_suffix=seg_suffix, 
                                                    derivatives_path='derivatives/labels')
     
@@ -135,15 +136,16 @@ def test_nnunet(args):
             else:
                 discs_coords = extract_discs_coordinates(pred)
 
-            # Project coordinates onto the spinalcord
-            proj_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, disc_num=True, proj_2d=False)
+            if discs_coords.size:
+                # Project coordinates onto the spinalcord
+                discs_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, orientation='RIP', disc_num=True, proj_2d=False)
 
-            # Remove left-right coordinate
-            proj_coords = proj_coords[:, 1:].astype(int)
+                # Remove left-right coordinate
+                discs_coords = discs_coords[:, 1:].astype(int)
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=proj_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'nnunet_coords_{str(config_nn.config_num)}')
+            split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'nnunet_coords_{str(config_nn.config_num)}')
         else:
             print(f'No segmentation is available for {img_path}')
 
@@ -159,16 +161,19 @@ def extract_discs_coordinates(arr, start_idx=1):
     Extract discs coordinates from arr
     :param arr: numpy array
     '''
-    discs_coords = []
     if np.max(arr) > 1:
+        discs_coords = []
         for disc_num in range(1, np.max(arr)+1):
             discs_arr = np.where(arr==disc_num)
             if len(discs_arr[0]):
                 discs_coords.append([int(discs_arr[0].mean()), int(discs_arr[1].mean()), int(discs_arr[2].mean()), disc_num])
+        discs_coords = np.array(discs_coords)
     elif np.max(arr) == 1:
         centroids = cc3d.statistics(cc3d.connected_components(arr))['centroids'][1:] # Remove backgroud <0>
         centroids_sorted = centroids[np.argsort(-centroids[:,1])].astype(int) # Sort according to the vertical axis
         discs_coords = np.concatenate((centroids_sorted, np.expand_dims(np.arange(start_idx, len(centroids_sorted)+start_idx), axis=1)), axis=1) # Add discs numbers
+    else:
+        discs_coords = np.array([])
     return discs_coords
 
 

@@ -50,7 +50,8 @@ def test_hourglass(args):
     
     # Get image and segmentation paths
     img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                   path_type=config_data['TYPE'], 
+                                                   path_type=config_data['TYPE'],
+                                                   datasets_path=config_data['DATASETS_PATH'],
                                                    seg_suffix=seg_suffix, 
                                                    derivatives_path='derivatives/labels')
 
@@ -132,7 +133,7 @@ def test_hourglass(args):
                     original_shape = original_shapes[i] 
                     pred = np.array([[(round(coord[0])/pred_shape[0])*original_shape[0], (round(coord[1])/pred_shape[1])*original_shape[1], int(disc_num)] for disc_num, coord in pred_discs_coords[0].items()]).astype(int)
                     
-                    pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, disc_num=True, proj_2d=True)
+                    pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, orientation='RSP', disc_num=True, proj_2d=True)
                     
                     # Swap axis prediction and ground truth
                     pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention

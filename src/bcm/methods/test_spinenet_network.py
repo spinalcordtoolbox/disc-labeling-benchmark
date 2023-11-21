@@ -30,9 +30,9 @@ def test_spinenet(args):
     # Get image and segmentation paths
     img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
                                                    path_type=config_data['TYPE'],
-                                                   seg_suffix=seg_suffix,
-                                                   derivatives_path='derivatives/labels'
-                                                   )
+                                                   datasets_path=config_data['DATASETS_PATH'],
+                                                   seg_suffix=seg_suffix, 
+                                                   derivatives_path='derivatives/labels')
 
     with open(txt_file,"r") as f:
         file_lines = f.readlines()
@@ -122,7 +122,7 @@ def test_spinenet(args):
                 coords = np.concatenate((coords, discs_num), axis=1)
                 
                 # Project on spinalcord for 2D comparison
-                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, disc_num=True, proj_2d=True)
+                coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, orientation='RSP', disc_num=True, proj_2d=True)
                 
                 # Move y origin to the bottom of the image like Niftii convention
                 coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)

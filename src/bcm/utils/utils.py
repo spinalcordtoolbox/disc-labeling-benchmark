@@ -72,7 +72,7 @@ VERT_DISC = {
 
 
 ## Functions
-def fetch_img_and_seg_paths(path_list, path_type, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
+def fetch_img_and_seg_paths(path_list, path_type, datasets_path='', seg_suffix='_seg', derivatives_path='derivatives/labels'):
     """
     :param path_list: List of path in a BIDS compliant dataset
     :param path_type: Type of files specified (LABEL or IMAGE)
@@ -85,6 +85,8 @@ def fetch_img_and_seg_paths(path_list, path_type, seg_suffix='_seg', derivatives
     img_paths = []
     seg_paths = []
     for str_path in path_list:
+        if datasets_path:
+            str_path = os.path.join(datasets_path, str_path)
         if path_type == 'LABEL':
             img_paths.append(get_img_path_from_label_path(str_path))
             seg_paths.append(get_seg_path_from_label_path(str_path, seg_suffix=seg_suffix))
@@ -327,7 +329,7 @@ def check_missing_discs(coords):
     return np.array(output_coords), np.array(missing_discs)
             
 ##
-def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
+def project_on_spinal_cord(coords, seg_path, orientation, disc_num=True, proj_2d=False):
     '''
     This function projects discs coordinates onto the centerline using sct_label_utils
     
@@ -336,7 +338,7 @@ def project_on_spinal_cord(coords, seg_path, disc_num=True, proj_2d=False):
     '''
     # Get segmentation
     fname_seg = os.path.abspath(seg_path)
-    seg = Image(fname_seg).change_orientation('RSP')
+    seg = Image(fname_seg).change_orientation(orientation)
     
     # Create temp folder
     path_tmp = tmp_create(basename="label-vertebrae-project")
