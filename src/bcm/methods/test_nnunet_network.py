@@ -188,7 +188,7 @@ if __name__=='__main__':
     parser.add_argument('--config-nnunet', type=str, required=True,
                         help='Config file where nnunet training information are stored Example: Example: ~/<your_path>/config.json (Required)')  # nnunet config file
     parser.add_argument('-txt', '--out-txt-file', required=True,
-                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')                             
+                        type=str, metavar='<file-path>',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')                             
     
     # All methods
     parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
