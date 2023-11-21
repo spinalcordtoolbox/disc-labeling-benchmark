@@ -166,7 +166,7 @@ def extract_discs_coordinates(arr, start_idx=1):
         for disc_num in range(1, np.max(arr)+1):
             discs_arr = np.where(arr==disc_num)
             if len(discs_arr[0]):
-                discs_coords.append([int(discs_arr[0].mean()), int(discs_arr[1].mean()), int(discs_arr[2].mean()), disc_num])
+                discs_coords.append([int(discs_arr[0].mean()), int(discs_arr[1].mean()), int(discs_arr[2].mean()), disc_num+start_idx-1])
         discs_coords = np.array(discs_coords)
     elif np.max(arr) == 1:
         centroids = cc3d.statistics(cc3d.connected_components(arr))['centroids'][1:] # Remove backgroud <0>
