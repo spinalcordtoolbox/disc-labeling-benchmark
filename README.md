@@ -116,6 +116,15 @@ src/bcm/run/extract_discs_coords.sh --data CONFIG_DATA_JSON --file CONFIG_HG
 ```Bash
 python src/bcm/run/compute_disc_labeling_comparison.py --config-data CONFIG_DATA_JSON -txt results/files/spinegeneric_vert_T1w_hg15_discs_coords.txt
 ```
+## Methods
+
+- Hourglass
+- sct_label_vertebrae
+- spinenet
+- nnunet101: discs segmentations + classes
+- nnunet102: discs segmentations
+- nnunet200: discs coordinates + classes
+- nnunet201: discs coordinates
 
 ## See also
 
