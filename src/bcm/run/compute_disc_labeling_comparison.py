@@ -124,9 +124,14 @@ def compare_methods(args):
             if 'hourglass' in method:
                 if SCT_CONTRAST[contrast] in method:
                     methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
+            elif 'nnunet' in method:
+                methods_plot.append(f'{method}') 
             else:
                 methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
         save_graphs(output_folder, methods_results[contrast], methods_plot, contrast)
+
+
+        ## prevenir cas particulier nnunet garder numero apres coords
 
 def mergedict(a,b):
     a.update(b)
