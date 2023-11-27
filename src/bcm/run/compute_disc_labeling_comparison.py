@@ -232,32 +232,8 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             # Création d'une paire (mean, std) pour chaque méthode
             method_values_bar = (method_mean_values, method_std_values)
             metric_values_list_bar.append(method_values_bar)
-    
-   
-    #for metric_mean in metrics_mean_list:
-    #    mean_values = []
-    #    for sub_metrics in subject_metrics:
-    #        for k, v in sub_metrics.items():
-    #            if k == f"{metric_mean}_mean_{method_name}":
-    #                mean_values.append(v)
-    #    mean_list.append(mean_values)
-
-    # Boucle pour les valeurs d'écart type (_std)
-    #for metric_std in metrics_std_list:
-    #    std_values_list = []
-    #    mean_values_list=[]
-    #    for method_name in methods_list:
-    #        std_values=[]
-    #        mean_values=[]
-    #    for sub_metrics in subject_metrics:
-    #            for k, v in sub_metrics.items():
-    #                if k == f"{metric_std}_std_{method_name}":
-    #                    std_values.append(v)
-    #            for k2, v2 in sub_metrics.items():
-    #                if k2 == f"{metric_mean}_mean_{method_name}":
-    #                    mean_values.append(v2)
-    #        std_values_list.append(std_values)
-    #        mean_values_list.append(mean_values)
+        out_path = os.path.join(output_folder, f'{name}_{contrast}_bar_plot.png')
+        save_bar(methods=methods_list, values=metric_values_list_bar, output_path=out_path, x_axis='Subjects', y_axis= f'{name} (pixels)')
 
 
     for metric_name in metric_name_only_list:
