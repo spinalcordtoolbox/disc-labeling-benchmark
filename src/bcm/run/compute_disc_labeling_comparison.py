@@ -275,13 +275,13 @@ def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric na
     :param methods: String list of the methods name
     :param values: List of tuples where each tuple contains (mean, std) corresponding to the methods name
     :param output_path: Path to output folder where figures will be stored
-    :param x_axis: x-axis name
+    :param x_axis: x-axis number of subject
     :param y_axis: y-axis name
     '''
     
     # set width of bar
     barWidth = 0.25
-    plt.figure(figsize =(len(methods), 10))
+    
     #plt.subplots_adjust(bottom=0.2, top=0.9, left=0.05, right=0.95)
         
     # Set position of bar on X axis
@@ -293,14 +293,20 @@ def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric na
     br1 = np.arange(len(mean_values[0]))
 
     # Make the plot 
+    plt.figure(figsize=(len(methods), 10))
     fig, ax = plt.subplots()  
+
     # Create the bar plots for each method
     for i, method in enumerate(methods):
-        ax.bar(br1 + i * barWidth, mean_values[i], yerr=std_values[i], width=barWidth, label=method)
-   
+        if any(value != 0 and value != 1 for value in mean_values[i]):              
+            # Remove empty values initialized previously to 0 or 1 depending on the metric
+            ax.bar(br1 + i * barWidth, mean_values[i], yerr=std_values[i], width=barWidth, label=method)
+                    
     #ax.bar(br1, mean_values, yerr=std_values, align='center', color='b', width = barWidth, edgecolor ='grey')
     plt.title(f"bar plot of {y_axis}" , fontweight ='bold', fontsize = 20)
-    
+
+
+ 
     # Create axis and adding Xticks
     plt.xlabel(x_axis, fontweight ='bold', fontsize = 15)
     plt.ylabel(y_axis, fontweight ='bold', fontsize = 15)
