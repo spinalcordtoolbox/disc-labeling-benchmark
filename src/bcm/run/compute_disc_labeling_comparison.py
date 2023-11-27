@@ -398,6 +398,36 @@ def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric n
     plt.savefig(output_path)
 
 
+def calculate_auc(tpr, fpr):
+    #Calculate AUC (Area Under the Curve)
+    sorted_indices = np.argsort(fpr)
+    sorted_tpr = np.array(tpr)[sorted_indices]
+    sorted_fpr = np.array(fpr)[sorted_indices]
+    auc_value = 0.0
+    for i in range(1, len(sorted_fpr)):
+        auc_value += (sorted_fpr[i] - sorted_fpr[i-1]) * (sorted_tpr[i] + sorted_tpr[i-1]) / 2.0
+    return auc_value
+
+def save_ROC_curves(methods, TPR_list, FPR_list, output_path, x_axis='True Positive Rate (TPR)', y_axis='False Positive Rate (FPR)'):
+    plt.figure()
+
+    for method in enumerate(methods):
+        #tpr = TPR_list[i]
+        #fpr = FPR_list[i]
+        # Ignore les points où TPR et FPR sont tous deux à 0 ou à 1
+        #if (tpr != 0 or fpr != 0) and (tpr != 1 or fpr != 1):
+        #    print(f"Method: {method}, TPR: {tpr}, FPR: {fpr}")
+        #    tpr =[tpr]
+        #    fpr=[fpr]
+        plt.plot(FPR_list, TPR_list, label=f'{method} (AUC = {calculate_auc(TPR_list, FPR_list):.2f})')
+
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random')
+    plt.title('ROC Curve')
+    plt.xlabel(x_axis)
+    plt.ylabel(y_axis)
+    plt.legend()
+    plt.savefig(output_path)
+
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')
