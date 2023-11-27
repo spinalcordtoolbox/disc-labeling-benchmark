@@ -24,8 +24,6 @@ def compare_methods(args):
     dataset = os.path.basename(txt_file_path).split('_')[0]
     output_folder = os.path.join(args.output_folder, f'out_{dataset}')
     computed_methods = args.computed_methods
-    
-
 
     # Create output folder
     if not os.path.exists(output_folder):
@@ -116,8 +114,7 @@ def compare_methods(args):
             if 'hourglass' in method:
                 if SCT_CONTRAST[contrast] in method:
                     methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
-            elif 'nnunet' in method:
-                methods_plot.append(f'{method}') 
+                
             else:
                 methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
         save_graphs(output_folder, methods_results[contrast], methods_plot, contrast)
@@ -154,7 +151,6 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     metrics_std_list=[]
     metrics_list_bar= [] 
     metric_name_only_list = []
-    number=[101,102,200,201] #nombre d'identification de l'entrainement pour les méthodes nnunet
 
     for method_name in methods_list:
         # Initialize lists for FPR and TPR values
