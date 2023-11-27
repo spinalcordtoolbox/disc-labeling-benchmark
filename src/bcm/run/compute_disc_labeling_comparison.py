@@ -240,9 +240,19 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
                             method_values.append(v)
             
             metric_values_list.append(method_values)
-
+        
+        # Reduce hourglass name size
+        count_hg = 0
+        for method_name in methods_list:
+            if 'hourglass' in method_name:
+                count_hg += 1
+        if count_hg == 1:
+            methods_list_plot = [method if not 'hourglass' in method else 'hourglass' for method in methods_list]
+        else:
+            methods_list_plot = methods_list
+        
         out_path = os.path.join(output_folder, f'{metric_name}_{contrast}_violin_plot.png')
-        save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
+        save_violin(methods=methods_list_plot, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
      
 
     
