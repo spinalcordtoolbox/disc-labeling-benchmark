@@ -162,6 +162,19 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     metrics_std_list=[]
     metrics_list_bar= [] 
     metric_name_only_list = []
+    for method_name in methods_list:
+        # Initialize lists for FPR and TPR values
+        TPR_values = []
+        FPR_values = []
+        for sub_metrics in subject_metrics:
+            for metric_name, metric_value in sub_metrics.items():
+                if f"TPR_{method_name}" in metric_name:
+                    TPR_values.append(metric_value)
+                elif f"FPR_{method_name}" in metric_name:
+                    FPR_values.append(metric_value)
+        out_path = os.path.join(output_folder, f'ROC_{contrast}')
+        save_ROC_curves(methods=methods_list, TPR_list= TPR_values, FPR_list= FPR_values, output_path=out_path,x_axis='True Positive Rate (TPR)', y_axis='False Positive Rate (FPR)')
+
     
     for metric_name in metrics_name:
          # Find the last "_mean" in the metric name
