@@ -534,8 +534,8 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     TP_pred, FP_pred, FP_list_pred = compute_TP_and_FP(discs_gt=gt_discs, discs_pred=pred_discs)
     TN_pred, FN_pred, FN_list_pred = compute_TN_and_FN(missing_gt=gt_missing_discs, missing_pred=pred_missing_discs)
 
-    FP_TN_pred=FP_pred+TN_pred
-    TP_FN_pred=TP_pred+FN_pred
+    FP_TN_pred= FP_pred + TN_pred
+    TP_FN_pred= TP_pred + FN_pred
 
     FPR_pred = FP_pred/FP_TN_pred if FP_TN_pred != 0 else 1 #minimal rate
     TPR_pred = TP_pred/TP_FN_pred if TP_FN_pred != 0 else 0 #minimal rate
