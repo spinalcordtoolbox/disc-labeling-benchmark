@@ -656,6 +656,9 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     
     # Add false negative rate
     result_dict['total'][f'FNR_{method_short}'] += FNR_pred/nb_subjects
+
+    # Add accuracy
+    result_dict['total'][f'ACC_{method_short}'] += ACC_pred/nb_subjects
     
     # Add dice score
     result_dict['total'][f'DSC_{method_short}'] += DSC_pred/nb_subjects
