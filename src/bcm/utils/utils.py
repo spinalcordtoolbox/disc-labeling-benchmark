@@ -530,25 +530,30 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     z_err_pred_mean = np.mean(z_err_pred) if z_err_pred.size != 0 else 0
     z_err_pred_std = np.std(z_err_pred) if z_err_pred.size != 0 else 0
 
-    #----------------------------------------------------#
-    # Compute true and false positive rate (TPR and FPR)
-    #----------------------------------------------------#
+    #------------------------------------------------------------------------------------------------------#
+    # Compute true and false positive rate (TPR and FPR) & true and false negative rate (TNR and FNR)
+    #------------------------------------------------------------------------------------------------------#
     gt_discs = discs_list[~np.in1d(discs_list, gt_missing_discs)]
     pred_discs = discs_list[~np.in1d(discs_list, pred_missing_discs)]
 
     TP_pred, FP_pred, FP_list_pred = compute_TP_and_FP(discs_gt=gt_discs, discs_pred=pred_discs)
-    
-    FPR_pred = FP_pred/total_pred if total_pred != 0 else 0
-    TPR_pred = TP_pred/total_pred if total_pred != 0 else 0
-    
-    #----------------------------------------------------#
-    # Compute true and false negative rate (TNR and FNR)
-    #----------------------------------------------------#
     TN_pred, FN_pred, FN_list_pred = compute_TN_and_FN(missing_gt=gt_missing_discs, missing_pred=pred_missing_discs)
+
+    FP_TN_pred=FP_pred+TN_pred
+    TP_FN_pred=TP_pred+FN_pred
+
+    FPR_pred = FP_pred/FP_TN_pred if FP_TN_pred != 0 else 1 #minimal rate
+    TPR_pred = TP_pred/TP_FN_pred if TP_FN_pred != 0 else 0 #minimal rate
     
-    FNR_pred = FN_pred/total_pred if total_pred != 0 else 1
-    TNR_pred = TN_pred/total_pred if total_pred != 0 else 1
+    FNR_pred = FN_pred/TP_FN_pred if TP_FN_pred != 0 else 1 #minimal rate
+    TNR_pred = TN_pred/FP_TN_pred if FP_TN_pred != 0 else 0 #minimal rate
     
+    #----------------------------------------------------#
+    # Compute accuracy ACC #### MORANE
+    #----------------------------------------------------#
+
+    ACC_pred = (TN_pred+ TP_pred)/(TN_pred+ FN_pred + TP_pred + FP_pred)
+
     #-------------------------------------------#
     # Compute dice score : DSC=2TP/(2TP+FP+FN)
     #-------------------------------------------#
