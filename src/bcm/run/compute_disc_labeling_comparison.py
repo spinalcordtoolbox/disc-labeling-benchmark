@@ -7,7 +7,7 @@ import csv
 import pandas as pd
 import json
 
-from bcm.utils.utils import SCT_CONTRAST, edit_metric_csv, fetch_img_and_seg_paths, fetch_subject_and_session
+from bcm.utils.utils import SCT_CONTRAST, edit_metric_csv, fetch_img_and_seg_paths, fetch_subject_and_session #,visualize_discs
 from bcm.utils.image import Image
 
 
@@ -56,14 +56,6 @@ def compare_methods(args):
     #processed_subjects_dict = {subject1 : [T1w, T2w],
     #                           subject2 : [T2w],
     #                           subject3 : [T1w, T2w]}
-
-
-
-    ################################################################################################################################################################################################
-    #Morane --- method - resul qui est le dictionnaire qui compte toutes les metrics de chaque methode -- à modifier quand on ajoute une methode
-    # Morane -- contraste = T1w/T2w /// lignes d'en haut possible erreur
-    ################################################################################################################################################################################################
-
 
 
     # Initialize metrics for each contrast
@@ -162,6 +154,8 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     metrics_std_list=[]
     metrics_list_bar= [] 
     metric_name_only_list = []
+    number=[101,102,200,201] #nombre d'identification de l'entrainement pour les méthodes nnunet
+
     for method_name in methods_list:
         # Initialize lists for FPR and TPR values
         TPR_values = []
@@ -227,7 +221,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
                     if k == f"{name}_mean_{method}":
                         method_mean_values.append(v)
                     elif k == f"{name}_std_{method}":
-                        method_std_values.append(v)  # Ajout de cette condition
+                        method_std_values.append(v)  
 
             # Création d'une paire (mean, std) pour chaque méthode
             method_values_bar = (method_mean_values, method_std_values)
@@ -249,9 +243,11 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             
             metric_values_list.append(method_values)
 
-        out_path = os.path.join(output_folder, f'{metric_name}_{contrast}.png')
+        out_path = os.path.join(output_folder, f'{metric_name}_{contrast}_violin_plot.png')
         save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
-        save_bar(methods=methods_list, values=metric_values_list_bar, output_path=out_path, x_axis='Methods', y_axis= f'{metric_name_only} (pixels)')
+     
+
+    
     # Save total Dice score DSC
     # DSC_hg = dict_total['DSC_hg']
     # DSC_sct = dict_total['DSC_sct']

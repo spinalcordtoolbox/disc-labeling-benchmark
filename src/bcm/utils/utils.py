@@ -90,6 +90,7 @@ def fetch_img_and_seg_paths(path_list, path_type, datasets_path='', seg_suffix='
     
 
 ##
+
 def get_seg_path_from_img_path(img_path, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
     """
     This function returns the segmentaion path from an image path. Images need to be stored in a BIDS compliant dataset.
@@ -590,7 +591,10 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     # Add false negative rate and FN list
     # result_dict[subject_name][f'FN_list_{method_short}'] = FN_list_pred
     result_dict[subject_name][f'FNR_{method_short}'] = FNR_pred
-    
+
+    # Add accuracy
+    result_dict[subject_name][f'ACC_{method_short}'] = ACC_pred
+
     # Add dice score
     result_dict[subject_name][f'DSC_{method_short}'] = DSC_pred
     
@@ -630,6 +634,9 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
         
         # Init false negative rate
         result_dict['total'][f'FNR_{method_short}'] = 0
+
+        # Init accuracy
+        result_dict['total'][f'ACC_{method_short}'] = 0
         
         # Init dice score
         result_dict['total'][f'DSC_{method_short}'] = 0
