@@ -224,7 +224,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             method_values_bar = (method_mean_values, method_std_values)
             metric_values_list_bar.append(method_values_bar)
         out_path = os.path.join(output_folder, f'{name}_{contrast}_bar_plot.png')
-        save_bar(methods=methods_list, values=metric_values_list_bar, output_path=out_path, x_axis='Subjects', y_axis= f'{name} (pixels)')
+        #save_bar(methods=methods_list, values=metric_values_list_bar, output_path=out_path, x_axis='Subjects', y_axis= f'{name} (pixels)')
 
 
     for metric_name in metric_name_only_list:
