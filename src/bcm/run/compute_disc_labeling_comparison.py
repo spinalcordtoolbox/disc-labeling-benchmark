@@ -214,10 +214,11 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             # Iterate through the subjects and look for the association
             for sub_metrics in subject_metrics:
                 for k, v in sub_metrics.items():
-                    if k == f"{name}_mean_{method}":
-                        method_mean_values.append(v)
-                    elif k == f"{name}_std_{method}":
-                        method_std_values.append(v)  
+                    if v != -1:
+                        if k == f"{name}_mean_{method}":
+                            method_mean_values.append(v)
+                        elif k == f"{name}_std_{method}":
+                            method_std_values.append(v)  
 
             # Création d'une paire (mean, std) pour chaque méthode
             method_values_bar = (method_mean_values, method_std_values)
@@ -231,11 +232,12 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
         for method_name in methods_list:
             method_values = []
 
-        # Iterate through the subjects and look for the association
+            # Iterate through the subjects and look for the association
             for sub_metrics in subject_metrics:
                 for k,v in sub_metrics.items():
-                    if k == f"{metric_name}_{method_name}":
-                        method_values.append(v)
+                    if v != -1:
+                        if k == f"{metric_name}_{method_name}":
+                            method_values.append(v)
             
             metric_values_list.append(method_values)
 

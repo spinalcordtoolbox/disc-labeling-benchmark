@@ -513,8 +513,8 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     l2_pred = compute_L2_error(gt=gt_coords_list, pred=pred_coords_list)
 
     # Compute L2 error mean and std
-    l2_pred_mean = np.mean(l2_pred) if l2_pred.size != 0 else 0
-    l2_pred_std = np.std(l2_pred) if l2_pred.size != 0 else 0
+    l2_pred_mean = np.mean(l2_pred) if l2_pred.size != 0 else -1
+    l2_pred_std = np.std(l2_pred) if l2_pred.size != 0 else -1
     
     #--------------------------------#
     # Compute Z error
@@ -522,8 +522,8 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     z_err_pred = compute_z_error(gt=gt_coords_list, pred=pred_coords_list)
     
     # Compute z error mean and std
-    z_err_pred_mean = np.mean(z_err_pred) if z_err_pred.size != 0 else 0
-    z_err_pred_std = np.std(z_err_pred) if z_err_pred.size != 0 else 0
+    z_err_pred_mean = np.mean(z_err_pred) if z_err_pred.size != 0 else -1
+    z_err_pred_std = np.std(z_err_pred) if z_err_pred.size != 0 else -1
 
     #------------------------------------------------------------------------------------------------------#
     # Compute true and false positive rate (TPR and FPR) & true and false negative rate (TNR and FNR)
