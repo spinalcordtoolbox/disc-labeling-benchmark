@@ -369,34 +369,25 @@ def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric n
     # set width of bar
     # Set position of bar on X axis
     result_dict = {'methods' : [], 'values' : []}
-    """for i, method in enumerate(methods):
+    for i, method in enumerate(methods):
         if len(values[i]) > 0:
             result_dict['values'] += values[i]
             for j in range(len(values[i])):
-                result_dict['methods'] += [method]"""
-
-    for i, method in enumerate(methods):
-        if any(value != 0 and value != 1 for value in values[i]):
-            # Remove empty values initialized previously to 0 or 1 depending on the metric
-            result_dict['values'] += values[i]
-            #result_dict['values'].extend(values[i])
-            #result_dict['methods'].extend([method] * len(values[i]))
-            for j in range(len(values[i])):
                 result_dict['methods'] += [method]
 
+
     result_df = pd.DataFrame(data=result_dict)
+    sns.set(style="darkgrid")
 
     # Make the plot 
-    plt.figure()
-    sns.violinplot(x = "methods", y = "values", data= result_df)
+    plt.figure(figsize=(13, 8))
+    sns.violinplot(x = "methods", y = "values", hue = "methods", data=result_df)
     plt.xlabel(x_axis)
     plt.ylabel(y_axis)
     plt.title(f'{y_axis} violin plot')
-  # Rotation des étiquettes de l'axe des x
-    plt.xticks(rotation=45)
-
-    # Ajustement des marges pour éviter que les noms soient coupés
-    plt.subplots_adjust(bottom=0.20)
+    plt.xlabel(x_axis, fontsize = 20)
+    plt.ylabel(y_axis, fontsize = 20)
+    plt.title(y_axis, fontsize = 25)
     
     # Save plot
     plt.savefig(output_path)
