@@ -438,15 +438,13 @@ if __name__=='__main__':
     parser.add_argument('--computed-methods', 
                         default=['sct_discs_coords', 
                                  'spinenet_coords',
-                                 'nnunet_coords_101',
-                                 'nnunet_coords_102',
-                                 'nnunet_coords_200',
-                                 'nnunet_coords_201',
-                                 'hourglass_t1_coords', 
-                                 'hourglass_t2_coords', 
-                                 'hourglass_t1_t2_coords'],
+                                 'hourglass_t1_t2_psir_stir_coords',
+                                 'nnunet_101_coords',
+                                 'nnunet_102_coords',
+                                 'nnunet_200_coords',
+                                 'nnunet_201_coords'],
                         help='Methods on which metrics will be computed'
-                        '["sct_discs_coords", "spinenet_coords","nnunet_coords_101","nnunet_coords_102", "nnunet_coords_200", "nnunet_coords_201","hourglass_t1_coords", "hourglass_t2_coords", "hourglass_t1_t2_coords"]')
+                        '["sct_discs_coords", "spinenet_coords", "hourglass_t1_t2_psir_stir_coords", "nnunet_101_coords","nnunet_102_coords", "nnunet_200_coords", "nnunet_201_coords"]')
     
     
     compare_methods(parser.parse_args())
