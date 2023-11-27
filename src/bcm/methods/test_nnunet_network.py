@@ -145,7 +145,7 @@ def test_nnunet(args):
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'nnunet_coords_{str(config_nn.config_num)}')
+            split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'nnunet_{str(config_nn.config_num)}_coords')
         else:
             print(f'No segmentation is available for {img_path}')
 
