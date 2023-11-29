@@ -253,7 +253,9 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             methods_list_plot = methods_list
         
         out_path = os.path.join(output_folder, f'{metric_name}_{contrast}_violin_plot.png')
-        save_violin(methods=methods_list_plot, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=f'{metric_name} (pixels)')
+        if metric_name.startswith('z') or metric_name.startswith('l2'):
+            metric_name = f'{metric_name} (pixels)'
+        save_violin(methods=methods_list_plot, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
      
 
     
