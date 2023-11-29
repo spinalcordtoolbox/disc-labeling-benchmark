@@ -542,6 +542,9 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     
     FNR_pred = FN_pred/TP_FN_pred if TP_FN_pred != 0 else 1 #minimal rate
     TNR_pred = TN_pred/FP_TN_pred if FP_TN_pred != 0 else 0 #minimal rate
+
+    sensitivity = TP_pred/(TP_pred + FN_pred) if (TP_pred + FN_pred) != 0 else 0 #minimal rate
+    specificity = TN_pred/(TN_pred + FP_pred) if (TN_pred + FP_pred) != 0 else 0 #minimal rate
     
     #----------------------------------------------------#
     # Compute accuracy ACC #### MORANE
@@ -576,15 +579,19 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict[subject_name][f'TPR_{method_short}'] = TPR_pred
     
     # Add false positive rate and FP list
-    # result_dict[subject_name][f'FP_list_{method_short}'] = FP_list_pred
     result_dict[subject_name][f'FPR_{method_short}'] = FPR_pred
     
     # Add true negative rate
     result_dict[subject_name][f'TNR_{method_short}'] = TNR_pred
     
     # Add false negative rate and FN list
-    # result_dict[subject_name][f'FN_list_{method_short}'] = FN_list_pred
     result_dict[subject_name][f'FNR_{method_short}'] = FNR_pred
+
+    # Add sensitivity
+    result_dict[subject_name][f'sensitivity_{method_short}'] = sensitivity
+    
+    # Add specificity
+    result_dict[subject_name][f'specificity_{method_short}'] = specificity
 
     # Add accuracy
     result_dict[subject_name][f'ACC_{method_short}'] = ACC_pred
