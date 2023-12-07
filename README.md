@@ -6,6 +6,13 @@ This repository contains an evaluation and comparison of various automatic metho
 
 Accurate identification and labeling of intervertebral discs are crucial in medical imaging analysis, particularly in tasks related to spinal pathology assessment, surgery planning, and biomechanical modeling. However, manually labeling these discs is a time-consuming and labor-intensive process. Therefore, the development of automated methods to perform this task is of great importance, as it can significantly improve efficiency and consistency in clinical practice.
 
+## Few results
+
+| Computed metric | T1w | T2w |
+| :---: | :---: | :---: |
+| $$ACC={TP + TN \over TP + FP + TN + FN}$$ | ![ACC_T1w_violin_plot](https://github.com/spinalcordtoolbox/disc-labeling-benchmark/assets/68945192/ad9f99ac-af0f-4bfd-bd49-04c732703e61) | ![ACC_T2w_violin_plot](https://github.com/spinalcordtoolbox/disc-labeling-benchmark/assets/68945192/ebf215f7-d697-4627-b11d-956a148a9513) |
+| $$L2_{error}= \frac{1}{N} \sum_{k=1}^n \sqrt{(x_{pred} - x_{gt})^2 + (y_{pred} - y_{gt})^2}$$| ![l2_mean_T1w_violin_plot](https://github.com/spinalcordtoolbox/disc-labeling-benchmark/assets/68945192/cb979d7a-acb2-4d5e-a618-9185dae84094) | ![l2_mean_T2w_violin_plot](https://github.com/spinalcordtoolbox/disc-labeling-benchmark/assets/68945192/a0955e0e-d6be-44d4-aaf8-b64dfa6dc785) |
+
 ## Repository Structure
 
 The repository is organized as follows:
@@ -62,7 +69,8 @@ cd ..
 <details>
 <summary>Spinenet network</summary>
 <br>
-First, create a new virtual environment activate it, you can also follow spinenet [installation](https://github.com/rwindsor1/SpineNet#install-enviroments/):
+
+First, create a new virtual environment activate it, you can also follow spinenet's installation [procedure](https://github.com/rwindsor1/SpineNet#install-enviroments) :
 
 ```Bash
 python -m venv spinenet-venv
@@ -93,6 +101,7 @@ spinenet.download_weights(verbose=True)
 <details>
 <summary>Spinalcordtoolbox installation</summary>
 <br>
+
 In this benchmark, few features including the function sct_label_vertebrae from the [spinalcordtoolbox](https://github.com/spinalcordtoolbox/spinalcordtoolbox/) are needed. Instructions regarding the installation follows:
   
 ```Bash
@@ -102,16 +111,16 @@ cd spinalcordtoolbox
 ``` 
 </details>
 
-3. Gather only the relevant data for comparison in a json file `CONFIG_DATA_JSON` (The input data needs to be stored in a [BIDS](https://bids.neuroimaging.io/) compliant dataset): all the `labels`' path need to be stored in this `json` file before running any script in the benchmark. The different steps are described [here](https://github.com/spinalcordtoolbox/disc-labeling-hourglass/issues/25#issuecomment-1695818382).
+3. Gather only the relevant data for comparison in a json file `CONFIG_DATA_JSON` (The input data needs to be stored in a [BIDS](https://bids.neuroimaging.io/) compliant dataset): all the ground truth path need to be stored in this `json` file before running any script in the benchmark. The different steps are described [here](https://github.com/spinalcordtoolbox/disc-labeling-hourglass/issues/25#issuecomment-1695818382).
 > Note : the script `init_data_config.py` is also available within this repository in `src/bcm/utils/init_data_config.py`
 
-4. Extract the coordinates of the discs for each image in the `CONFIG_DATA_JSON` and create a `TXT_FILE` in results/
+4. Extract the discs coordinates for every image corresponding to each ground truth in the `CONFIG_DATA_JSON` (possible thanks to BIDS standard) and create a `TXT_FILE` in `results/files`
    
 ```Bash
 src/bcm/run/extract_discs_coords.sh --data CONFIG_DATA_JSON --file CONFIG_HG
 ```
 
-5. Compute metrics and plot graphs for each methods based on the `TXT_FILE`. A `CSV_FILE` is also generated for more evaluation
+5. Compute metrics and plot graphs for each methods based on the `TXT_FILE`. A `CSV_FILE` is also generated for more evaluation in `results/files`
    
 ```Bash
 python src/bcm/run/compute_disc_labeling_comparison.py --config-data CONFIG_DATA_JSON -txt results/files/spinegeneric_vert_T1w_hg15_discs_coords.txt
