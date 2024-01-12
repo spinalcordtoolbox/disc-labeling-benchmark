@@ -17,12 +17,13 @@ def compare_methods(args):
 
         img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
                                                     path_type=config_data['TYPE'],
+                                                    datasets_path=config_data['DATASETS_PATH'],
                                                     seg_suffix='_seg-manual',
                                                     derivatives_path='derivatives/labels'
                                                     )
     txt_file_path = args.input_txt_file
     dataset = os.path.basename(txt_file_path).split('_')[0]
-    output_folder = os.path.join(args.output_folder, f'out_{dataset}')
+    output_folder = os.path.join(args.output_folder, f'out_{dataset}_test')
     computed_methods = args.computed_methods
 
     # Create output folder
