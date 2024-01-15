@@ -3,6 +3,7 @@
 # - Lucas Rouhier ()
 # - Reza Azad (rezazad68@gmail.com)
 # - Nathan Molinier (nathan.molinier@gmail.com)
+# - Morane Bienvenu
 # Copyright (c) 2020 Polytechnique Montreal <www.neuro.polymtl.ca>
 #===================================================
 
@@ -91,8 +92,6 @@ def compute_TN_and_FN(missing_gt, missing_pred):
            TN += 1 
     return TN, FN, np.array(false_neg_list)
 
-
-######## ajout ci-bas___ Morane
 
 #Compute MSE
 def compute_MSE(pred,gt):

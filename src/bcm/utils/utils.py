@@ -3,11 +3,12 @@
 # - Lucas Rouhier ()
 # - Reza Azad (rezazad68@gmail.com)
 # - Nathan Molinier (nathan.molinier@gmail.com)
+# - Morane Bienvenu
 # Copyright (c) 2020 Polytechnique Montreal <www.neuro.polymtl.ca>
 #===================================================
 
 import os
-# import cv2
+import cv2
 import re
 import numpy as np
 import torch
@@ -224,60 +225,60 @@ def swap_y_origin(coords, img_shape, y_pos=1):
     coords[:,y_pos] = y_shape - coords[:,y_pos]
     return coords
 
-# ##
-# def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
-#     clr_vis_Y = []
-#     hues = np.linspace(0, 179, discs_images.shape[0], dtype=np.uint8)
-#     blank_ch = 255*np.ones_like(discs_images[0], dtype=np.uint8)
-
-#     y_colored = np.zeros([discs_images.shape[1], discs_images.shape[2], 3], dtype=np.uint8)
-#     y_all = np.zeros([discs_images.shape[1], discs_images.shape[2]], dtype=np.uint8)
-    
-#     for ych, hue_i in zip(discs_images, hues):
-#         ych = ych/np.max(np.max(ych))
-
-#         ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
-#         ych = np.uint8(255*ych/np.max(ych))
-
-#         colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
-#         colored_ych[:, :, 0] = ych_hue
-#         colored_ych[:, :, 1] = blank_ch
-#         colored_ych[:, :, 2] = ych
-#         colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
-
-#         y_colored += colored_y
-#         y_all += ych
-
-#     # Normalised image between [0,255] as integer
-#     x = (255*(input_img - np.min(input_img))/np.ptp(input_img)).astype(int)
-
-#     x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
-#     for i in range(3):
-#         x_3ch[:, :, i] = x[:, :]
-
-#     img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
-#     clr_vis_Y.append(img_mix)
-            
-#     t = np.array(clr_vis_Y)
-#     t = np.transpose(t, [0, 3, 1, 2])
-#     trgts = make_grid(torch.Tensor(t), nrow=4)
-
-#     res = np.transpose(trgts.numpy(), (1,2,0))
-#     cv2.imwrite(out_path, res)
-
 ##
-# def visualize_discs(input_img, coords_list, out_path):
-#     coords_list = swap_y_origin(coords=coords_list, img_shape=input_img.shape, y_pos=0).tolist() # The y origin is at the top of the image
-#     discs_images = []
-#     for coord in coords_list:
-#         coord = [int(c) for c in coord]
-#         disc_img = np.zeros_like(input_img[:,:])
-#         disc_img[coord[0]-1:coord[0]+2, coord[1]-1:coord[1]+2] = [255, 255, 255]
-#         disc_img[:, :] = cv2.GaussianBlur(disc_img[:, :],(5,5),cv2.BORDER_DEFAULT)
-#         disc_img[:, :] = disc_img[:, :]/disc_img[:, :].max()*255
-#         discs_images.append(disc_img)
-#     discs_images = np.array(discs_images)
-#     save_discs_image(input_img, discs_images, out_path)
+def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
+    clr_vis_Y = []
+    hues = np.linspace(0, 179, discs_images.shape[0], dtype=np.uint8)
+    blank_ch = 255*np.ones_like(discs_images[0], dtype=np.uint8)
+
+    y_colored = np.zeros([discs_images.shape[1], discs_images.shape[2], 3], dtype=np.uint8)
+    y_all = np.zeros([discs_images.shape[1], discs_images.shape[2]], dtype=np.uint8)
+    
+    for ych, hue_i in zip(discs_images, hues):
+        ych = ych/np.max(np.max(ych))
+
+        ych_hue = np.ones_like(ych, dtype=np.uint8)*hue_i
+        ych = np.uint8(255*ych/np.max(ych))
+
+        colored_ych = np.zeros_like(y_colored, dtype=np.uint8)
+        colored_ych[:, :, 0] = ych_hue
+        colored_ych[:, :, 1] = blank_ch
+        colored_ych[:, :, 2] = ych
+        colored_y = cv2.cvtColor(colored_ych, cv2.COLOR_HSV2BGR)
+
+        y_colored += colored_y
+        y_all += ych
+
+    # Normalised image between [0,255] as integer
+    x = (255*(input_img - np.min(input_img))/np.ptp(input_img)).astype(int)
+
+    x_3ch = np.zeros([x.shape[0], x.shape[1], 3])
+    for i in range(3):
+        x_3ch[:, :, i] = x[:, :]
+
+    img_mix = np.uint8(x_3ch*0.6 + y_colored*0.4)
+    clr_vis_Y.append(img_mix)
+            
+    t = np.array(clr_vis_Y)
+    t = np.transpose(t, [0, 3, 1, 2])
+    trgts = make_grid(torch.Tensor(t), nrow=4)
+
+    res = np.transpose(trgts.numpy(), (1,2,0))
+    cv2.imwrite(out_path, res)
+
+#
+def visualize_discs(input_img, coords_list, out_path):
+    coords_list = swap_y_origin(coords=coords_list, img_shape=input_img.shape, y_pos=0).tolist() # The y origin is at the top of the image
+    discs_images = []
+    for coord in coords_list:
+        coord = [int(c) for c in coord]
+        disc_img = np.zeros_like(input_img[:,:])
+        disc_img[coord[0]-1:coord[0]+2, coord[1]-1:coord[1]+2] = [255, 255, 255]
+        disc_img[:, :] = cv2.GaussianBlur(disc_img[:, :],(5,5),cv2.BORDER_DEFAULT)
+        disc_img[:, :] = disc_img[:, :]/disc_img[:, :].max()*255
+        discs_images.append(disc_img)
+    discs_images = np.array(discs_images)
+    save_discs_image(input_img, discs_images, out_path)
 
 ##
 def coord2list(coords):

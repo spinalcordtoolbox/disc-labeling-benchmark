@@ -7,7 +7,7 @@ import csv
 import pandas as pd
 import json
 
-from bcm.utils.utils import SCT_CONTRAST, edit_metric_csv, fetch_img_and_seg_paths, fetch_subject_and_session #,visualize_discs
+from bcm.utils.utils import SCT_CONTRAST, edit_metric_csv, fetch_img_and_seg_paths, visualize_discs
 from bcm.utils.image import Image
 
 
@@ -34,13 +34,6 @@ def compare_methods(args):
     with open(txt_file_path,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
-    
-    ################################################################################################################################################################################################
-    #Permet d'afficher l'intérieur du fichier pour vérifier que toutes les colonnes sont affichées
-    #if split_lines:
-    #    print("Première ligne du fichier :", split_lines[0])
-    ################################################################################################################################################################################################
-
 
     # Extract processed subjects --> subjects with a ground truth
     # line = subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
@@ -52,9 +45,6 @@ def compare_methods(args):
         elif (line[split_lines[0].index('subject_name')] in processed_subjects_dict.keys()) and gt_condition:
             if (line[split_lines[0].index('contrast')] not in processed_subjects_dict[line[split_lines[0].index('subject_name')]]):
                 processed_subjects_dict[line[split_lines[0].index('subject_name')]].append(line[split_lines[0].index('contrast')])
-    #processed_subjects_dict = {subject1 : [T1w, T2w],
-    #                           subject2 : [T2w],
-    #                           subject3 : [T1w, T2w]}
 
 
     # Initialize metrics for each contrast
@@ -71,19 +61,7 @@ def compare_methods(args):
             for contrast in contrasts:
                 methods_results[contrast], pred_discs_list = edit_metric_csv(methods_results[contrast], txt_lines=split_lines, subject_name=subject, contrast=contrast, method_name=method, nb_subjects=nb_subjects)
 
-#             def create_binary_mask(coord_list, image_shape):
-#                 # Initialize an empty binary mask
-#                 binary_mask = np.zeros(image_shape, dtype=bool)
-    
-#                  # Set the pixels within the coordinate list to True
-#                 for coord in coord_list:
-#                     binary_mask[coord[0], coord[1]] = True
-#             return binary_mask
-#             ground_truth_mask = create_binary_mask(ground_truth_coords, image_shape)
-#             predicted_mask = create_binary_mask(pred_discs_list, image_shape)
-
             # Visualize discs on image
-            """
             if args.config_data:
                 sub_name = f'{subject}_{contrast}'
                 for img_path in img_paths:
@@ -91,9 +69,8 @@ def compare_methods(args):
                         img_3D = Image(img_path).change_orientation('RSP').data
                         shape = img_3D.shape
                         img_2D = img_3D[shape[0]//2, :, :]
-                        #if pred_discs_list.size != 0: # Check if not empty
-                            #visualize_discs(input_img=img_2D, coords_list=pred_discs_list, out_path=os.path.join(output_folder, f'{sub_name}_{method}.png'))
-            """
+                        if pred_discs_list.size != 0: # Check if not empty
+                            visualize_discs(input_img=img_2D, coords_list=pred_discs_list, out_path=os.path.join(output_folder, f'{sub_name}_{method}.png'))
     
     if args.create_csv:
         for contrast in methods_results.keys():
@@ -120,8 +97,6 @@ def compare_methods(args):
                 methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
         save_graphs(output_folder, methods_results[contrast], methods_plot, contrast)
 
-
-        ## prevenir cas particulier nnunet garder numero apres coords
 
 def mergedict(a,b):
     a.update(b)
@@ -326,41 +301,6 @@ def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric na
     plt.savefig(output_path)
 
 
-
-"""def save_bar(methods, mean, std, output_path, x_axis='Subjects', y_axis='L2_error (pixels)'):
-    '''
-    Create a bar graph
-    :param methods: String list of the methods name
-    :param mean: List of the mean corresponding to the methods name
-    :param str: List of the str corresponding to the methods name
-    :param output_path: Path to output folder where figures will be stored
-    :param x_axis: x-axis name
-    :param y_axis: y-axis name
-    '''
-    
-    # set width of bar
-    barWidth = 0.25
-    plt.figure(figsize =(len(methods), 10))
-    #plt.subplots_adjust(bottom=0.2, top=0.9, left=0.05, right=0.95)
-        
-    # Set position of bar on X axis
-    br1 = np.arange(len(methods))
-    
-    # Make the plot 
-    fig, ax = plt.subplots()      
-    ax.bar(br1, mean, yerr=std, align='center', color='b', width = barWidth, edgecolor ='grey')
-    plt.title(y_axis, fontweight ='bold', fontsize = 20)
-    
-    # Create axis and adding Xticks
-    plt.xlabel(x_axis, fontweight ='bold', fontsize = 15)
-    plt.ylabel(y_axis, fontweight ='bold', fontsize = 15)
-    plt.xticks([r for r in range(len(methods))], methods)
-    
-    # Save plot
-    plt.legend()
-    plt.savefig(output_path)
-"""
-
 def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric name'):
     '''
     Create a bar graph
@@ -385,7 +325,7 @@ def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric n
 
     # Make the plot 
     plt.figure(figsize=(13, 8))
-    sns.violinplot(x = "methods", y = "values", hue = "methods", data=result_df)
+    sns.violinplot(x = "methods", y = "values", data=result_df, width=1)
     plt.xlabel(x_axis)
     plt.ylabel(y_axis)
     plt.title(f'{y_axis} violin plot')
