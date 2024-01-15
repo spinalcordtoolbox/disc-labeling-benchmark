@@ -3,6 +3,7 @@
 # - Lucas Rouhier ()
 # - Reza Azad (rezazad68@gmail.com)
 # - Nathan Molinier (nathan.molinier@gmail.com)
+# - Morane Bienvenu
 # Copyright (c) 2020 Polytechnique Montreal <www.neuro.polymtl.ca>
 #===================================================
 
@@ -20,7 +21,7 @@ import datetime
 import shutil
 import cc3d
 
-from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN
+from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN, compute_MSE
 from bcm.utils.image import Image, zeros_like
 
 logger = logging.getLogger(__name__)
@@ -99,6 +100,7 @@ def fetch_img_and_seg_paths(path_list, path_type, datasets_path='', seg_suffix='
     
 
 ##
+
 def get_seg_path_from_img_path(img_path, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
     """
     This function returns the segmentaion path from an image path. Images need to be stored in a BIDS compliant dataset.
@@ -273,7 +275,7 @@ def save_discs_image(input_img, discs_images, out_path, target_th=0.5):
     res = np.transpose(trgts.numpy(), (1,2,0))
     cv2.imwrite(out_path, res)
 
-##
+#
 def visualize_discs(input_img, coords_list, out_path):
     coords_list = swap_y_origin(coords=coords_list, img_shape=input_img.shape, y_pos=0).tolist() # The y origin is at the top of the image
     discs_images = []
@@ -448,13 +450,19 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
                             intermediate_line = new_line[:]
                             max_ref_disc += 1
                             intermediate_line[2] = str(max_ref_disc)
-                            txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines
+                            txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines -- 
+                    
+
+
                     idx = np.where(coords[:,-1] == disc_num)[0][0]
                     new_line[method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
                     last_index += 1
                     txt_lines.insert(last_index, new_line) # Add new disc detection to txt_file lines
                     max_ref_disc = disc_num
     return txt_lines
+
+
+
 
 ##
 def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name, nb_subjects):
@@ -471,6 +479,8 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     methods = txt_lines[0,:]
     methods[-1] = methods[-1].replace('\n','')
     method_idx = np.where(methods==method_name)[0][0]
+
+    #Note: If all nnunet methods have the same syntax as other methods, you can remove the conditional check above and simply use the next line:
     method_short = method_name.split('_coords')[0] # Remove '_coords' suffix
     
     subject_idx = np.where(methods=='subject_name')[0][0]
@@ -513,8 +523,8 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     l2_pred = compute_L2_error(gt=gt_coords_list, pred=pred_coords_list)
 
     # Compute L2 error mean and std
-    l2_pred_mean = np.mean(l2_pred) if l2_pred.size != 0 else 0
-    l2_pred_std = np.std(l2_pred) if l2_pred.size != 0 else 0
+    l2_pred_mean = np.mean(l2_pred) if l2_pred.size != 0 else -1
+    l2_pred_std = np.std(l2_pred) if l2_pred.size != 0 else -1
     
     #--------------------------------#
     # Compute Z error
@@ -522,33 +532,47 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     z_err_pred = compute_z_error(gt=gt_coords_list, pred=pred_coords_list)
     
     # Compute z error mean and std
-    z_err_pred_mean = np.mean(z_err_pred) if z_err_pred.size != 0 else 0
-    z_err_pred_std = np.std(z_err_pred) if z_err_pred.size != 0 else 0
+    z_err_pred_mean = np.mean(z_err_pred) if z_err_pred.size != 0 else -1
+    z_err_pred_std = np.std(z_err_pred) if z_err_pred.size != 0 else -1
 
-    #----------------------------------------------------#
-    # Compute true and false positive rate (TPR and FPR)
-    #----------------------------------------------------#
+    #------------------------------------------------------------------------------------------------------#
+    # Compute true and false positive rate (TPR and FPR) & true and false negative rate (TNR and FNR)
+    #------------------------------------------------------------------------------------------------------#
     gt_discs = discs_list[~np.in1d(discs_list, gt_missing_discs)]
     pred_discs = discs_list[~np.in1d(discs_list, pred_missing_discs)]
 
     TP_pred, FP_pred, FP_list_pred = compute_TP_and_FP(discs_gt=gt_discs, discs_pred=pred_discs)
-    
-    FPR_pred = FP_pred/total_pred if total_pred != 0 else 0
-    TPR_pred = TP_pred/total_pred if total_pred != 0 else 0
-    
-    #----------------------------------------------------#
-    # Compute true and false negative rate (TNR and FNR)
-    #----------------------------------------------------#
     TN_pred, FN_pred, FN_list_pred = compute_TN_and_FN(missing_gt=gt_missing_discs, missing_pred=pred_missing_discs)
+
+    FP_TN_pred= FP_pred + TN_pred
+    TP_FN_pred= TP_pred + FN_pred
+
+    FPR_pred = FP_pred/FP_TN_pred if FP_TN_pred != 0 else 1 #minimal rate
+    TPR_pred = TP_pred/TP_FN_pred if TP_FN_pred != 0 else 0 #minimal rate
     
-    FNR_pred = FN_pred/total_pred if total_pred != 0 else 1
-    TNR_pred = TN_pred/total_pred if total_pred != 0 else 1
+    FNR_pred = FN_pred/TP_FN_pred if TP_FN_pred != 0 else 1 #minimal rate
+    TNR_pred = TN_pred/FP_TN_pred if FP_TN_pred != 0 else 0 #minimal rate
+
+    sensitivity = TP_pred/(TP_pred + FN_pred) if (TP_pred + FN_pred) != 0 else 0 #minimal rate
+    specificity = TN_pred/(TN_pred + FP_pred) if (TN_pred + FP_pred) != 0 else 0 #minimal rate
     
+    #----------------------------------------------------#
+    # Compute accuracy ACC #### MORANE
+    #----------------------------------------------------#
+
+    ACC_pred = (TN_pred+ TP_pred)/(TN_pred+ FN_pred + TP_pred + FP_pred)
+
     #-------------------------------------------#
     # Compute dice score : DSC=2TP/(2TP+FP+FN)
     #-------------------------------------------#
     DSC_pred = 2*TP_pred/(2*TP_pred+FP_pred+FN_pred)
     
+    #----------------------------------------------------#
+    # Compute MSE #### MORANE
+    #----------------------------------------------------#
+    mse_pred = compute_MSE(gt=gt_coords_list, pred=pred_coords_list)
+
+
     ###################################
     # Add computed metrics to subject #
     ###################################
@@ -565,23 +589,34 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict[subject_name][f'TPR_{method_short}'] = TPR_pred
     
     # Add false positive rate and FP list
-    # result_dict[subject_name][f'FP_list_{method_short}'] = FP_list_pred
     result_dict[subject_name][f'FPR_{method_short}'] = FPR_pred
     
     # Add true negative rate
     result_dict[subject_name][f'TNR_{method_short}'] = TNR_pred
     
     # Add false negative rate and FN list
-    # result_dict[subject_name][f'FN_list_{method_short}'] = FN_list_pred
     result_dict[subject_name][f'FNR_{method_short}'] = FNR_pred
+
+    # Add sensitivity
+    result_dict[subject_name][f'sensitivity_{method_short}'] = sensitivity
     
+    # Add specificity
+    result_dict[subject_name][f'specificity_{method_short}'] = specificity
+
+    # Add accuracy
+    result_dict[subject_name][f'ACC_{method_short}'] = ACC_pred
+
     # Add dice score
     result_dict[subject_name][f'DSC_{method_short}'] = DSC_pred
     
     # Add total number of discs
     result_dict[subject_name]['tot_discs'] = total_discs
     result_dict[subject_name][f'tot_pred_{method_short}'] = total_pred
-    
+
+    # Add MSE
+    result_dict[subject_name][f'MSE_{method_short}'] = mse_pred
+
+
     ######################################
     # Add total mean of computed metrics #
     ######################################
@@ -610,9 +645,15 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
         
         # Init false negative rate
         result_dict['total'][f'FNR_{method_short}'] = 0
+
+        # Init accuracy
+        result_dict['total'][f'ACC_{method_short}'] = 0
         
         # Init dice score
         result_dict['total'][f'DSC_{method_short}'] = 0
+
+        #Init MSE
+        result_dict['total'][f'MSE_{method_short}'] = 0
     
     # Add L2 error
     result_dict['total'][f'l2_mean_{method_short}'] += l2_pred_mean/nb_subjects
@@ -633,9 +674,15 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     
     # Add false negative rate
     result_dict['total'][f'FNR_{method_short}'] += FNR_pred/nb_subjects
+
+    # Add accuracy
+    result_dict['total'][f'ACC_{method_short}'] += ACC_pred/nb_subjects
     
     # Add dice score
     result_dict['total'][f'DSC_{method_short}'] += DSC_pred/nb_subjects
+
+    #Add MSE 
+    result_dict['total'][f'MSE_{method_short}'] += mse_pred/nb_subjects
     
     return result_dict, pred_discs_list
 
