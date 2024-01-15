@@ -23,7 +23,7 @@ def compare_methods(args):
                                                     )
     txt_file_path = args.input_txt_file
     dataset = os.path.basename(txt_file_path).split('_')[0]
-    output_folder = os.path.join(args.output_folder, f'out_{dataset}_test')
+    output_folder = os.path.join(args.output_folder, f'out_{dataset}')
     computed_methods = args.computed_methods
 
     # Create output folder
