@@ -5,7 +5,7 @@ import argparse
 import subprocess
 import numpy as np
 
-from dlh.data_management.utils import get_img_path_from_label_path
+from bcm.utils.utils import get_img_path_from_label_path
 
 def get_parser():
     # parse command line arguments
