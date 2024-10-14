@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import torch
 import argparse
@@ -12,8 +11,9 @@ from bcm.utils.config2parser import config2parser
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
-from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import extract_skeleton, load_img_only
+from dlh.utils.train_utils import image_Dataset, apply_preprocessing
+from dlh.utils.data2array import get_midNifti
+from dlh.utils.test_utils import extract_skeleton
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
@@ -47,15 +47,7 @@ def test_hourglass(args):
 
     # Load images
     print('loading images...')
-    imgs_test, subjects_test, original_shapes = load_img_only(config_data=config_data,
-                                                              split='TESTING')
-    
-    # Get image and segmentation paths
-    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                   path_type=config_data['TYPE'],
-                                                   datasets_path=config_data['DATASETS_PATH'],
-                                                   seg_suffix=seg_suffix, 
-                                                   derivatives_path='derivatives/labels')
+    imgs_test, subjects_test, original_shapes = load_image_hg(img_paths=img_paths)
 
     # Load disc_coords txt file
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
@@ -153,6 +145,21 @@ def test_hourglass(args):
         
     with open(txt_file,"w") as f:
         f.writelines(split_lines)
+
+
+def load_image_hg(img_paths):
+    imgs = []
+    subs = []
+    shapes = []
+    for path in img_paths:
+        # Applying preprocessing steps
+        image = apply_preprocessing(path)
+        imgs.append(image)
+        subject, sessionID, filename, contrast, echoID, acquisition = fetch_subject_and_session(path)
+        subs.append(subject)
+        shapes.append(get_midNifti(path).shape)
+    return imgs, subs, shapes
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Add Hourglass Network coordinates to text file')
