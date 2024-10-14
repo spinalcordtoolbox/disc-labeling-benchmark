@@ -73,30 +73,23 @@ VERT_DISC = {
 
 
 ## Functions
-def fetch_img_and_seg_paths(path_list, path_type, datasets_path='', seg_suffix='_seg', derivatives_path='derivatives/labels'):
+def fetch_bcm_paths(config_data, split='TESTING'):
     """
-    :param path_list: List of path in a BIDS compliant dataset
-    :param path_type: Type of files specified (LABEL or IMAGE)
-    :param seg_suffix: Suffix used for segmentation files
-    :param derivatives_path: Path to derivatives folder (only if path to images are specified)
+    :param config_data: Dictionary containing all the paths used for the benchmark
+    :param split: Split of the data used for the benchmark (default=TESTING)
 
     :return img_paths: List of paths to images
+            labe_paths: List of paths to single voxel labels
             seg_paths: List of paths to the corresponding spinal cord segmentations
     """
     img_paths = []
+    label_paths = []
     seg_paths = []
-    for str_path in path_list:
-        if datasets_path:
-            str_path = os.path.join(datasets_path, str_path)
-        if path_type == 'LABEL':
-            img_paths.append(get_img_path_from_label_path(str_path))
-            seg_paths.append(get_seg_path_from_label_path(str_path, seg_suffix=seg_suffix))
-        elif path_type == 'IMAGE':
-            img_paths.append(str_path)
-            seg_paths.append(get_seg_path_from_img_path(str_path, seg_suffix=seg_suffix, derivatives_path=derivatives_path))
-        else:
-            raise ValueError(f"invalid image type in data config: {path_type}")
-    return img_paths, seg_paths
+    for dic in config_data[split]:
+        img_paths.append(os.path.join(config_data['DATASETS_PATH'], dic['IMAGE']))
+        label_paths.append(os.path.join(config_data['DATASETS_PATH'], dic['LABEL']))
+        seg_paths.append(os.path.join(config_data['DATASETS_PATH'], dic['SEG']))
+    return img_paths, label_paths, seg_paths
     
 
 ##
