@@ -1,25 +1,24 @@
 import os
-import sys
 import json
 import torch
 import argparse
 import numpy as np
 from torch.utils.data import DataLoader
 
-from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_contrast, fetch_subject_and_session
+from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_contrast, fetch_subject_and_session
 from bcm.utils.image import Image
 from bcm.utils.config2parser import config2parser
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
-from dlh.utils.train_utils import image_Dataset
-from dlh.utils.test_utils import extract_skeleton, load_img_only
+from dlh.utils.train_utils import image_Dataset, apply_preprocessing
+from dlh.utils.data2array import get_midNifti
+from dlh.utils.test_utils import extract_skeleton
 
 #---------------------------Test Hourglass Network----------------------------
 def test_hourglass(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     txt_file = args.out_txt_file
-    seg_suffix = args.suffix_seg
 
     # Get hourglass training parameters
     config_hg = config2parser(args.config_hg)
@@ -42,18 +41,13 @@ def test_hourglass(args):
     for cont in data_contrast:
         if cont not in CONTRAST[train_contrast]:
             raise ValueError(f"Data contrast {cont} not used for training.")
-    
+
+    # Get image and segmentation paths
+    img_paths, _, seg_paths = fetch_bcm_paths(config_data)
+
     # Load images
     print('loading images...')
-    imgs_test, subjects_test, original_shapes = load_img_only(config_data=config_data,
-                                                              split='TESTING')
-    
-    # Get image and segmentation paths
-    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                   path_type=config_data['TYPE'],
-                                                   datasets_path=config_data['DATASETS_PATH'],
-                                                   seg_suffix=seg_suffix, 
-                                                   derivatives_path='derivatives/labels')
+    imgs_test, subjects_test, original_shapes = load_image_hg(img_paths=img_paths)
 
     # Load disc_coords txt file
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
@@ -99,13 +93,9 @@ def test_hourglass(args):
             img_path = img_paths[i]
             seg_path = seg_paths[i]
 
-            # Look for segmentation path
+            # Check if mismatch between images
             add_subject = False
-            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
-            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-                add_subject = True
-            elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
-                seg_path = back_up_seg_path
+            if Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape
                 add_subject = True
             
             if add_subject: # A segmentation is available for projection
@@ -145,7 +135,7 @@ def test_hourglass(args):
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
                 split_lines = edit_subject_lines_txt_file(coords=pred, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'hourglass_{train_contrast}_coords')
             else:
-                print(f'No segmentation is available for {img_path}')
+                print(f'Shape mismatch between {img_path} and {seg_path}')
     else:
         raise ValueError(f'Path to skeleton {path_skeleton} does not exist'
                 f'Please check if contrasts {train_contrast} was used for training')     
@@ -155,6 +145,21 @@ def test_hourglass(args):
         
     with open(txt_file,"w") as f:
         f.writelines(split_lines)
+
+
+def load_image_hg(img_paths):
+    imgs = []
+    subs = []
+    shapes = []
+    for path in img_paths:
+        # Applying preprocessing steps
+        image = apply_preprocessing(path)
+        imgs.append(image)
+        subject, sessionID, filename, contrast, echoID, acquisition = fetch_subject_and_session(path)
+        subs.append(subject)
+        shapes.append(get_midNifti(path).shape)
+    return imgs, subs, shapes
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Add Hourglass Network coordinates to text file')
@@ -167,16 +172,6 @@ if __name__ == '__main__':
                         help='Config file where hourglass training parameters are stored Example: Example: ~/<your_path>/config.json (Required)')  # Hourglass config file
     parser.add_argument('-txt', '--out-txt-file', required=True,
                         type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
-    
-    # All methods
-    parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
-                        help='Specify SC segmentation suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
-    parser.add_argument('--seg-folder', type=str, default='results',
-                        help='Path to SC segmentation folder where non existing segmentations will be created. ' 
-                        'These segmentations will be used to project labels onto the spinalcord (default="results")')
-    parser.add_argument('--create-seg', type=bool, default=False,
-                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
-                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run Hourglass Network on input data
     test_hourglass(parser.parse_args())

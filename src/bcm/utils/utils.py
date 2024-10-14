@@ -73,34 +73,26 @@ VERT_DISC = {
 
 
 ## Functions
-def fetch_img_and_seg_paths(path_list, path_type, datasets_path='', seg_suffix='_seg', derivatives_path='derivatives/labels'):
+def fetch_bcm_paths(config_data, split='TESTING'):
     """
-    :param path_list: List of path in a BIDS compliant dataset
-    :param path_type: Type of files specified (LABEL or IMAGE)
-    :param seg_suffix: Suffix used for segmentation files
-    :param derivatives_path: Path to derivatives folder (only if path to images are specified)
+    :param config_data: Dictionary containing all the paths used for the benchmark
+    :param split: Split of the data used for the benchmark (default=TESTING)
 
     :return img_paths: List of paths to images
+            labe_paths: List of paths to single voxel labels
             seg_paths: List of paths to the corresponding spinal cord segmentations
     """
     img_paths = []
+    label_paths = []
     seg_paths = []
-    for str_path in path_list:
-        if datasets_path:
-            str_path = os.path.join(datasets_path, str_path)
-        if path_type == 'LABEL':
-            img_paths.append(get_img_path_from_label_path(str_path))
-            seg_paths.append(get_seg_path_from_label_path(str_path, seg_suffix=seg_suffix))
-        elif path_type == 'IMAGE':
-            img_paths.append(str_path)
-            seg_paths.append(get_seg_path_from_img_path(str_path, seg_suffix=seg_suffix, derivatives_path=derivatives_path))
-        else:
-            raise ValueError(f"invalid image type in data config: {path_type}")
-    return img_paths, seg_paths
+    for dic in config_data[split]:
+        img_paths.append(os.path.join(config_data['DATASETS_PATH'], dic['IMAGE']))
+        label_paths.append(os.path.join(config_data['DATASETS_PATH'], dic['LABEL']))
+        seg_paths.append(os.path.join(config_data['DATASETS_PATH'], dic['SEG']))
+    return img_paths, label_paths, seg_paths
     
 
 ##
-
 def get_seg_path_from_img_path(img_path, seg_suffix='_seg', derivatives_path='/derivatives/labels'):
     """
     This function returns the segmentaion path from an image path. Images need to be stored in a BIDS compliant dataset.
@@ -160,6 +152,33 @@ def get_img_path_from_label_path(str_path):
 
     # Recreate img path
     img_path = os.path.join(dir_path, img_name)
+
+    return img_path
+
+##
+def get_cont_path_from_other_cont(str_path, cont):
+    """
+    :param str_path: absolute path to the input nifti img. Example: /<path_to_BIDS_data>/sub-amuALT/anat/sub-amuALT_T1w.nii.gz
+    :param cont: contrast of the target output image stored in the same data folder. Example: T2w
+    :return: path to the output target image. Example: /<path_to_BIDS_data>/sub-amuALT/anat/sub-amuALT_T2w.nii.gz
+
+    """
+    # Load path
+    path = Path(str_path)
+
+    # Extract file extension
+    ext = ''.join(path.suffixes)
+
+    # Remove input contrast from name
+    path_list = path.name.split(ext)[0].split('_')
+    suffixes_pos = [1 if len(part.split('-')) == 1 else 0 for part in path_list]
+    contrast_idx = suffixes_pos.index(1) # Find suffix
+
+    # New image name
+    img_name = '_'.join(path_list[:contrast_idx]+[cont]+path_list[contrast_idx+1:]) + ext
+
+    # Recreate img path
+    img_path = os.path.join(str(path.parent), img_name)
 
     return img_path
 
