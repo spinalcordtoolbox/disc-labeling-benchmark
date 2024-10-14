@@ -148,25 +148,3 @@ if __name__ == '__main__':
     test_spinenet(parser.parse_args())
 
     print('Spinenet coordinates have been added')
-    
-    # if parser.parse_args().sub != '':
-    #     nb_slice, img, discs_coords, vert_dicts_niftii = test_spinenet(parser.parse_args(), test_mode=True)
-    #     fig = plt.figure(figsize=(40,40))
-    #     for slice_idx in range(nb_slice):
-    #         ax = fig.add_subplot(4,4,slice_idx+1)
-    #         ax.imshow(img[:,:,slice_idx], cmap='gray')
-    #         ax.set_title(f'Slice {slice_idx+1}', fontsize=60)
-    #         ax.axis('off')
-    #         for disc, coord in discs_coords.items():
-    #             ax.add_patch(Circle(coord, radius=1, ec='r'))
-    #             ax.text(coord[0]-15, coord[1], disc, color='r', fontsize=15)
-    #         for vert_dict in vert_dicts_niftii:
-    #             if slice_idx in vert_dict['slice_nos']:
-    #                 poly_idx = int(vert_dict['slice_nos'].index(slice_idx))
-    #                 poly = np.array(vert_dict['polys'][poly_idx])
-    #                 ax.add_patch(Polygon(poly, ec='y',fc='none'))
-    #                 ax.text(np.mean(poly[:,0]), np.mean(poly[:,1]), vert_dict['predicted_label'],c='y', ha='center',va='center', fontsize=15)
-
-    #     fig.suptitle('Detected Vertebrae (all slices)', fontsize=100)
-    #     fig.savefig('test/visualize/test_spinenet.png')
-    # else:
