@@ -48,7 +48,7 @@ def test_sct_label_vertebrae(args):
             add_subject = True
         
         if add_subject: # A segmentation is available for projection
-            disc_file_path = back_up_seg_path.replace('.nii.gz', '_labeled_discs.nii.gz')  # path to the file with disc labels
+            tmp_dir = tmp_create(basename="sct-label-vertebrae")
             if os.path.exists(disc_file_path):
                 # retrieve all disc coords
                 discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
@@ -64,11 +64,13 @@ def test_sct_label_vertebrae(args):
                                         '-i', img_path,
                                         '-s', seg_path,
                                         '-c', SCT_CONTRAST[contrast],
-                                        '-ofolder', os.path.dirname(disc_file_path)])
+                                        '-ofolder', tmp_dir])
                 if out.returncode == 0:
+                    disc_file_path = os.path.join(tmp_dir, img_path.replace('.nii.gz', '_seg_labeled_discs.nii.gz'))
                     discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
                     # keep only 2D coordinates
-                    discs_coords = discs_coords[:, 1:]         
+                    discs_coords = discs_coords[:, 1:]
+                    rmtree(tmp_dir)      
                 else:
                     print(f'Fail sct_label_vertebrae for subject {sub_name}')
                     discs_coords = np.array([]) # Fail
