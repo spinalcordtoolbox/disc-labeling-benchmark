@@ -107,9 +107,9 @@ if __name__=='__main__':
     
     # All methods
     parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
-                        help='Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
+                        help='Specify SC segmentation suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
     parser.add_argument('--seg-folder', type=str, default='results',
-                        help='Path to segmentation folder where non existing segmentations will be created. ' 
+                        help='Path to SC segmentation folder where non existing segmentations will be created. ' 
                         'These segmentations will be used to project labels onto the spinalcord (default="results")')
     parser.add_argument('--create-seg', type=bool, default=False,
                         help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
