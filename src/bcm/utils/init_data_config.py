@@ -7,10 +7,7 @@ import json
 import itertools
 import numpy as np
 
-from utils import CONTRAST, get_img_path_from_mask_path, fetch_contrast
-
-
-CONTRAST_LOOKUP = {tuple(sorted(value)): key for key, value in CONTRAST.items()}
+from bcm.utils.utils import get_img_path_from_label_path, get_cont_path_from_other_cont, fetch_contrast, get_seg_path_from_label_path
 
 
 # Determine specified contrasts
@@ -50,7 +47,7 @@ def init_data_config(args):
         raise ValueError('Please store all the BIDS datasets inside the same parent folder !')
 
     # Look up the right code for the set of contrasts present
-    contrasts = CONTRAST_LOOKUP[tuple(sorted(set(map(fetch_contrast, img_paths))))]
+    contrasts = "_".join(tuple(sorted(set(map(fetch_contrast, file_paths)))))
 
     config = {
         'TYPE': args.type,
