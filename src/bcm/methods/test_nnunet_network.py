@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import cc3d
 
-from bcm.utils.utils import edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_subject_and_session, fetch_contrast, tmp_create, project_on_spinal_cord, swap_y_origin
+from bcm.utils.utils import edit_subject_lines_txt_file, fetch_bcm_paths, fetch_subject_and_session, fetch_contrast, tmp_create, project_on_spinal_cord
 from bcm.utils.image import Image
 from bcm.utils.config2parser import config2parser
 
@@ -22,7 +22,6 @@ def test_nnunet(args):
     Run nnunet inference for vertebral labeling and append the discs coordinates to a txt file
     '''
     txt_file = args.out_txt_file
-    seg_suffix = args.suffix_seg
 
     # Get nnunet parameters
     config_nn = config2parser(args.config_nnunet)
@@ -33,11 +32,7 @@ def test_nnunet(args):
         config_data = json.load(file)
 
     # Get image and segmentation paths
-    img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                   path_type=config_data['TYPE'],
-                                                   datasets_path=config_data['DATASETS_PATH'],
-                                                   seg_suffix=seg_suffix, 
-                                                   derivatives_path='derivatives/labels')
+    img_paths, _, seg_paths = fetch_bcm_paths(config_data)
     
     # Extract txt file lines
     with open(txt_file,"r") as f:
@@ -58,13 +53,9 @@ def test_nnunet(args):
             sub_name += f'_{echoID}'
         contrast = fetch_contrast(img_path)
 
-        # Look for segmentation path to project output coordinates
+        # Check if mismatch between images
         add_subject = False
-        back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
-        if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-            add_subject = True
-        elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
-            seg_path = back_up_seg_path
+        if Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape
             add_subject = True
 
         if add_subject: # A segmentation is available for projection
@@ -147,7 +138,7 @@ def test_nnunet(args):
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
             split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'nnunet_{str(config_nn.config_num)}_coords')
         else:
-            print(f'No segmentation is available for {img_path}')
+            print(f'Shape mismatch between {img_path} and {seg_path}')
 
     for num in range(len(split_lines)):
         split_lines[num] = ' '.join(split_lines[num])
@@ -189,16 +180,6 @@ if __name__=='__main__':
                         help='Config file where nnunet training information are stored Example: Example: ~/<your_path>/config.json (Required)')  # nnunet config file
     parser.add_argument('-txt', '--out-txt-file', required=True,
                         type=str, metavar='<file-path>',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')                             
-    
-    # All methods
-    parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
-                        help='Specify SC segmentation suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
-    parser.add_argument('--seg-folder', type=str, default='results',
-                        help='Path to SC segmentation folder where non existing segmentations will be created. ' 
-                        'These segmentations will be used to project labels onto the spinalcord (default="results")')
-    parser.add_argument('--create-seg', type=bool, default=False,
-                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
-                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run sct_label_vertebrae on input data
     test_nnunet(parser.parse_args())

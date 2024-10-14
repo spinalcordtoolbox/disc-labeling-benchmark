@@ -1,9 +1,8 @@
-import os
 import argparse
 import numpy as np
 import json
 
-from bcm.utils.utils import swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_img_and_seg_paths, fetch_subject_and_session, fetch_contrast
+from bcm.utils.utils import project_on_spinal_cord, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_subject_and_session, fetch_contrast
 from bcm.utils.image import Image
 
 def add_gt_coordinate_to_txt_file(args):
@@ -16,23 +15,13 @@ def add_gt_coordinate_to_txt_file(args):
         config_data = json.load(file)
     
     # Check if labels are specified else don't compute ground truth
-    if config_data['TYPE'] == 'IMAGE':
-        print("#####################################################################################################################################")
-        print("#################### Paths to labels were not specified --> ground truth coordinates won't be added to the benchmark ####################")
-        print("#####################################################################################################################################")
-    elif config_data['TYPE'] == 'LABEL':
+    if config_data['TYPE'] != 'LABEL-SEG':
+        raise ValueError('Please use config with TYPE --> LABEL-SEG')
+    else:
         txt_file = args.out_txt_file
-        seg_suffix = args.suffix_seg
-
-        # Get label paths
-        label_paths = [os.path.join(config_data['DATASETS_PATH'], path) for path in config_data['TESTING']]
 
         # Get image and segmentation paths
-        img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                       path_type=config_data['TYPE'],
-                                                       datasets_path=config_data['DATASETS_PATH'],
-                                                       seg_suffix=seg_suffix,
-                                                       derivatives_path='derivatives/labels')
+        img_paths, label_paths, seg_paths = fetch_bcm_paths(config_data)
         
         # Load disc_coords txt file
         with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
@@ -53,16 +42,12 @@ def add_gt_coordinate_to_txt_file(args):
                 sub_name += f'_{echoID}'
             contrast = fetch_contrast(img_path)
 
-            # Look for segmentation path
+            # Check if mismatch between images
             add_subject = False
-            back_up_seg_path = os.path.join(args.seg_folder, 'derivatives-seg', seg_path.split('derivatives/')[-1])
-            if os.path.exists(seg_path) and Image(seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape or create new seg
-                add_subject = True
-            elif args.create_seg and os.path.exists(back_up_seg_path) and Image(back_up_seg_path).change_orientation('RSP').data.shape==Image(img_path).change_orientation('RSP').data.shape:
-                seg_path = back_up_seg_path
+            if Image(seg_path).change_orientation('RSP').data.shape==Image(label_path).change_orientation('RSP').data.shape:  # Check if seg_shape == label_shape
                 add_subject = True
             
-            if add_subject: # A segmentation is available for projection
+            if add_subject: # No mismatch detected
                 img_gt = Image(label_path).change_orientation('RIP')
                 gt_coord = np.array([list(coord) for coord in img_gt.getNonZeroCoordinates(sorting='value') if coord[-1] < 25]).astype(int) # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
                 
@@ -76,15 +61,13 @@ def add_gt_coordinate_to_txt_file(args):
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
                 split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='gt_coords')
             else:
-                print(f'No segmentation is available for {img_path}')
+                print(f'Shape mismatch between {label_path} and {seg_path}')
         
         for num in range(len(split_lines)):
             split_lines[num] = ' '.join(split_lines[num])
             
         with open(txt_file,"w") as f:
             f.writelines(split_lines)
-    else:
-        raise ValueError(f'Path TYPE {config_data["TYPE"]} is not defined')
 
 
 if __name__=='__main__':
@@ -96,16 +79,6 @@ if __name__=='__main__':
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
     parser.add_argument('-txt', '--out-txt-file', required=True,
                         type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
-
-    # All methods
-    parser.add_argument('--suffix-seg', type=str, default='_seg-manual',
-                        help='Specify SC segmentation suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg")')
-    parser.add_argument('--seg-folder', type=str, default='results',
-                        help='Path to SC segmentation folder where non existing segmentations will be created. ' 
-                        'These segmentations will be used to project labels onto the spinalcord (default="results")')
-    parser.add_argument('--create-seg', type=bool, default=False,
-                        help='To perform this benchmark, SC segmentation are needed for projection to compare the methods. '
-                        'Set this variable to True to create segmentation using sct_deepseg_sc when not available')
     
     # Run add_gt_coordinate_to_txt_file on input data
     add_gt_coordinate_to_txt_file(parser.parse_args())
