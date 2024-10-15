@@ -1,9 +1,11 @@
 import argparse
 import numpy as np
 import json
+import os
 
 from bcm.utils.utils import project_on_spinal_cord, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_subject_and_session, fetch_contrast
 from bcm.utils.image import Image
+from bcm.utils.init_benchmark import init_txt_file
 
 def add_gt_coordinate_to_txt_file(args):
     '''
@@ -77,10 +79,16 @@ if __name__=='__main__':
     # All mandatory parameters                         
     parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
-    parser.add_argument('-txt', '--out-txt-file', required=True,
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
                         type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
     
+    args = parser.parse_args()
+
+    # Init txt file if it doesn't exist
+    if not os.path.exists(args.out_txt_file):
+        init_txt_file(args)
+    
     # Run add_gt_coordinate_to_txt_file on input data
-    add_gt_coordinate_to_txt_file(parser.parse_args())
+    add_gt_coordinate_to_txt_file(args)
 
     print('Ground truth coordinates have been added')

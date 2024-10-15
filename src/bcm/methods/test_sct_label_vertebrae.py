@@ -6,6 +6,7 @@ import subprocess
 
 from bcm.utils.utils import SCT_CONTRAST, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_subject_and_session, fetch_contrast, tmp_create, rmtree
 from bcm.utils.image import Image
+from bcm.utils.init_benchmark import init_txt_file
 
 
 #---------------------------Test Sct Label Vertebrae--------------------------
@@ -95,10 +96,16 @@ if __name__=='__main__':
     # All mandatory parameters                         
     parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')
-    parser.add_argument('-txt', '--out-txt-file', required=True,
-                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')                             
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
+                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
     
+    args = parser.parse_args()
+
+    # Init txt file if it doesn't exist
+    if not os.path.exists(args.out_txt_file):
+        init_txt_file(args)
+
     # Run sct_label_vertebrae on input data
-    test_sct_label_vertebrae(parser.parse_args())
+    test_sct_label_vertebrae(args)
 
     print('sct_label_vertebrae coordinates have been added')
