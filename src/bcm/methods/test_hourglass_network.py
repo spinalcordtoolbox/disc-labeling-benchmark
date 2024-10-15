@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_contrast, fetch_subject_and_session
 from bcm.utils.image import Image
 from bcm.utils.config2parser import config2parser
+from bcm.utils.init_benchmark import init_txt_file
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
@@ -170,10 +171,16 @@ if __name__ == '__main__':
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
     parser.add_argument('--config-hg', type=str, required=True,
                         help='Config file where hourglass training parameters are stored Example: Example: ~/<your_path>/config.json (Required)')  # Hourglass config file
-    parser.add_argument('-txt', '--out-txt-file', required=True,
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
                         type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
     
+    args = parser.parse_args()
+
+    # Init txt file if it doesn't exist
+    if not os.path.exists(args.out_txt_file):
+        init_txt_file(args)
+
     # Run Hourglass Network on input data
-    test_hourglass(parser.parse_args())
+    test_hourglass(args)
 
     print('Hourglass coordinates have been added')

@@ -11,6 +11,7 @@ import cc3d
 from bcm.utils.utils import edit_subject_lines_txt_file, fetch_bcm_paths, fetch_subject_and_session, fetch_contrast, tmp_create, project_on_spinal_cord
 from bcm.utils.image import Image
 from bcm.utils.config2parser import config2parser
+from bcm.utils.init_benchmark import init_txt_file
 
 
 from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
@@ -170,10 +171,16 @@ if __name__=='__main__':
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')
     parser.add_argument('--config-nnunet', type=str, required=True,
                         help='Config file where nnunet training information are stored Example: Example: ~/<your_path>/config.json (Required)')  # nnunet config file
-    parser.add_argument('-txt', '--out-txt-file', required=True,
-                        type=str, metavar='<file-path>',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')                             
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
+                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
     
+    args = parser.parse_args()
+
+    # Init txt file if it doesn't exist
+    if not os.path.exists(args.out_txt_file):
+        init_txt_file(args)
+
     # Run sct_label_vertebrae on input data
-    test_nnunet(parser.parse_args())
+    test_nnunet(args)
 
     print('nnunet coordinates have been added')
