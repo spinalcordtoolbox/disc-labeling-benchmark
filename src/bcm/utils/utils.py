@@ -21,6 +21,7 @@ import datetime
 import shutil
 import cc3d
 
+from bcm.utils.init_method import init_method
 from bcm.utils.metrics import compute_L2_error, compute_z_error, compute_TP_and_FP, compute_TN_and_FN, compute_MSE
 from bcm.utils.image import Image, zeros_like
 
@@ -434,10 +435,20 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
     last_index = subject_index[0][-1]  # Getting the last line for the subject in the txt file
     min_ref_disc = int(txt_lines[start_index][2])  # Getting the first refferenced disc num
     max_ref_disc = int(txt_lines[last_index][2])  # Getting the last refferenced disc num
+
+    # Extract method column
     methods = txt_lines[0][:]
     methods[-1] = methods[-1].replace('\n','')
+
+    if not method_name in methods:
+        txt_lines = init_method(txt_lines, method_name)
+        methods = txt_lines[0][:]
+        methods[-1] = methods[-1].replace('\n','')
+    
+    # Find method index
     method_idx = methods.index(method_name)
-    nb_methods = len(methods) - 3 # The 3 first elements correspond to subject disc_num and contrast
+
+    nb_methods = len(methods) - 3 # The 3 first elements correspond to subject, contrast and disc_num
     if method_idx == len(methods)-1:
         end_of_line = '\n'
     else:
@@ -470,9 +481,6 @@ def edit_subject_lines_txt_file(coords, txt_lines, subject_name, contrast, metho
                             max_ref_disc += 1
                             intermediate_line[2] = str(max_ref_disc)
                             txt_lines.insert(last_index, intermediate_line) # Add intermediate lines to txt_file lines -- 
-                    
-
-
                     idx = np.where(coords[:,-1] == disc_num)[0][0]
                     new_line[method_idx] = '[' + str(coords[idx, 0]) + ',' + str(coords[idx, 1]) + ']' + end_of_line
                     last_index += 1
