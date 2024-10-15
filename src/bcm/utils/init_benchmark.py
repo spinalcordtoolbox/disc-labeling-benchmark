@@ -1,13 +1,11 @@
 import os
 import argparse
 import json
-import subprocess
 
-from bcm.utils.utils import SCT_CONTRAST, get_img_path_from_label_path, fetch_subject_and_session, fetch_contrast, fetch_img_and_seg_paths
-from bcm.utils.image import Image
+from bcm.utils.utils import fetch_subject_and_session, fetch_contrast, fetch_bcm_paths
 
 
-def init_txt_file(args, split='TESTING', init_discs=11):
+def init_txt_file(args, split='TESTING', init_discs=25):
     """
     Initialize txt file where discs coordinates will be stored.
 
@@ -27,7 +25,7 @@ def init_txt_file(args, split='TESTING', init_discs=11):
     path_out = args.out_txt_file
     
     # Initialize txt file lines with method list
-    methods_str = 'subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords nnunet_101_coords nnunet_102_coords nnunet_200_coords nnunet_201_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords hourglass_t1_t2_psir_stir_coords\n'
+    methods_str = 'subject_name contrast num_disc\n'
     txt_lines = [methods_str]
     
     # Create a dict to keep track of problematique redundant subject/contrasts associations
@@ -36,15 +34,13 @@ def init_txt_file(args, split='TESTING', init_discs=11):
     if not os.path.exists(path_out):
         os.makedirs(os.path.dirname(path_out), exist_ok=True)
         print("Creating TXT file:", path_out)
+
+        # Load subject paths
+        img_paths, _, _ = fetch_bcm_paths(config_data, split=split)
         
         # Initialize txt_file with subject_names and nb_discs_init
         print(f"Initializing txt file with subjects and {nb_discs_init} discs")
-        for path in config_data[split]:
-            if config_data['TYPE'] == 'LABEL':
-                img_path = get_img_path_from_label_path(path)
-            if config_data['TYPE'] == 'IMAGE':
-                img_path = path
-            
+        for img_path in img_paths:
             # Fetch contrast, subject, session and echo
             subjectID, sessionID, _, _, echoID, acq = fetch_subject_and_session(img_path)
             sub_name = subjectID
@@ -62,11 +58,11 @@ def init_txt_file(args, split='TESTING', init_discs=11):
                 else:
                     subject_contrast_association[sub_name].append(contrast)
                     # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
-                    txt_lines += [sub_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+                    txt_lines += [sub_name + ' ' + contrast + ' ' + str(disc_num + 1) + '\n' for disc_num in range(nb_discs_init)]
             else:
                 subject_contrast_association[sub_name] = [contrast]
                 # construct subject lines line = subject_name contrast disc_num ground_truth_coord + methods...
-                txt_lines += [sub_name + ' ' + contrast + ' ' + str(disc_num + 1) + ' None'*(len(methods_str.split(' '))-3) + '\n' for disc_num in range(nb_discs_init)]
+                txt_lines += [sub_name + ' ' + contrast + ' ' + str(disc_num + 1) + '\n' for disc_num in range(nb_discs_init)]
         
         if duplicate_sub_cont:
             raise ValueError("Duplicate subject/contrast:\n" + '\n'.join(duplicate_sub_cont))
