@@ -508,7 +508,7 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     method_idx = np.where(methods==method_name)[0][0]
 
     #Note: If all nnunet methods have the same syntax as other methods, you can remove the conditional check above and simply use the next line:
-    method_short = method_name.split('_coords')[0] # Remove '_coords' suffix
+    method_short = method_name
     
     subject_idx = np.where(methods=='subject_name')[0][0]
     discs_num_idx = np.where(methods=='num_disc')[0][0]

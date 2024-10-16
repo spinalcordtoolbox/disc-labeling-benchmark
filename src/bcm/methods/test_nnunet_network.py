@@ -173,8 +173,8 @@ if __name__=='__main__':
                         help='Config file where nnunet training information are stored Example: Example: ~/<your_path>/config.json (Required)')  # nnunet config file
     parser.add_argument('-txt', '--out-txt-file', default='results/files/discs_coords.txt',
                         type=str, metavar='N',help='Generated txt file path (default: "results/files/discs_coords.txt")')
-    parser.add_argument('--method', default='nnunet_coords',
-                        type=str,help='Method name that will be added to the txt file (default="nnunet_coords")')
+    parser.add_argument('--method', default='nnunet',
+                        type=str,help='Method name that will be added to the txt file (default="nnunet")')
     
     args = parser.parse_args()
 

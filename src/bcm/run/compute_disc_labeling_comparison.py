@@ -7,7 +7,7 @@ import csv
 import pandas as pd
 import json
 
-from bcm.utils.utils import SCT_CONTRAST, edit_metric_csv, fetch_img_and_seg_paths, visualize_discs
+from bcm.utils.utils import edit_metric_csv, fetch_bcm_paths, visualize_discs
 from bcm.utils.image import Image
 
 
@@ -15,16 +15,12 @@ def compare_methods(args):
     if args.config_data:
         config_data = json.load(open(args.config_data, "r"))
 
-        img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                    path_type=config_data['TYPE'],
-                                                    datasets_path=config_data['DATASETS_PATH'],
-                                                    seg_suffix='_seg-manual',
-                                                    derivatives_path='derivatives/labels'
-                                                    )
+        # Get image and segmentation paths
+        img_paths, _, _ = fetch_bcm_paths(config_data)
+
     txt_file_path = args.input_txt_file
     dataset = os.path.basename(txt_file_path).split('_')[0]
     output_folder = os.path.join(args.output_folder, f'out_{dataset}')
-    computed_methods = args.computed_methods
 
     # Create output folder
     if not os.path.exists(output_folder):
@@ -34,12 +30,20 @@ def compare_methods(args):
     with open(txt_file_path,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
+        split_lines[0][-1] = split_lines[0][-1].replace('\n','')
+    
+    # Extract methods list
+    num_disc_idx = split_lines[0].index('num_disc')
+    computed_methods = split_lines[0][num_disc_idx+1:]
+    if not 'gt_coords' in computed_methods:
+        raise ValueError('Ground truth labels need to be present for comparison')
+    else:
+        computed_methods.remove('gt_coords')
 
     # Extract processed subjects --> subjects with a ground truth
-    # line = subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
     processed_subjects_dict = dict()
     for line in split_lines[1:]:
-        gt_condition = (line[split_lines[0].index('gt_coords')]!='None') or not args.gt_exists # Process subject only if ground truth are available or not args.gt_exists
+        gt_condition = (line[split_lines[0].index('gt_coords')]!='None') # Process subject only if ground truth are available
         if (line[split_lines[0].index('subject_name')] not in processed_subjects_dict.keys()) and gt_condition:
             processed_subjects_dict[line[split_lines[0].index('subject_name')]] = [line[split_lines[0].index('contrast')]]
         elif (line[split_lines[0].index('subject_name')] in processed_subjects_dict.keys()) and gt_condition:
@@ -87,15 +91,7 @@ def compare_methods(args):
     
     # Remove unrelevant hourglass contrasts and shorten methods names
     for contrast in methods_results.keys():
-        methods_plot = []
-        for method in computed_methods:
-            if 'hourglass' in method:
-                if SCT_CONTRAST[contrast] in method:
-                    methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
-                
-            else:
-                methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
-        save_graphs(output_folder, methods_results[contrast], methods_plot, contrast)
+        save_graphs(output_folder, methods_results[contrast], computed_methods, contrast)
 
 
 def mergedict(a,b):
@@ -113,35 +109,21 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     metrics_name = np.array(list(subject_metrics[0].keys())) 
 
     # Find the position of "tot" in metrics_name
-    position_tot = [i for i, name in enumerate(metrics_name) if "tot" in name]
+    position_tot = [i for i, name in enumerate(metrics_name) if "tot_" in name]
+
     # Remove values from metrics_name at the found positions
     metrics_name = [name for i, name in enumerate(metrics_name) if i not in position_tot]
+
     # metrics_name contains only the remaining names
     metrics_values = np.array([list(sub_metrics.values()) for sub_metrics in subject_metrics])
     # 2D Numpy array, where each row corresponds to a subject, and each column corresponds to a metric.
 
-    # Delete columns corresponding to a name with "tot" in each row of the array
-    metrics_values = np.delete(metrics_values, position_tot,axis=1)
+    # Delete columns corresponding to a name with "tot_" in each row of the array
+    metrics_values = np.delete(metrics_values, position_tot, axis=1)
 
     metrics_mean_list=[]
     metrics_std_list=[]
-    metrics_list_bar= [] 
     metric_name_only_list = []
-
-    # Initialize lists for FPR and TPR values
-    sens_values = []
-    spe_values = []
-    
-    for method_name in methods_list:
-        for i, metric_name in enumerate(metrics_name):
-            if f"sensitivity_{method_name}" in metric_name:
-                sens_values.append(metrics_values[:,i])
-            elif f"specificity_{method_name}" in metric_name:
-                spe_values.append(metrics_values[:,i])
-        
-    out_path = os.path.join(output_folder, f'ROC_{contrast}')
-    save_ROC_curves(methods=methods_list, sens_values=sens_values, spe_values=spe_values, output_path=out_path, x_axis='specificity', y_axis='sensitivity')
-
     
     for metric_name in metrics_name:
         # Find the last "_mean" in the metric name
@@ -175,33 +157,6 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             metric_std_name, std = metric_std.split("_", 1)
             if not metric_std_name in metrics_std_list:
                 metrics_std_list.append(metric_std_name)
-        
-        metrics_list_bar = metrics_mean_list 
-
-        print("Metric name:", metric_name_only)
-        print("Method name:", method_name)
-
-   
-    for name in metrics_list_bar:
-        metric_values_list_bar = []
-        for method in methods_list:
-            method_mean_values = [] # cette ligne stock les moyennes
-            method_std_values = []  # cette ligne stock les écart-types
-
-            # Iterate through the subjects and look for the association
-            for sub_metrics in subject_metrics:
-                for k, v in sub_metrics.items():
-                    if v != -1:
-                        if k == f"{name}_mean_{method}":
-                            method_mean_values.append(v)
-                        elif k == f"{name}_std_{method}":
-                            method_std_values.append(v)  
-
-            # Création d'une paire (mean, std) pour chaque méthode
-            method_values_bar = (method_mean_values, method_std_values)
-            metric_values_list_bar.append(method_values_bar)
-        out_path = os.path.join(output_folder, f'{name}_{contrast}_bar_plot.png')
-        #save_bar(methods=methods_list, values=metric_values_list_bar, output_path=out_path, x_axis='Subjects', y_axis= f'{name} (pixels)')
 
 
     for metric_name in metric_name_only_list:
@@ -218,39 +173,12 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             
             metric_values_list.append(method_values)
         
-        # Reduce hourglass name size
-        count_hg = 0
-        for method_name in methods_list:
-            if 'hourglass' in method_name:
-                count_hg += 1
-        if count_hg == 1:
-            methods_list_plot = [method if not 'hourglass' in method else 'hourglass' for method in methods_list]
-        else:
-            methods_list_plot = methods_list
-        
         out_path = os.path.join(output_folder, f'{metric_name}_{contrast}_violin_plot.png')
         if metric_name.startswith('z') or metric_name.startswith('l2'):
             metric_name = f'{metric_name} (pixels)'
-        save_violin(methods=methods_list_plot, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
-     
-
+        print(f'Saving violin plot for metric {metric_name}')
+        save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
     
-    # Save total Dice score DSC
-    # DSC_hg = dict_total['DSC_hg']
-    # DSC_sct = dict_total['DSC_sct']
-    # DSC_spn = dict_total['DSC_spn']
-    # out_path = os.path.join(output_folder,'labels_dice_score.png')
-    # save_bar(x='Total',
-    #          y1=DSC_hg,
-    #          y2=DSC_sct,
-    #          y3=DSC_spn,
-    #          output_path=out_path,
-    #          x_axis='Total', 
-    #          y_axis='Labels accuracy using DSC', 
-    #          label1 ='hourglass_network', 
-    #          label2 ='sct_label_vertebrae', 
-    #          label3 ='spinenetv2_label_vertebrae'
-    #          )
 
 def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric name (pixels)'):
     '''
@@ -287,8 +215,6 @@ def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric na
                     
     #ax.bar(br1, mean_values, yerr=std_values, align='center', color='b', width = barWidth, edgecolor ='grey')
     plt.title(f"bar plot of {y_axis}" , fontweight ='bold', fontsize = 20)
-
-
  
     # Create axis and adding Xticks
     plt.xlabel(x_axis, fontweight ='bold', fontsize = 15)
@@ -321,7 +247,7 @@ def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric n
 
 
     result_df = pd.DataFrame(data=result_dict)
-    sns.set(style="darkgrid")
+    sns.set_theme(style="darkgrid")
 
     # Make the plot 
     plt.figure(figsize=(13, 8))
@@ -347,34 +273,6 @@ def calculate_auc(tpr, fpr):
         auc_value += (sorted_fpr[i] - sorted_fpr[i-1]) * (sorted_tpr[i] + sorted_tpr[i-1]) / 2.0
     return auc_value
 
-def save_ROC_curves(methods, sens_values, spe_values, output_path, x_axis='specificity', y_axis='sensitivity'):
-    plt.figure()
-
-    for i, method in enumerate(methods):
-        sens = np.expand_dims(sens_values[i], axis=1)
-        spe = np.expand_dims(spe_values[i], axis=1)
-
-        # Concatenate list
-        val = np.concatenate((spe, sens), axis=1)
-        ordered_val = []
-        for v0 in np.sort(np.unique(val[:,0])):
-            v0_val = val[np.where(val[:, 0]==v0)]
-            ordered_val.append(v0_val[v0_val[:, 1].argsort()])
-        ordered_val = np.concatenate(ordered_val, axis=0)
-        # Ignore les points où TPR et FPR sont tous deux à 0 ou à 1
-        #if (tpr != 0 or fpr != 0) and (tpr != 1 or fpr != 1):
-        #    print(f"Method: {method}, TPR: {tpr}, FPR: {fpr}")
-        #    tpr =[tpr]
-        #    fpr=[fpr]
-        plt.plot(ordered_val[:,0], ordered_val[:,1], label=f'{method}') # (AUC = {calculate_auc(sens_values, spe_values):.2f})')
-
-    plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random')
-    plt.title('ROC Curve')
-    plt.xlabel(x_axis)
-    plt.ylabel(y_axis)
-    plt.legend()
-    plt.savefig(output_path)
-
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Compute metrics on sct and hourglass disc estimation')
@@ -388,18 +286,6 @@ if __name__=='__main__':
                         help='Output folder where created graphs and images will be stored (default="results")') 
     parser.add_argument('-csv', '--create-csv', type=bool, default=True,
                         help='If "True" generate a csv file with the computed metrics within the txt file folder (default=True)') 
-    parser.add_argument('--gt-exists', type=bool, default=True,
-                        help='If "True" compute metrics only if GT exists (default=True)') 
-    parser.add_argument('--computed-methods', 
-                        default=['sct_discs_coords', 
-                                 'spinenet_coords',
-                                 'hourglass_t1_t2_psir_stir_coords',
-                                 'nnunet_101_coords',
-                                 'nnunet_102_coords',
-                                 'nnunet_200_coords',
-                                 'nnunet_201_coords'],
-                        help='Methods on which metrics will be computed'
-                        '["sct_discs_coords", "spinenet_coords", "hourglass_t1_t2_psir_stir_coords", "nnunet_101_coords","nnunet_102_coords", "nnunet_200_coords", "nnunet_201_coords"]')
     
     
     compare_methods(parser.parse_args())

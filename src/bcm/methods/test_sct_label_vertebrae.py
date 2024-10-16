@@ -3,6 +3,7 @@ import json
 import argparse
 import numpy as np
 import subprocess
+from pathlib import Path
 
 from bcm.utils.utils import SCT_CONTRAST, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_subject_and_session, fetch_contrast, tmp_create, rmtree
 from bcm.utils.image import Image
@@ -50,6 +51,7 @@ def test_sct_label_vertebrae(args):
         
         if add_subject: # A segmentation is available for projection
             tmp_dir = tmp_create(basename="sct-label-vertebrae")
+            disc_file_path = os.path.join(tmp_dir, Path(seg_path).name.replace('.nii.gz', '_labeled_discs.nii.gz'))
             if os.path.exists(disc_file_path):
                 # retrieve all disc coords
                 discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
@@ -67,7 +69,6 @@ def test_sct_label_vertebrae(args):
                                         '-c', SCT_CONTRAST[contrast],
                                         '-ofolder', tmp_dir])
                 if out.returncode == 0:
-                    disc_file_path = os.path.join(tmp_dir, img_path.replace('.nii.gz', '_seg_labeled_discs.nii.gz'))
                     discs_coords = np.array([list(coord) for coord in Image(disc_file_path).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
                     # keep only 2D coordinates
                     discs_coords = discs_coords[:, 1:]
@@ -98,8 +99,8 @@ if __name__=='__main__':
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')
     parser.add_argument('-txt', '--out-txt-file', default='results/files/discs_coords.txt',
                         type=str, metavar='N',help='Generated txt file path (default: "results/files/discs_coords.txt")')
-    parser.add_argument('--method', default='sct_coords',
-                        type=str,help='Method name that will be added to the txt file (default="sct_coords")')
+    parser.add_argument('--method', default='sct',
+                        type=str,help='Method name that will be added to the txt file (default="sct")')
     
     args = parser.parse_args()
 
