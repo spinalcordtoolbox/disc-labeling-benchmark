@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import numpy as np
+import subprocess
 
 from bcm.utils.utils import project_on_spinal_cord, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_subject_and_session, fetch_contrast, tmp_create, rmtree
 from bcm.utils.cp2dir import cp2dir_mp
@@ -28,7 +29,7 @@ def test_totalspineseg(args):
         split_lines = [line.split(' ') for line in file_lines]
 
     # Copy files to a temporary folder
-    tmp_dir = Path("/home/GRAMES.POLYMTL.CA/p118739/code/disc-labeling-benchmark/tmp") # Path(tmp_create(basename='totalspineseg'))
+    tmp_dir = Path(tmp_create(basename='totalspineseg'))
     raw_dir = tmp_dir / 'raw'
     out_dir = tmp_dir / 'out'
     raw_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -38,13 +39,13 @@ def test_totalspineseg(args):
 
     # Copy input images to raw folder
     print('Copying input images to raw folder')
-    # cp2dir_mp(img_paths, raw_dir)
+    cp2dir_mp(img_paths, raw_dir)
 
-    # # Run totalspineseg step 1
-    # subprocess.check_call([
-    #     "totalspineseg", "--step1",
-    #     str(raw_dir), str(out_dir)
-    # ])
+    # Run totalspineseg step 1
+    subprocess.check_call([
+        "totalspineseg", "--step1",
+        str(raw_dir), str(out_dir)
+    ])
 
     print('Processing with totalspineseg')
     level_dir = out_dir / 'step1_levels'
@@ -95,7 +96,7 @@ def test_totalspineseg(args):
         f.writelines(split_lines)
     
     # Remove tmp folder
-    # rmtree(tmp_dir)
+    rmtree(tmp_dir)
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Add totalspineseg coordinates to text file')
