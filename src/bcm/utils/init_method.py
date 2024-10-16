@@ -14,6 +14,9 @@ def init_method(txt_lines, method_name):
 
     # Extract number of lines
     num_line = txt_lines_np.shape[0]
+    
+    # Extract number of columns
+    num_col = txt_lines_np.shape[1]
 
     # Remove \n from last column
     last_col = np.transpose([[line[-1].replace('\n','') for line in txt_lines]])
@@ -23,6 +26,6 @@ def init_method(txt_lines, method_name):
     new_col = np.transpose([new_col])
 
     # Merge all the columns
-    new_txt_lines_np = np.concatenate((txt_lines_np[:,:2], last_col, new_col), axis=1)
+    new_txt_lines_np = np.concatenate((txt_lines_np[:,:num_col-1], last_col, new_col), axis=1)
 
     return new_txt_lines_np.tolist()
