@@ -91,15 +91,7 @@ def compare_methods(args):
     
     # Remove unrelevant hourglass contrasts and shorten methods names
     for contrast in methods_results.keys():
-        methods_plot = []
-        for method in computed_methods:
-            if 'hourglass' in method:
-                if SCT_CONTRAST[contrast] in method:
-                    methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
-                
-            else:
-                methods_plot.append(method.split('_coords')[0]) # Remove '_coords' suffix
-        save_graphs(output_folder, methods_results[contrast], methods_plot, contrast)
+        save_graphs(output_folder, methods_results[contrast], computed_methods, contrast)
 
 
 def mergedict(a,b):
@@ -221,16 +213,6 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
                             method_values.append(v)
             
             metric_values_list.append(method_values)
-        
-        # Reduce hourglass name size
-        count_hg = 0
-        for method_name in methods_list:
-            if 'hourglass' in method_name:
-                count_hg += 1
-        if count_hg == 1:
-            methods_list_plot = [method if not 'hourglass' in method else 'hourglass' for method in methods_list]
-        else:
-            methods_list_plot = methods_list
         
         out_path = os.path.join(output_folder, f'{metric_name}_{contrast}_violin_plot.png')
         if metric_name.startswith('z') or metric_name.startswith('l2'):
