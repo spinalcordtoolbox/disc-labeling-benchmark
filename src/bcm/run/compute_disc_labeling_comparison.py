@@ -109,15 +109,17 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
     metrics_name = np.array(list(subject_metrics[0].keys())) 
 
     # Find the position of "tot" in metrics_name
-    position_tot = [i for i, name in enumerate(metrics_name) if "tot" in name]
+    position_tot = [i for i, name in enumerate(metrics_name) if "tot_" in name]
+
     # Remove values from metrics_name at the found positions
     metrics_name = [name for i, name in enumerate(metrics_name) if i not in position_tot]
+
     # metrics_name contains only the remaining names
     metrics_values = np.array([list(sub_metrics.values()) for sub_metrics in subject_metrics])
     # 2D Numpy array, where each row corresponds to a subject, and each column corresponds to a metric.
 
-    # Delete columns corresponding to a name with "tot" in each row of the array
-    metrics_values = np.delete(metrics_values, position_tot,axis=1)
+    # Delete columns corresponding to a name with "tot_" in each row of the array
+    metrics_values = np.delete(metrics_values, position_tot, axis=1)
 
     metrics_mean_list=[]
     metrics_std_list=[]
@@ -174,26 +176,9 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
         out_path = os.path.join(output_folder, f'{metric_name}_{contrast}_violin_plot.png')
         if metric_name.startswith('z') or metric_name.startswith('l2'):
             metric_name = f'{metric_name} (pixels)'
-        save_violin(methods=methods_list_plot, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
-     
-
+        print(f'Saving violin plot for metric {metric_name}')
+        save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
     
-    # Save total Dice score DSC
-    # DSC_hg = dict_total['DSC_hg']
-    # DSC_sct = dict_total['DSC_sct']
-    # DSC_spn = dict_total['DSC_spn']
-    # out_path = os.path.join(output_folder,'labels_dice_score.png')
-    # save_bar(x='Total',
-    #          y1=DSC_hg,
-    #          y2=DSC_sct,
-    #          y3=DSC_spn,
-    #          output_path=out_path,
-    #          x_axis='Total', 
-    #          y_axis='Labels accuracy using DSC', 
-    #          label1 ='hourglass_network', 
-    #          label2 ='sct_label_vertebrae', 
-    #          label3 ='spinenetv2_label_vertebrae'
-    #          )
 
 def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric name (pixels)'):
     '''
@@ -230,8 +215,6 @@ def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric na
                     
     #ax.bar(br1, mean_values, yerr=std_values, align='center', color='b', width = barWidth, edgecolor ='grey')
     plt.title(f"bar plot of {y_axis}" , fontweight ='bold', fontsize = 20)
-
-
  
     # Create axis and adding Xticks
     plt.xlabel(x_axis, fontweight ='bold', fontsize = 15)
