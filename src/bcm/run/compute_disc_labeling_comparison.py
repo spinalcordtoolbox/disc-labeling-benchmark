@@ -34,12 +34,20 @@ def compare_methods(args):
     with open(txt_file_path,"r") as f:  # Checking already processed subjects from txt file
         file_lines = f.readlines()
         split_lines = [line.split(' ') for line in file_lines]
+        split_lines[0][-1] = split_lines[0][-1].replace('\n','')
+    
+    # Extract methods list
+    num_disc_idx = split_lines[0].index('num_disc')
+    computed_methods = split_lines[0][num_disc_idx+1:]
+    if not 'gt_coords' in computed_methods:
+        raise ValueError('Ground truth labels need to be present for comparison')
+    else:
+        computed_methods.remove('gt_coords')
 
     # Extract processed subjects --> subjects with a ground truth
-    # line = subject_name contrast num_disc gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
     processed_subjects_dict = dict()
     for line in split_lines[1:]:
-        gt_condition = (line[split_lines[0].index('gt_coords')]!='None') or not args.gt_exists # Process subject only if ground truth are available or not args.gt_exists
+        gt_condition = (line[split_lines[0].index('gt_coords')]!='None') # Process subject only if ground truth are available
         if (line[split_lines[0].index('subject_name')] not in processed_subjects_dict.keys()) and gt_condition:
             processed_subjects_dict[line[split_lines[0].index('subject_name')]] = [line[split_lines[0].index('contrast')]]
         elif (line[split_lines[0].index('subject_name')] in processed_subjects_dict.keys()) and gt_condition:
@@ -388,18 +396,6 @@ if __name__=='__main__':
                         help='Output folder where created graphs and images will be stored (default="results")') 
     parser.add_argument('-csv', '--create-csv', type=bool, default=True,
                         help='If "True" generate a csv file with the computed metrics within the txt file folder (default=True)') 
-    parser.add_argument('--gt-exists', type=bool, default=True,
-                        help='If "True" compute metrics only if GT exists (default=True)') 
-    parser.add_argument('--computed-methods', 
-                        default=['sct_discs_coords', 
-                                 'spinenet_coords',
-                                 'hourglass_t1_t2_psir_stir_coords',
-                                 'nnunet_101_coords',
-                                 'nnunet_102_coords',
-                                 'nnunet_200_coords',
-                                 'nnunet_201_coords'],
-                        help='Methods on which metrics will be computed'
-                        '["sct_discs_coords", "spinenet_coords", "hourglass_t1_t2_psir_stir_coords", "nnunet_101_coords","nnunet_102_coords", "nnunet_200_coords", "nnunet_201_coords"]')
     
     
     compare_methods(parser.parse_args())
