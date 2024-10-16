@@ -7,7 +7,7 @@ import csv
 import pandas as pd
 import json
 
-from bcm.utils.utils import SCT_CONTRAST, edit_metric_csv, fetch_img_and_seg_paths, visualize_discs
+from bcm.utils.utils import edit_metric_csv, fetch_bcm_paths, visualize_discs
 from bcm.utils.image import Image
 
 
@@ -15,16 +15,12 @@ def compare_methods(args):
     if args.config_data:
         config_data = json.load(open(args.config_data, "r"))
 
-        img_paths, seg_paths = fetch_img_and_seg_paths(path_list=config_data['TESTING'], 
-                                                    path_type=config_data['TYPE'],
-                                                    datasets_path=config_data['DATASETS_PATH'],
-                                                    seg_suffix='_seg-manual',
-                                                    derivatives_path='derivatives/labels'
-                                                    )
+        # Get image and segmentation paths
+        img_paths, _, _ = fetch_bcm_paths(config_data)
+
     txt_file_path = args.input_txt_file
     dataset = os.path.basename(txt_file_path).split('_')[0]
     output_folder = os.path.join(args.output_folder, f'out_{dataset}')
-    computed_methods = args.computed_methods
 
     # Create output folder
     if not os.path.exists(output_folder):
