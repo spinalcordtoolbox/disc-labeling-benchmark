@@ -61,7 +61,7 @@ def add_gt_coordinate_to_txt_file(args):
                             
                 # Edit coordinates in txt file
                 # line = subject_name contrast disc_num gt_coords sct_discs_coords spinenet_coords hourglass_t1_coords hourglass_t2_coords hourglass_t1_t2_coords
-                split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name='gt_coords')
+                split_lines = edit_subject_lines_txt_file(coords=gt_coord, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=args.method)
             else:
                 print(f'Shape mismatch between {label_path} and {seg_path}')
         
@@ -79,8 +79,10 @@ if __name__=='__main__':
     # All mandatory parameters                         
     parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')                               
-    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
-                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/discs_coords.txt',
+                        type=str, metavar='N',help='Generated txt file path (default: "results/files/discs_coords.txt")')
+    parser.add_argument('--method', default='gt_coords',
+                        type=str,help='Method name that will be added to the txt file (default="gt_coords")')
     
     args = parser.parse_args()
 

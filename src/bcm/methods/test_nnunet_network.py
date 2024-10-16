@@ -125,7 +125,7 @@ def test_nnunet(args):
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords
-            split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'nnunet_{str(config_nn.config_num)}_coords')
+            split_lines = edit_subject_lines_txt_file(coords=discs_coords, txt_lines=split_lines, subject_name=sub_name, contrast=contrast, method_name=f'{args.method}_{str(config_nn.config_num)}')
 
             print('Deleting the temporary folder...')
             # Delete the temporary folder
@@ -171,8 +171,10 @@ if __name__=='__main__':
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')
     parser.add_argument('--config-nnunet', type=str, required=True,
                         help='Config file where nnunet training information are stored Example: Example: ~/<your_path>/config.json (Required)')  # nnunet config file
-    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
-                        type=str, metavar='N',help='Generated txt file path (e.g. "results/files/(CONTRAST)_discs_coords.txt") (Required)')
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/discs_coords.txt',
+                        type=str, metavar='N',help='Generated txt file path (default: "results/files/discs_coords.txt")')
+    parser.add_argument('--method', default='nnunet_coords',
+                        type=str,help='Method name that will be added to the txt file (default="nnunet_coords")')
     
     args = parser.parse_args()
 
