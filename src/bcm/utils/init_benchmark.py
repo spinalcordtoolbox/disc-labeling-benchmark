@@ -80,8 +80,8 @@ if __name__=='__main__':
     # All mandatory                          
     parser.add_argument('--config-data', type=str, metavar='<folder>', required=True,
                         help='Config JSON file where every label/image used for TESTING has its path specified ~/<your_path>/config_data.json (Required)')  
-    parser.add_argument('-txt', '--out-txt-file', default='results/files/test_discs_coords.txt',
-                        type=str, metavar='N',help='Generated txt file path (default="results/files/(CONTRAST)_discs_coords.txt")')
+    parser.add_argument('-txt', '--out-txt-file', default='results/files/discs_coords.txt',
+                        type=str, metavar='N',help='Generated txt file path (default: "results/files/discs_coords.txt")')
     
     # Init txt file
     init_txt_file(parser.parse_args())
