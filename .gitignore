@@ -170,6 +170,9 @@ cython_debug/
 # files
 *.txt
 *.png
+*.jpg
+*.jpeg
+*.csv
 *.json
 *.swp
 *.nii.gz
