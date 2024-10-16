@@ -121,23 +121,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
 
     metrics_mean_list=[]
     metrics_std_list=[]
-    metrics_list_bar= [] 
     metric_name_only_list = []
-
-    # Initialize lists for FPR and TPR values
-    sens_values = []
-    spe_values = []
-    
-    for method_name in methods_list:
-        for i, metric_name in enumerate(metrics_name):
-            if f"sensitivity_{method_name}" in metric_name:
-                sens_values.append(metrics_values[:,i])
-            elif f"specificity_{method_name}" in metric_name:
-                spe_values.append(metrics_values[:,i])
-        
-    out_path = os.path.join(output_folder, f'ROC_{contrast}')
-    save_ROC_curves(methods=methods_list, sens_values=sens_values, spe_values=spe_values, output_path=out_path, x_axis='specificity', y_axis='sensitivity')
-
     
     for metric_name in metrics_name:
         # Find the last "_mean" in the metric name
@@ -171,33 +155,6 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             metric_std_name, std = metric_std.split("_", 1)
             if not metric_std_name in metrics_std_list:
                 metrics_std_list.append(metric_std_name)
-        
-        metrics_list_bar = metrics_mean_list 
-
-        print("Metric name:", metric_name_only)
-        print("Method name:", method_name)
-
-   
-    for name in metrics_list_bar:
-        metric_values_list_bar = []
-        for method in methods_list:
-            method_mean_values = [] # cette ligne stock les moyennes
-            method_std_values = []  # cette ligne stock les écart-types
-
-            # Iterate through the subjects and look for the association
-            for sub_metrics in subject_metrics:
-                for k, v in sub_metrics.items():
-                    if v != -1:
-                        if k == f"{name}_mean_{method}":
-                            method_mean_values.append(v)
-                        elif k == f"{name}_std_{method}":
-                            method_std_values.append(v)  
-
-            # Création d'une paire (mean, std) pour chaque méthode
-            method_values_bar = (method_mean_values, method_std_values)
-            metric_values_list_bar.append(method_values_bar)
-        out_path = os.path.join(output_folder, f'{name}_{contrast}_bar_plot.png')
-        #save_bar(methods=methods_list, values=metric_values_list_bar, output_path=out_path, x_axis='Subjects', y_axis= f'{name} (pixels)')
 
 
     for metric_name in metric_name_only_list:
@@ -332,34 +289,6 @@ def calculate_auc(tpr, fpr):
     for i in range(1, len(sorted_fpr)):
         auc_value += (sorted_fpr[i] - sorted_fpr[i-1]) * (sorted_tpr[i] + sorted_tpr[i-1]) / 2.0
     return auc_value
-
-def save_ROC_curves(methods, sens_values, spe_values, output_path, x_axis='specificity', y_axis='sensitivity'):
-    plt.figure()
-
-    for i, method in enumerate(methods):
-        sens = np.expand_dims(sens_values[i], axis=1)
-        spe = np.expand_dims(spe_values[i], axis=1)
-
-        # Concatenate list
-        val = np.concatenate((spe, sens), axis=1)
-        ordered_val = []
-        for v0 in np.sort(np.unique(val[:,0])):
-            v0_val = val[np.where(val[:, 0]==v0)]
-            ordered_val.append(v0_val[v0_val[:, 1].argsort()])
-        ordered_val = np.concatenate(ordered_val, axis=0)
-        # Ignore les points où TPR et FPR sont tous deux à 0 ou à 1
-        #if (tpr != 0 or fpr != 0) and (tpr != 1 or fpr != 1):
-        #    print(f"Method: {method}, TPR: {tpr}, FPR: {fpr}")
-        #    tpr =[tpr]
-        #    fpr=[fpr]
-        plt.plot(ordered_val[:,0], ordered_val[:,1], label=f'{method}') # (AUC = {calculate_auc(sens_values, spe_values):.2f})')
-
-    plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random')
-    plt.title('ROC Curve')
-    plt.xlabel(x_axis)
-    plt.ylabel(y_axis)
-    plt.legend()
-    plt.savefig(output_path)
 
 
 if __name__=='__main__':
