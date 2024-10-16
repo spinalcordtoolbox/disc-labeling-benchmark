@@ -172,6 +172,7 @@ cython_debug/
 *.png
 *.json
 *.swp
+*.nii.gz
 
 # Model weights
 weights/
