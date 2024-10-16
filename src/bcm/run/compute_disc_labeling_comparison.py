@@ -264,7 +264,7 @@ def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric n
 
 
     result_df = pd.DataFrame(data=result_dict)
-    sns.set(style="darkgrid")
+    sns.set_theme(style="darkgrid")
 
     # Make the plot 
     plt.figure(figsize=(13, 8))
