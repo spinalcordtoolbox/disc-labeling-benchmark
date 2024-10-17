@@ -73,7 +73,7 @@ def init_data_config(args):
         raise ValueError('Please store all the BIDS datasets inside the same parent folder !')
 
     # Look up the right code for the set of contrasts present
-    contrasts = "_".join(tuple(sorted(set(map(fetch_contrast, file_paths)))))
+    contrasts = "_".join(tuple(sorted(set(map(fetch_contrast, img_paths)))))
 
     config = {
         'TYPE': args.type,
