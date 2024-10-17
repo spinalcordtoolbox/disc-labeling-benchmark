@@ -251,7 +251,7 @@ def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric n
 
     # Make the plot 
     plt.figure(figsize=(13, 8))
-    sns.violinplot(x = "methods", y = "values", data=result_df, width=1)
+    sns.violinplot(x="methods", y="values", hue="methods", data=result_df, cut=0, width=0.7, bw_method=.2)
     plt.xlabel(x_axis)
     plt.ylabel(y_axis)
     plt.title(f'{y_axis} violin plot')
