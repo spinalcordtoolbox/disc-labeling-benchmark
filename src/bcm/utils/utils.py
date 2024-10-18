@@ -141,8 +141,13 @@ def get_img_path_from_label_path(str_path):
     # Extract file extension
     ext = ''.join(path.suffixes)
 
+    # Find contrast index
+    path_list = path.name.replace(ext, '').split('_')
+    suffixes_pos = [1 if len(part.split('-')) == 1 else 0 for part in path_list]
+    contrast_idx = suffixes_pos.index(1) # Find suffix
+
     # Get img name
-    img_name = '_'.join(path.name.split('_')[:-1]) + ext
+    img_name = '_'.join(path_list[:contrast_idx+1]) + ext
     
     # Create a list of the directories
     dir_list = str(path.parent).split('/')
@@ -194,9 +199,16 @@ def get_seg_path_from_label_path(label_path, seg_suffix='_seg'):
     # Extract file extension
     ext = ''.join(path.suffixes)
 
+    # Find contrast index
+    path_list = path.name.replace(ext, '').split('_')
+    suffixes_pos = [1 if len(part.split('-')) == 1 else 0 for part in path_list]
+    contrast_idx = suffixes_pos.index(1) # Find suffix
+
     # Get img name
-    seg_path = '_'.join(label_path.split('_')[:-1]) + seg_suffix + ext
-    return seg_path
+    seg_name = '_'.join(path_list[:contrast_idx+1]) + seg_suffix + ext
+    seg_path = path.parent / seg_name
+
+    return str(seg_path)
 
 ##
 def fetch_subject_and_session(filename_path):

@@ -48,7 +48,7 @@ def init_data_config(args):
     elif args.type == 'LABEL-SEG':
         seg_suffix = args.suffix_seg
         if not seg_suffix:
-            ValueError(f'When using the type LABEL-SEG, please specify the suffix of the associated segmentation using the flag "--suffix-seg"')
+            raise ValueError(f'When using the type LABEL-SEG, please specify the suffix of the associated segmentation using the flag "--suffix-seg"')
         label_paths = file_paths
         img_paths = [get_img_path_from_label_path(lp) for lp in label_paths]
         seg_paths = [get_seg_path_from_label_path(lp, seg_suffix=seg_suffix) for lp in label_paths]
@@ -73,7 +73,7 @@ def init_data_config(args):
         raise ValueError('Please store all the BIDS datasets inside the same parent folder !')
 
     # Look up the right code for the set of contrasts present
-    contrasts = "_".join(tuple(sorted(set(map(fetch_contrast, file_paths)))))
+    contrasts = "_".join(tuple(sorted(set(map(fetch_contrast, img_paths)))))
 
     config = {
         'TYPE': args.type,
