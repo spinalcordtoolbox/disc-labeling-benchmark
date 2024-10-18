@@ -131,7 +131,7 @@ def test_hourglass(args):
                     # Swap axis prediction and ground truth
                     pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
                 
-                except ValueError:
+                except:
                     pred = np.array([]) # Fail
 
                 # Edit coordinates in txt file
