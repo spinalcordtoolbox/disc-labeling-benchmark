@@ -43,7 +43,7 @@ def test_hourglass(args):
     # Error if data contrast not in training
     for cont in data_contrast:
         if cont not in train_contrast.split('_'):
-            raise ValueError(f"Data contrast {cont} not used for training.")
+            print(f"Data contrast {cont} not used for training.")
 
     # Get image and segmentation paths
     img_paths, _, seg_paths = fetch_bcm_paths(config_data)
