@@ -4,15 +4,17 @@ import torch
 import argparse
 import numpy as np
 from torch.utils.data import DataLoader
+from progress.bar import Bar
 
-from bcm.utils.utils import CONTRAST, swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_contrast, fetch_subject_and_session
+from bcm.utils.utils import swap_y_origin, project_on_spinal_cord, edit_subject_lines_txt_file, fetch_bcm_paths, fetch_contrast, fetch_subject_and_session
 from bcm.utils.image import Image
 from bcm.utils.config2parser import config2parser
 from bcm.utils.init_benchmark import init_txt_file
 
 from dlh.models.hourglass import hg
 from dlh.models.atthourglass import atthg
-from dlh.utils.train_utils import image_Dataset, apply_preprocessing
+from dlh.utils.image_dataset import image_Dataset
+from dlh.utils.train_utils import apply_preprocessing
 from dlh.utils.data2array import get_midNifti
 from dlh.utils.test_utils import extract_skeleton
 
@@ -36,11 +38,11 @@ def test_hourglass(args):
         config_data = json.load(file)
     
     # Fetch contrast info from config data
-    data_contrast = CONTRAST[config_data['CONTRASTS']] # contrast_str is a unique string representing all the contrasts
+    data_contrast = config_data['CONTRASTS'].split('_') # contrast_str is a unique string representing all the contrasts
     
     # Error if data contrast not in training
     for cont in data_contrast:
-        if cont not in CONTRAST[train_contrast]:
+        if cont not in train_contrast.split('_'):
             raise ValueError(f"Data contrast {cont} not used for training.")
 
     # Get image and segmentation paths
@@ -48,7 +50,7 @@ def test_hourglass(args):
 
     # Load images
     print('loading images...')
-    imgs_test, subjects_test, original_shapes = load_image_hg(img_paths=img_paths)
+    imgs_test, subjects_test, original_shapes, res = load_image_hg(img_paths=img_paths)
 
     # Load disc_coords txt file
     with open(txt_file,"r") as f:  # Checking already processed subjects from txt file
@@ -63,9 +65,9 @@ def test_hourglass(args):
         
         # Load network weights
         if att:
-            model = atthg(num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
+            model = atthg(in_channel=3, num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
         else:
-            model = hg(num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
+            model = hg(in_channel=3, num_stacks=stacks, num_blocks=blocks, num_classes=ndiscs)
 
         model = torch.nn.DataParallel(model).to(device)
         model.load_state_dict(torch.load(os.path.join(weights_dir, f'model_{train_contrast}_att_stacks_{stacks}_ndiscs_{ndiscs}'), map_location='cpu')['model_weights'])
@@ -152,14 +154,25 @@ def load_image_hg(img_paths):
     imgs = []
     subs = []
     shapes = []
+    res = []
+
+    # Init progression bar
+    bar = Bar(f'Load data with pre-processing', max=len(img_paths))
+
     for path in img_paths:
         # Applying preprocessing steps
-        image = apply_preprocessing(path)
+        image, res_image, image_shape = apply_preprocessing(path)
         imgs.append(image)
+        res.append(res_image)
         subject, sessionID, filename, contrast, echoID, acquisition = fetch_subject_and_session(path)
         subs.append(subject)
-        shapes.append(get_midNifti(path).shape)
-    return imgs, subs, shapes
+        shapes.append(image_shape)
+
+        # Plot progress
+        bar.suffix  = f'{img_paths.index(path)+1}/{len(img_paths)}'
+        bar.next()
+    bar.finish()
+    return imgs, subs, shapes, res
 
 
 if __name__ == '__main__':
