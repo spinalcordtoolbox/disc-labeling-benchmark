@@ -1,6 +1,7 @@
 import os
 import argparse
 import json
+from pathlib import Path
 
 from bcm.utils.utils import fetch_subject_and_session, fetch_contrast, fetch_bcm_paths
 
@@ -32,7 +33,7 @@ def init_txt_file(args, split='TESTING', init_discs=25):
     subject_contrast_association = dict()
     duplicate_sub_cont = []
     if not os.path.exists(path_out):
-        os.makedirs(os.path.dirname(path_out), exist_ok=True)
+        Path(path_out).parent.mkdir(parents=True, exist_ok=True)
         print("Creating TXT file:", path_out)
 
         # Load subject paths
