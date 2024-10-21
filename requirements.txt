@@ -11,4 +11,5 @@ progress
 nibabel
 seaborn
 pandas
+tqdm
 
