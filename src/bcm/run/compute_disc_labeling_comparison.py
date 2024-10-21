@@ -1,14 +1,12 @@
 import os
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import csv
-import pandas as pd
 import json
 
 from bcm.utils.utils import edit_metric_csv, fetch_bcm_paths, visualize_discs
 from bcm.utils.image import Image
+from bcm.utils.plot import save_violin
 
 
 def compare_methods(args):
@@ -178,89 +176,6 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
             metric_name = f'{metric_name} (pixels)'
         print(f'Saving violin plot for metric {metric_name}')
         save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
-    
-
-def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric name (pixels)'):
-    '''
-    Create a bar graph
-    :param methods: String list of the methods name
-    :param values: List of tuples where each tuple contains (mean, std) corresponding to the methods name
-    :param output_path: Path to output folder where figures will be stored
-    :param x_axis: x-axis number of subject
-    :param y_axis: y-axis name
-    '''
-    
-    # set width of bar
-    barWidth = 0.25
-    
-    #plt.subplots_adjust(bottom=0.2, top=0.9, left=0.05, right=0.95)
-        
-    # Set position of bar on X axis
-    #br1 = np.arange(len(methods))
-
-    mean_values, std_values = zip(*values)  # Séparation de la liste en deux listes distinctes avec les valeurs mean et std
-    mean_values = list(mean_values)
-    std_values = list(std_values) 
-    br1 = np.arange(len(mean_values[0]))
-
-    # Make the plot 
-    plt.figure(figsize=(len(methods), 10))
-    fig, ax = plt.subplots()  
-
-    # Create the bar plots for each method
-    for i, method in enumerate(methods):
-        if any(value != 0 and value != 1 for value in mean_values[i]):              
-            # Remove empty values initialized previously to 0 or 1 depending on the metric
-            ax.bar(br1 + i * barWidth, mean_values[i], yerr=std_values[i], width=barWidth, label=method)
-                    
-    #ax.bar(br1, mean_values, yerr=std_values, align='center', color='b', width = barWidth, edgecolor ='grey')
-    plt.title(f"bar plot of {y_axis}" , fontweight ='bold', fontsize = 20)
- 
-    # Create axis and adding Xticks
-    plt.xlabel(x_axis, fontweight ='bold', fontsize = 15)
-    plt.ylabel(y_axis, fontweight ='bold', fontsize = 15)
-    plt.xticks([r + barWidth * 1.5 for r in br1], [f"{i + 1}" for i in range(len(mean_values[0]))])
-    #plt.xticks([r for r in range(len(methods))], methods)
-    
-    # Save plot
-    plt.legend()
-    plt.savefig(output_path)
-
-
-def save_violin(methods, values, output_path, x_axis='Methods', y_axis='Metric name'):
-    '''
-    Create a bar graph
-    :param methods: String list of the methods name
-    :param values: Values associated with the methods
-    :param output_path: Path to output folder where figures will be stored
-    :param x_axis: x-axis name
-    :param y_axis: y-axis name
-    '''
-    # set width of bar
-    # Set position of bar on X axis
-    result_dict = {'methods' : [], 'values' : []}
-    for i, method in enumerate(methods):
-        if len(values[i]) > 0:
-            result_dict['values'] += values[i]
-            for j in range(len(values[i])):
-                result_dict['methods'] += [method]
-
-
-    result_df = pd.DataFrame(data=result_dict)
-    sns.set_theme(style="darkgrid")
-
-    # Make the plot 
-    plt.figure(figsize=(13, 8))
-    sns.violinplot(x="methods", y="values", hue="methods", data=result_df, cut=0, width=0.7, bw_method=.2)
-    plt.xlabel(x_axis)
-    plt.ylabel(y_axis)
-    plt.title(f'{y_axis} violin plot')
-    plt.xlabel(x_axis, fontsize = 20)
-    plt.ylabel(y_axis, fontsize = 20)
-    plt.title(y_axis, fontsize = 25)
-    
-    # Save plot
-    plt.savefig(output_path)
 
 
 def calculate_auc(tpr, fpr):
