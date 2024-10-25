@@ -28,7 +28,7 @@ def save_bar(methods, values, output_path, x_axis='Subjects', y_axis= 'Metric na
     br1 = np.arange(len(mean_values[0]))
 
     # Make the plot 
-    plt.figure(figsize=(len(methods), 10))
+    plt.figure(figsize=(max(len(methods), 13), 10))
     fig, ax = plt.subplots()  
 
     # Create the bar plots for each method
@@ -76,7 +76,7 @@ def save_violin(methods, values, hue=[], output_path='test.png', x_axis='Methods
     sns.set_theme(style="darkgrid")
 
     # Make the plot 
-    plt.figure(figsize=(len(methods)//2, 8))
+    plt.figure(figsize=(max(len(methods), 13), 10))
     ax = sns.violinplot(x="methods", y="values", hue="Class", data=result_df, cut=0, width=0.9, bw_method=1)
     if len(methods) > 20:
         xticks = [f'{method}' if i%2==0 else f'\n{method}' for i, method in enumerate(methods)] # Shift label up and down
