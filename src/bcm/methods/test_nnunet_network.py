@@ -120,8 +120,9 @@ def test_nnunet(args):
                 # Project coordinates onto the spinalcord
                 discs_coords = project_on_spinal_cord(coords=discs_coords, seg_path=seg_path, orientation='RIP', disc_num=True, proj_2d=False)
 
-                # Remove left-right coordinate
-                discs_coords = discs_coords[:, 1:].astype(int)
+                if discs_coords.any():
+                    # Remove left-right coordinate
+                    discs_coords = discs_coords[:, 1:].astype(int)
             
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num gt_coords sct_discs_coords hourglass_coords spinenet_coords

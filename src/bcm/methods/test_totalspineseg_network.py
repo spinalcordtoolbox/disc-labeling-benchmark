@@ -79,8 +79,9 @@ def test_totalspineseg(args):
             # Project on spinalcord
             pred_coords = project_on_spinal_cord(coords=pred_coords, seg_path=str(seg_path), orientation='RIP', disc_num=True, proj_2d=False)
             
-            # Remove left-right coordinate
-            pred_coords = pred_coords[:, 1:].astype(int)
+            if pred_coords.any():
+                # Remove left-right coordinate
+                pred_coords = pred_coords[:, 1:].astype(int)
 
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num

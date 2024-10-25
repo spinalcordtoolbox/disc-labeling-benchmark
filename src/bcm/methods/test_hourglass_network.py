@@ -129,7 +129,8 @@ def test_hourglass(args):
                     pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, orientation='RSP', disc_num=True, proj_2d=True)
                     
                     # Swap axis prediction and ground truth
-                    pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                    if pred.any():
+                        pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
                 
                 except:
                     pred = np.array([]) # Fail
