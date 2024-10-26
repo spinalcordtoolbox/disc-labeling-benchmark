@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import csv
 import json
+from pathlib import Path
 
 from bcm.utils.utils import edit_metric_csv, fetch_bcm_paths, visualize_discs
 from bcm.utils.image import Image
@@ -80,7 +81,7 @@ def compare_methods(args):
             sub_list = [sub for sub in methods_results[contrast].keys() if sub.startswith('sub')]
             fields = ['subject'] + [key for key in methods_results[contrast][sub_list[0]].keys()]
             
-            csv_path = txt_file_path.replace('discs_coords.txt', f'computed_metrics_{contrast}.csv')
+            csv_path = str(Path(txt_file_path).parent / f'computed_metrics_{contrast}.csv')
             with open(csv_path, "w") as f:
                 w = csv.DictWriter(f, fields)
                 w.writeheader()
