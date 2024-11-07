@@ -95,16 +95,17 @@ def save_violin(methods, values, hue=[], output_path='test.png', x_axis='Methods
     handles, labels = ax.get_legend_handles_labels()
     legend_colors = [handle.get_facecolor() for handle in handles]
 
-    # Match the x-tick labels' colors to the corresponding hue colors
-    for i, label in enumerate(ax.get_xticklabels()):
-        method = methods[i]  # Corresponding method
-        # Retrieve the associated class for the current method
-        associated_class = result_df[result_df["methods"] == method]["Class"].values[0]
-        class_idx = list(result_df["Class"].unique()).index(associated_class)  # Find the index of the class
-        label.set_color(legend_colors[class_idx])  # Set the color based on the hue class
+    if legend_colors:
+        # Match the x-tick labels' colors to the corresponding hue colors
+        for i, label in enumerate(ax.get_xticklabels()):
+            method = methods[i]  # Corresponding method
+            # Retrieve the associated class for the current method
+            associated_class = result_df[result_df["methods"] == method]["Class"].values[0]
+            class_idx = list(result_df["Class"].unique()).index(associated_class)  # Find the index of the class
+            label.set_color(legend_colors[class_idx])  # Set the color based on the hue class
 
-    # Increase the font size of the legend (hue label)
-    plt.legend(title='Class', title_fontsize=18, fontsize=18, loc='best')
+        # Increase the font size of the legend (hue label)
+        plt.legend(title='Class', title_fontsize=18, fontsize=18, loc='best')
 
     # Adjust spacing between the plot and labels
     plt.tight_layout()
@@ -158,16 +159,17 @@ def save_boxplot(methods, values, hue=[], output_path='test.png', x_axis='Method
     handles, labels = ax.get_legend_handles_labels()
     legend_colors = [handle.get_facecolor() for handle in handles]
 
-    # Match the x-tick labels' colors to the corresponding hue colors
-    for i, label in enumerate(ax.get_xticklabels()):
-        method = methods[i]  # Corresponding method
-        # Retrieve the associated class for the current method
-        associated_class = result_df[result_df["methods"] == method]["Class"].values[0]
-        class_idx = list(result_df["Class"].unique()).index(associated_class)  # Find the index of the class
-        label.set_color(legend_colors[class_idx])  # Set the color based on the hue class
+    if legend_colors:
+        # Match the x-tick labels' colors to the corresponding hue colors
+        for i, label in enumerate(ax.get_xticklabels()):
+            method = methods[i]  # Corresponding method
+            # Retrieve the associated class for the current method
+            associated_class = result_df[result_df["methods"] == method]["Class"].values[0]
+            class_idx = list(result_df["Class"].unique()).index(associated_class)  # Find the index of the class
+            label.set_color(legend_colors[class_idx])  # Set the color based on the hue class
 
-    # Increase the font size of the legend (hue label)
-    plt.legend(title='Class', title_fontsize=18, fontsize=18, loc='best')
+        # Increase the font size of the legend (hue label)
+        plt.legend(title='Class', title_fontsize=18, fontsize=18, loc='best')
 
     # Adjust spacing between the plot and labels
     plt.tight_layout()
