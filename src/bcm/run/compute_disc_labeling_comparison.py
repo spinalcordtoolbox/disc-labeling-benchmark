@@ -7,7 +7,7 @@ from pathlib import Path
 
 from bcm.utils.utils import edit_metric_csv, fetch_bcm_paths, visualize_discs
 from bcm.utils.image import Image
-from bcm.utils.plot import save_violin
+from bcm.utils.plot import save_boxplot
 
 
 def compare_methods(args):
@@ -176,7 +176,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
         if metric_name.startswith('z') or metric_name.startswith('l2'):
             metric_name = f'{metric_name} (pixels)'
         print(f'Saving violin plot for metric {metric_name}')
-        save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
+        save_boxplot(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
 
 
 def calculate_auc(tpr, fpr):
