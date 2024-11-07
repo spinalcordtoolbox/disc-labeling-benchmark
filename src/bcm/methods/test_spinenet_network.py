@@ -114,8 +114,9 @@ def test_spinenet(args):
                 # Project on spinalcord for 2D comparison
                 coords = project_on_spinal_cord(coords=coords, seg_path=seg_path, orientation='RSP', disc_num=True, proj_2d=True)
                 
-                # Move y origin to the bottom of the image like Niftii convention
-                coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
+                if coords.any():
+                    # Move y origin to the bottom of the image like Niftii convention
+                    coords = swap_y_origin(coords=coords, img_shape=img[:,:,0].shape, y_pos=0).astype(int)
             else:
                 coords = np.array([]) # Fail
             # Write coordinates in txt file

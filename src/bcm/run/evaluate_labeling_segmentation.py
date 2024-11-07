@@ -1,5 +1,4 @@
 import multiprocessing as mp
-from tqdm.contrib.concurrent import process_map
 from functools import partial
 import argparse
 from pathlib import Path
@@ -12,7 +11,7 @@ import matplotlib as mpl
 
 from bcm.utils.metrics import compute_dsc
 from bcm.utils.image import Image
-from bcm.utils.plot import save_violin
+from bcm.utils.plot import save_boxplot
 
 def main(args):
     # Load variables
@@ -47,7 +46,7 @@ def main(args):
 
     # Create multi class dice violin plot
     hue = ['Intervertebral discs' if '-' in name else 'Vertebrae' for name in list(gt_map.keys())]
-    save_violin(list(gt_map.keys()), value_list, hue=hue, output_path='multi_class_dice.png', x_axis='Class', y_axis='Dice')
+    save_boxplot(list(gt_map.keys()), value_list, hue=hue, output_path='multi_class_dice.png', x_axis='Class', y_axis='Dice')
 
     # Set predictions to 1 if DICE above threshold
     # threshold = 0.8

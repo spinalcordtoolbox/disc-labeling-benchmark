@@ -3,10 +3,11 @@ import argparse
 import numpy as np
 import csv
 import json
+from pathlib import Path
 
 from bcm.utils.utils import edit_metric_csv, fetch_bcm_paths, visualize_discs
 from bcm.utils.image import Image
-from bcm.utils.plot import save_violin
+from bcm.utils.plot import save_boxplot
 
 
 def compare_methods(args):
@@ -80,7 +81,7 @@ def compare_methods(args):
             sub_list = [sub for sub in methods_results[contrast].keys() if sub.startswith('sub')]
             fields = ['subject'] + [key for key in methods_results[contrast][sub_list[0]].keys()]
             
-            csv_path = txt_file_path.replace('discs_coords.txt', f'computed_metrics_{contrast}.csv')
+            csv_path = str(Path(txt_file_path).parent / f'computed_metrics_{contrast}.csv')
             with open(csv_path, "w") as f:
                 w = csv.DictWriter(f, fields)
                 w.writeheader()
@@ -175,7 +176,7 @@ def save_graphs(output_folder, methods_results, methods_list, contrast):
         if metric_name.startswith('z') or metric_name.startswith('l2'):
             metric_name = f'{metric_name} (pixels)'
         print(f'Saving violin plot for metric {metric_name}')
-        save_violin(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
+        save_boxplot(methods=methods_list, values=metric_values_list, output_path=out_path, x_axis='Methods', y_axis=metric_name)
 
 
 def calculate_auc(tpr, fpr):

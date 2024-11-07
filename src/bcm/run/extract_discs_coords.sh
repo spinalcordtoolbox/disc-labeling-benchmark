@@ -43,8 +43,6 @@ if [ "$1" = "-h" ]; then
     echo "              Note: Multiple files corresponding to different training may be specified by calling the same flag multiple times."
     echo "   -o, --out <path/to/file.txt>"
     echo "              Generated txt file path (default: "results/files/discs_coords.txt")"
-    echo "   -s, --suffix <str>"
-    echo "              Specify segmentation label suffix example: sub-296085_T2w(SEG_SUFFIX).nii.gz (default= "_seg-manual")"
     exit 0
 fi
 
@@ -69,7 +67,6 @@ trap "echo Caught Keyboard Interrupt within script. Exiting now.; exit" INT
 CONFIG_DATA=""
 OUTPUT_DIR="results/"
 OUTPUT_TXT=""
-SUFFIX_SEG="_seg-manual"
 VERBOSE=1
 
 # Hourglass config file
@@ -101,10 +98,6 @@ do
             ;;
         -o|--out)
             OUTPUT_TXT="$2"
-            shift 2
-            ;;
-        -s|--suffix)
-            SUFFIX_SEG="$2"
             shift 2
             ;;
         -v|--verbose)
@@ -154,7 +147,7 @@ if [[ ! -f ${CONFIG_DATA} ]]; then
 fi
 
 # Ensure the output directory exists, creating it if necessary.
-mkdir -p ${OUTPUT_DIR}
+mkdir -p "${OUTPUT_DIR}"
 if [[ ! -d ${OUTPUT_DIR} ]]; then
     echo "Folder not found ${OUTPUT_DIR}"
     exit 1
@@ -164,7 +157,7 @@ fi
 # ======================================================================================================================
 
 # Mandatory args
-args=(--config-data "$CONFIG_DATA" --out-txt-file "$OUTPUT_TXT" --suffix-seg "$SUFFIX_SEG" --seg-folder "$OUTPUT_DIR")
+args=(--config-data "$CONFIG_DATA" --out-txt-file "$OUTPUT_TXT")
 
 ## Activate env HOURGLASS + SCT
 source /usr/local/miniforge3/etc/profile.d/conda.sh
@@ -189,22 +182,22 @@ for file in "${CONFIG_HG[@]}"
 # Test sct_label_vertebrae
 python src/bcm/methods/test_sct_label_vertebrae.py "${args[@]}"
 
-## Deactivate env
+# Deactivate env
 conda deactivate
 
-# Activate nnunet env
-conda activate nnunet_env
+# Activate totalspineseg env
+conda activate totalseg_env
 
-# Test nnUNet networks
-for file in "${CONFIG_NN[@]}"
-    do
-        file=$(realpath "${file}")
-        args_nn=("${args[@]}")
-        args_nn+=(--config-nnunet "$file")
-        python src/bcm/methods/test_nnunet_network.py "${args_nn[@]}"
-    done
+# Test TotalSpineSeg
+python src/bcm/methods/test_totalspineseg_network.py "${args[@]}"
+
+# Deactivate env
+conda deactivate
+
+# Activate spineneV2 env
+conda activate spinenet_env
 
 # Test Spinenet Network with spinenet-venv
-/home/GRAMES.POLYMTL.CA/p118739/data_nvme_p118739/code/SpineNet/spinenet-venv/bin/python src/bcm/methods/test_spinenet_network.py "${args[@]}"
+python src/bcm/methods/test_spinenet_network.py "${args[@]}"
 
 echo "All the methods have been computed"

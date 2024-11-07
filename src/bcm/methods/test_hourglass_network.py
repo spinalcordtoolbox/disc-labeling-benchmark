@@ -129,7 +129,8 @@ def test_hourglass(args):
                     pred = project_on_spinal_cord(coords=pred, seg_path=seg_path, orientation='RSP', disc_num=True, proj_2d=True)
                     
                     # Swap axis prediction and ground truth
-                    pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
+                    if pred.any():
+                        pred = swap_y_origin(coords=pred, img_shape=original_shape, y_pos=0).astype(int)  # Move y origin to the bottom of the image like Niftii convention
                 
                 except:
                     pred = np.array([]) # Fail
@@ -186,8 +187,8 @@ if __name__ == '__main__':
                         help='Config file where hourglass training parameters are stored Example: Example: ~/<your_path>/config.json (Required)')  # Hourglass config file
     parser.add_argument('-txt', '--out-txt-file', default='results/files/discs_coords.txt',
                         type=str, metavar='N',help='Generated txt file path (default: "results/files/discs_coords.txt")')
-    parser.add_argument('--method', default='hg',
-                        type=str,help='Method name that will be added to the txt file (default="hg")')
+    parser.add_argument('--method', default='hourglass',
+                        type=str,help='Method name that will be added to the txt file (default="hourglass")')
     
     args = parser.parse_args()
 
