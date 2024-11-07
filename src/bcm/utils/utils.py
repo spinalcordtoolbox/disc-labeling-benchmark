@@ -648,7 +648,7 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict[subject_name][f'specificity_{method_short}'] = specificity
 
     # Add accuracy
-    result_dict[subject_name][f'ACC_{method_short}'] = ACC_pred
+    result_dict[subject_name][f'Accuracy_{method_short}'] = ACC_pred
 
     # Add dice score
     result_dict[subject_name][f'DSC_{method_short}'] = DSC_pred
@@ -691,7 +691,7 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
         result_dict['total'][f'FNR_{method_short}'] = 0
 
         # Init accuracy
-        result_dict['total'][f'ACC_{method_short}'] = 0
+        result_dict['total'][f'Accuracy_{method_short}'] = 0
         
         # Init dice score
         result_dict['total'][f'DSC_{method_short}'] = 0
@@ -720,7 +720,7 @@ def edit_metric_csv(result_dict, txt_lines, subject_name, contrast, method_name,
     result_dict['total'][f'FNR_{method_short}'] += FNR_pred/nb_subjects
 
     # Add accuracy
-    result_dict['total'][f'ACC_{method_short}'] += ACC_pred/nb_subjects
+    result_dict['total'][f'Accuracy_{method_short}'] += ACC_pred/nb_subjects
     
     # Add dice score
     result_dict['total'][f'DSC_{method_short}'] += DSC_pred/nb_subjects
