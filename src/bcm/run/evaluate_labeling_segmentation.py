@@ -1,5 +1,4 @@
 import multiprocessing as mp
-from tqdm.contrib.concurrent import process_map
 from functools import partial
 import argparse
 from pathlib import Path
