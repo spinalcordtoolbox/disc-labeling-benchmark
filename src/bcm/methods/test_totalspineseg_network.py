@@ -43,12 +43,33 @@ def test_totalspineseg(args):
 
     # Run totalspineseg step 1
     subprocess.check_call([
-        "totalspineseg", "--step1",
+        "totalspineseg", "--iso",
         str(raw_dir), str(out_dir)
     ])
 
+    # Extract level totalspineseg step 2
+    subprocess.check_call([
+        "totalspineseg_extract_levels",
+        "--segs-dir", str(out_dir / 'step2_output'),
+        "--output-segs-dir", str(out_dir / 'step2_levels'),
+        "--canal-labels", "1", "2",
+        "--disc-labels", "63", "64", "65", "66", "67", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "91", "92", "93", "94", "95", "100",
+        "--c1-label", "11",
+        "--c2-label", "12"
+    ])
+
+    # Resample to raw resolution
+    subprocess.check_call([
+        "totalspineseg_transform_seg2image",
+        "-i", str(out_dir / 'input_raw'),
+        "-s", str(out_dir / 'step2_levels'),
+        "-o", str(out_dir / 'step2_levels'),
+        "-x", "label",
+        "--overwrite"
+    ])
+
     print('Processing with totalspineseg')
-    level_dir = out_dir / 'step1_levels'
+    level_dir = out_dir / 'step2_levels'
     for img_path, seg_path in zip(img_paths, seg_paths):
         img_path = Path(img_path)
         seg_path = Path(seg_path)
