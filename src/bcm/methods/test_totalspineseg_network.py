@@ -61,9 +61,10 @@ def test_totalspineseg(args):
     # Resample to raw resolution
     subprocess.check_call([
         "totalspineseg_transform_seg2image",
-        "-i", str(out_dir / 'input_raw'),
+        "-i", str(raw_dir),
         "-s", str(out_dir / 'step2_levels'),
         "-o", str(out_dir / 'step2_levels'),
+        "--image-suffix", "",
         "-x", "label",
         "--overwrite"
     ])
