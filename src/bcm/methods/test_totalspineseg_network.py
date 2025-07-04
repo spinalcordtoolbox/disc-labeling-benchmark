@@ -80,7 +80,7 @@ def test_totalspineseg(args):
 
         # Check if mismatch between images
         add_subject = False
-        if Image(str(seg_path)).change_orientation('RSP').data.shape==Image(str(img_path)).change_orientation('RSP').data.shape and Image(str(pred_path)).change_orientation('RSP').data.shape==Image(str(img_path)).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape
+        if Image(str(seg_path)).change_orientation('RSP').data.shape==Image(str(img_path)).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape
             add_subject = True
         
         if add_subject:
