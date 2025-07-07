@@ -61,9 +61,10 @@ def test_totalspineseg(args):
     # Resample to raw resolution
     subprocess.check_call([
         "totalspineseg_transform_seg2image",
-        "-i", str(out_dir / 'input_raw'),
+        "-i", str(raw_dir),
         "-s", str(out_dir / 'step2_levels'),
         "-o", str(out_dir / 'step2_levels'),
+        "--image-suffix", "",
         "-x", "label",
         "--overwrite"
     ])
@@ -79,7 +80,7 @@ def test_totalspineseg(args):
 
         # Check if mismatch between images
         add_subject = False
-        if Image(str(seg_path)).change_orientation('RSP').data.shape==Image(str(img_path)).change_orientation('RSP').data.shape and Image(str(pred_path)).change_orientation('RSP').data.shape==Image(str(img_path)).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape
+        if Image(str(seg_path)).change_orientation('RSP').data.shape==Image(str(img_path)).change_orientation('RSP').data.shape:  # Check if seg_shape == img_shape
             add_subject = True
         
         if add_subject:
@@ -94,15 +95,19 @@ def test_totalspineseg(args):
                 sub_name += f'_{echoID}'
             contrast = fetch_contrast(str(img_path))
 
-            # Extract discs coordinates
-            pred_coords = np.array([list(coord) for coord in Image(str(pred_path)).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
+            if os.path.exists(str(pred_path)):
+                # Extract discs coordinates
+                pred_coords = np.array([list(coord) for coord in Image(str(pred_path)).change_orientation("RIP").getNonZeroCoordinates(sorting='value')]).astype(int)
 
-            # Project on spinalcord
-            pred_coords = project_on_spinal_cord(coords=pred_coords, seg_path=str(seg_path), orientation='RIP', disc_num=True, proj_2d=False)
-            
-            if pred_coords.any():
-                # Remove left-right coordinate
-                pred_coords = pred_coords[:, 1:].astype(int)
+                # Project on spinalcord
+                pred_coords = project_on_spinal_cord(coords=pred_coords, seg_path=str(seg_path), orientation='RIP', disc_num=True, proj_2d=False)
+                
+                if pred_coords.any():
+                    # Remove left-right coordinate
+                    pred_coords = pred_coords[:, 1:].astype(int)
+            else:
+                # Fail
+                pred_coords = np.array([])
 
             # Edit coordinates in txt file
             # line = subject_name contrast disc_num

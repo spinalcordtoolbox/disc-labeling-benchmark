@@ -182,3 +182,6 @@ weights/
 
 # Wandb
 wandb/
+
+# Result folder
+results/
